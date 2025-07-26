@@ -4,55 +4,62 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
 public class ExcelExport {
 
-    public static void exportTrainData(String filename, Map<Integer, List<Main.TrainState>> trainData, boolean useSI) throws IOException {
+    public static void exportTrainData(String filename, Map<Integer, List<TrainState>> trainData, boolean useSI) throws Exception {
         Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Train Data");
 
-        for (Map.Entry<Integer, List<Main.TrainState>> entry : trainData.entrySet()) {
-            int trainId = entry.getKey();
-            List<Main.TrainState> states = entry.getValue();
-            Sheet sheet = workbook.createSheet("Train_" + trainId);
+        Row header = sheet.createRow(0);
+        int col = 0;
 
-            Row header = sheet.createRow(0);
-            String prefix = "Train " + trainId + " - ";
-            header.createCell(0).setCellValue(prefix + "Time [hh:mm:ss]");
-            header.createCell(1).setCellValue(prefix + "Time [s]");
-            header.createCell(2).setCellValue(prefix + "Position [m]");
-            header.createCell(3).setCellValue(prefix + "Expected Position");
-            header.createCell(4).setCellValue(prefix + "Expected Speed");
-            header.createCell(5).setCellValue(prefix + "Expected Net Power");
-            header.createCell(6).setCellValue(prefix + "Obtained Position");
-            header.createCell(7).setCellValue(prefix + "Obtained Speed");
-            header.createCell(8).setCellValue(prefix + "Obtained Net Power");
-            int rowIdx = 1;
+        for (Integer trainId : trainData.keySet()) {
+            String prefix = "Train " + trainId;
+            header.createCell(col++).setCellValue(prefix + " - Time [hh:mm:ss]");
+            header.createCell(col++).setCellValue(prefix + " - Time [s]");
+            header.createCell(col++).setCellValue(prefix + " - Position [m]");
+            header.createCell(col++).setCellValue(prefix + " - Expected Position");
+            header.createCell(col++).setCellValue(prefix + " - Expected Speed");
+            header.createCell(col++).setCellValue(prefix + " - Expected Net Power");
+            header.createCell(col++).setCellValue(prefix + " - Obtained Position");
+            header.createCell(col++).setCellValue(prefix + " - Obtained Speed");
+            header.createCell(col++).setCellValue(prefix + " - Obtained Net Power");
+        }
 
-            for (Main.TrainState state : states) {
-                Row row = sheet.createRow(rowIdx++);
-                double speed = useSI ? state.speed() : state.speed() * 3.6;
-                double power = useSI ? state.power() : state.power() / 1000.0;
-                String posLabel = PositionUtils.format(state.position());
+        int maxRows = trainData.values().stream().mapToInt(List::size).max().orElse(0);
 
-                row.createCell(0).setCellValue(TimeUtils.format((int) state.time()));
-                row.createCell(1).setCellValue(state.time());
-                row.createCell(2).setCellValue(state.position());
-                row.createCell(3).setCellValue(posLabel);
-                row.createCell(4).setCellValue(speed);
-                row.createCell(5).setCellValue(power);
-                row.createCell(6).setCellValue(posLabel);
-                row.createCell(7).setCellValue(speed);
-                row.createCell(8).setCellValue(power);
+        for (int i = 0; i < maxRows; i++) {
+            Row row = sheet.createRow(i + 1);
+            col = 0;
+
+            for (List<TrainState> states : trainData.values()) {
+                if (i < states.size()) {
+                    TrainState state = states.get(i);
+                    row.createCell(col++).setCellValue(TimeUtils.format((int) state.time()));
+                    row.createCell(col++).setCellValue(state.time());
+                    row.createCell(col++).setCellValue(state.position());
+                    row.createCell(col++).setCellValue(PositionUtils.format(state.position()));
+                    row.createCell(col++).setCellValue(state.speed());
+                    row.createCell(col++).setCellValue(state.power());
+                    row.createCell(col++).setCellValue(state.position()); // placeholder for actual obtained position
+                    row.createCell(col++).setCellValue(state.speed());    // placeholder for actual obtained speed
+                    row.createCell(col++).setCellValue(state.power());    // placeholder for actual obtained power
+                } else {
+                    col += 9; // skip columns for trains that are finished
+                }
             }
+        }
+
+        for (int i = 0; i < header.getPhysicalNumberOfCells(); i++) {
+            sheet.autoSizeColumn(i);
         }
 
         try (FileOutputStream out = new FileOutputStream(filename)) {
             workbook.write(out);
         }
-
         workbook.close();
         System.out.println("Excel export completed to " + filename);
     }

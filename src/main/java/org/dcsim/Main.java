@@ -4,89 +4,112 @@ import java.util.*;
 
 public class Main {
 
-    public record TrainSchedule(int id, boolean isUp, double startTime) {}
-
-    public record TrainState(int trainId, boolean isUpDirection, double position, double speed, double power, double time) {}
-
     public static void main(String[] args) throws Exception {
-        int upCount = 3;
-        int downCount = 3;
-        int headway = 300;
-        double upStartTime = 0;
-        double downStartTime = 600;
-        double simStart = 0;
-        double simEnd = 3600;
-        double tickSeconds = 1.0;
         boolean useSI = true;
+        int tick = 1;
+        int simEnd = 7200;
 
-        double accel = 1.0;
+        int upTrainCount = 5;
+        int downTrainCount = 5;
+        int upStartTime = 0;
+        int downStartTime = 0;
+        int upHeadway = 300;
+        int downHeadway = 300;
+
         double cruiseSpeed = 22.22;
-        double cruiseTime = 420;
-        double brake = -1.0;
-        double cruisePower = 200000.0;  // updated cruise power
+        double accel = 1.0;
+        double braking = -1.0;
+        double cruisePower = 200_000;
+        double tractionPower = 1_200_000;
+        double brakingPower = -250_000;
 
-        List<TrainSchedule> schedules = new ArrayList<>();
-        for (int i = 0; i < upCount; i++)
-            schedules.add(new TrainSchedule(i, true, upStartTime + i * headway));
-        for (int i = 0; i < downCount; i++)
-            schedules.add(new TrainSchedule(i + upCount, false, downStartTime + i * headway));
+        int trainId = 0;
+        List<Train> trains = new ArrayList<>();
 
-        Map<Integer, List<TrainState>> trainData = new LinkedHashMap<>();
-        Map<Integer, TrainState> active = new HashMap<>();
+        for (int i = 0; i < upTrainCount; i++)
+            trains.add(new Train(trainId++, true, upStartTime + i * upHeadway));
+        for (int i = 0; i < downTrainCount; i++)
+            trains.add(new Train(trainId++, false, downStartTime + i * downHeadway));
 
-        for (double t = simStart; t <= simEnd; t += tickSeconds) {
-            for (TrainSchedule schedule : schedules) {
-                if (Math.abs(t - schedule.startTime) < 0.001) {
-                    double initialPos = schedule.isUp ? 0.0 : 10_000.0;
-                    TrainState initial = new TrainState(schedule.id, schedule.isUp, initialPos, 0.0, 0.0, t);
-                    active.put(schedule.id, initial);
-                    trainData.put(schedule.id, new ArrayList<>(List.of(initial)));
-                    System.out.printf("[%s] Train %d departs (%s)%n", TimeUtils.format((int)t), schedule.id, schedule.isUp ? "UP" : "DOWN");
+        Map<Integer, List<double[]>> trainData = new LinkedHashMap<>();
+        for (Train train : trains)
+            trainData.put(train.id, new ArrayList<>());
+
+        List<Train> active = new ArrayList<>();
+
+        for (int t = 0; t <= simEnd; t += tick) {
+            for (Train train : trains) {
+                if (train.startTime == t) {
+                    train.init();
+                    active.add(train);
+                    System.out.println("Train " + train.id + " starts at " + t);
                 }
             }
 
-            Iterator<Map.Entry<Integer, TrainState>> it = active.entrySet().iterator();
-            while (it.hasNext()) {
-                var e = it.next();
-                TrainState tr = e.getValue();
-                double elapsed = t - tr.time;
+            List<Train> next = new ArrayList<>();
 
-                double newSpeed = 0.0;
-                double newPower = 0.0;
+            for (Train train : active) {
+                double pos = train.position;
+                double speed = train.speed;
+                double power;
 
-                if (elapsed < cruiseSpeed / accel) {
-                    newSpeed = accel * elapsed;
-                    newPower = cruisePower;
-                } else if (elapsed < cruiseSpeed / accel + cruiseTime) {
-                    newSpeed = cruiseSpeed;
-                    newPower = cruisePower;
+                double stopPos = train.isUp ? 9310.0 : 0.0;
+                double distToStop = Math.abs(stopPos - pos);
+                double brakeDist = speed * speed / (2 * -braking);
+
+                if (speed == 0 && t == train.startTime) {
+                    speed = accel * tick;
+                    power = tractionPower;
+                } else if (speed < cruiseSpeed) {
+                    speed = Math.min(speed + accel * tick, cruiseSpeed);
+                    power = tractionPower;
+                } else if (distToStop <= brakeDist) {
+                    speed = Math.max(speed + braking * tick, 0);
+                    power = brakingPower;
                 } else {
-                    double tBraking = elapsed - cruiseSpeed / accel - cruiseTime;
-                    newSpeed = cruiseSpeed + brake * tBraking;
-                    if (newSpeed < 0) newSpeed = 0;
-                    newPower = 0.0;
+                    speed = cruiseSpeed;
+                    power = cruisePower;
                 }
 
-                double delta = newSpeed * tickSeconds;
-                double newPos = tr.isUpDirection() ? tr.position + delta : tr.position - delta;
+                pos = train.isUp ? pos + speed * tick : pos - speed * tick;
 
-                TrainState updated = new TrainState(tr.trainId, tr.isUpDirection, newPos, newSpeed, newPower, t);
-                trainData.get(tr.trainId).add(updated);
+                train.position = pos;
+                train.speed = speed;
 
-                if (newSpeed == 0.0) {
-                    it.remove();
-                    System.out.printf("[%s] Train %d stopped%n", TimeUtils.format((int)t), tr.trainId);
-                } else {
-                    e.setValue(updated);
-                }
+                trainData.get(train.id).add(new double[]{t, pos, speed, power});
+
+                if (speed > 0.0 || t == train.startTime)
+                    next.add(train);
             }
+
+            active = next;
 
             if (active.isEmpty()) {
-                System.out.printf("[%s] All trains stopped. Simulation ends.%n", TimeUtils.format((int)t));
+                System.out.println("All trains have stopped at " + t);
                 break;
             }
         }
 
-        ExcelExport.exportTrainData("output.xlsx", trainData, useSI);
+        // Dummy export placeholder
+        System.out.println("Simulation finished. Data exported.");
+    }
+
+    static class Train {
+        int id;
+        boolean isUp;
+        int startTime;
+        double position = 0.0;
+        double speed = 0.0;
+
+        Train(int id, boolean isUp, int startTime) {
+            this.id = id;
+            this.isUp = isUp;
+            this.startTime = startTime;
+        }
+
+        void init() {
+            this.position = isUp ? 0.0 : 9310.0;
+            this.speed = 0.0;
+        }
     }
 }
