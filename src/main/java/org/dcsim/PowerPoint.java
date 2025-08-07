@@ -7,4 +7,9 @@ public record PowerPoint(
         double power,
         double voltage,
         double current
-) {}
+) {
+
+    public PowerPoint shifted(double offsetSeconds) {
+        return new PowerPoint(time + offsetSeconds, position, speed, power, voltage, current);
+    }
+}

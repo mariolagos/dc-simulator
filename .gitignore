@@ -1,0 +1,37 @@
+# === Build directories ===
+target/
+out/
+bin/
+
+# === IntelliJ IDEA ===
+.idea/
+*.iml
+
+# === Java/Scala artifacts ===
+*.class
+*.jar
+*.war
+*.log
+
+# === Scala ===
+.cache/
+.ensime
+.ensime_cache/
+metals.sbt
+.metals/
+.bloop/
+.project
+.scala_dependencies
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Temporary files ===
+*.tmp
+*.swp
+*.bak
+*.zip
+
+# === Output ===
+output/

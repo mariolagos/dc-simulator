@@ -20,10 +20,27 @@ public class TrainState {
         this.startTime = startTime;
     }
 
-    public double time() { return time; }
-    public double position() { return position; }
-    public double speed() { return speed; }
-    public double power() { return power; }
-    public boolean isUp() { return isUp; }
-    public int startTime() { return startTime; }
+    public double time() {
+        return time;
+    }
+
+    public double position() {
+        return position;
+    }
+
+    public double speed() {
+        return speed;
+    }
+
+    public double power() {
+        return power;
+    }
+
+    public boolean isUp() {
+        return isUp;
+    }
+
+    public int startTime() {
+        return startTime;
+    }
 }
