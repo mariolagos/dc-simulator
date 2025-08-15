@@ -10,6 +10,8 @@ import java.util.List;
  * Devices are connected to nodes and inject/extract current based on voltage.
  */
 public class Node<T extends FieldElement<T>> {
+    private String description; // Optional descriptive text
+
     private final int id;
     private final Real voltage;
     private final String position;
@@ -19,6 +21,11 @@ public class Node<T extends FieldElement<T>> {
         this.voltage = voltage;
         this.position = position;
     }
+    public Node(int id, Real voltage, String position, String description) {
+        this(id, voltage, position);
+        this.description = description;
+    }
+
 
     public int getId() {
         return id;
@@ -40,5 +47,9 @@ public class Node<T extends FieldElement<T>> {
             }
         }
         return total;
+    }
+
+    public String getDescription() {
+        return description;
     }
 }

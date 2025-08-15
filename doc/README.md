@@ -1,88 +1,75 @@
-# DC-simulator
+# README.md – DcSim v0.4
 
-This simulator evaluates energy consumption and grid interaction for train traffic on DC-electrified railways. It supports time-dependent simulations, multiple trains, and realistic electrical modeling.
-
-## Purpose and scope
-
-The purpose is to simulate how train traffic interacts with the electrical infrastructure in terms of power flows, voltage stability, losses, and energy usage. The model is designed to analyze scenarios such as:
-
-- Timetable changes
-- New rolling stock
-- Additional or removed substations
-- Changes in traction performance or braking characteristics
+## Purpose and Scope
+DcSim is a simulator for DC-electrified railway systems that evaluates energy consumption, voltage stability, power flows, and losses in relation to train traffic. It supports realistic time-domain simulations, multiple trains, regenerative and resistive braking, and flexible electrical grid modeling.
 
 The scope includes:
-- A static DC electrical grid model
-- Time-stepped simulation of trains with power profiles
-- Regenerative braking and resistive braking handling
-- Result export for post-processing and visualization
+- Static DC electrical grid model
+- Time-stepped simulation of trains using power profiles
+- Handling of regenerative and resistive braking
+- Export of results for post-processing and visualization
 
-## Main components
+Typical use cases:
+- Evaluating timetable changes
+- Assessing new rolling stock
+- Analyzing effects of adding/removing substations
+- Studying changes in traction or braking performance
 
-### 1. Electrical network
-Represented by a nodal admittance matrix built from the system topology. Devices supported:
-- Substations (modeled as EMF with internal resistance)
-- DC lines (modeled as resistance)
-- Trains (power-controlled, can inject or absorb current)
-- Optional: Braking resistors (internal to train model)
+## 1. Main Components
+1. **Electrical network**
+  - Built from nodes, lines, substations, and connection points.
+  - Substations modeled as EMF + internal resistance, connected between `groundNodeId` and a node.
+  - Lines modeled as resistances.
+  - Trains modeled as controllable power injections/absorptions.
 
-### 2. Time-domain simulation loop
-Iterates over time steps and:
-- Updates power request for each train based on its profile
-- Stamps the admittance matrix
-- Solves for node voltages
-- Computes currents and powers for all devices
+2. **Time-domain simulation loop**
+  - Iterates over simulation ticks.
+  - Updates each train’s power request from its profile.
+  - Solves node voltages and computes currents/powers.
 
-### 3. Power profiles
-Each train uses a `PowerProfile` consisting of `PowerPoint` entries:
-- time [s]
-- position [km+m]
-- speed [m/s]
-- power [W]
+3. **Power profiles**
+  - Based on Excel `.xlsx` files.
+  - Columns: `time [s]`, `bisPosition [km,m]`, `speed [m/s]`, `primaryMotoringPower [kW]`, `primaryMotorBrakingPower [kW]`.
+  - Auxiliary power applied during station dwells; additional demand if `motoringAndAuxiliariesInSameModel = false`.
 
-Interpolated using splines to give continuous power request.
+4. **Braking logic**
+  - Regenerative braking feeds energy back if voltage is below the regeneration cut-off.
+  - Above max voltage, braking energy is dissipated in resistors.
 
-### 4. Braking logic
-When trains brake, energy is:
-- Fed back to the line if voltage < cutoff level
-- Sent to internal brake resistor if voltage > max level
-- Split proportionally in between
+5. **Output data**
+  - Voltages per node vs. time
+  - Currents and powers per device vs. time
+  - Train energy balances
 
-### 5. Output data
-Simulation results are exported as:
-- Voltages per node vs. time
-- Currents and powers per device vs. time
-- Detailed train power balance:
-  - Power from line
-  - Power to brake resistor
+## 2. How to Run
+Make sure you are in the root directory of the project.
 
-## Running the simulation
-1. Prepare timetable and power profiles in Excel format.
-2. Define the grid model in a `.conf` file.
-3. Run simulation:
+### Using sbt
 ```bash
-java -cp target/dc-simulator.jar org.dcsim.MainLoop input/application.conf
+sbt "runMain dcsim.DcSimApp"
 ```
 
-4. Output files are generated in `output/` directory.
+### Using IntelliJ IDEA
+1. Open the project.
+2. Locate `DcSimApp`.
+3. Right-click and choose **Run**.
 
-## Visualization
-Separate tools are used for plotting:
-- Timetable plots
-- Aggregated power plots
-- Voltage profiles
-- Braking current and energy balance
+## 3. System Requirements
+- Java 17 or newer
+- Scala 2.13
+- sbt
+- Excel `.xlsx` files for load profiles
 
-## Status
-Version: 0.4
-- Prototype for DC simulation complete
-- Supports multiple trains
-- Verified energy conservation
+## 4. Configuration
+`application.conf` defines:
+- **track** – Stations and positions (format: `line km+m`)
+- **grid** – Nodes, lines, substations (connected to ground), and connection points
+- **traffic** – Timetables and train templates
+- **powerProfiles** – Load profiles linked to train templates
+- **simulationControl** – Start/end times, tick duration
 
-Next steps:
-- AC network modeling
-- Integration with timetable planner
-- More realistic substation and train dynamics
+Detailed format and examples: see **USER_GUIDE.md**.
 
----
-(c) Railway Simulation Project, 2025
+## 5. References
+- **USER_GUIDE.md** – Detailed configuration instructions
+- **SoftwareSpecification.md** – High-level system design

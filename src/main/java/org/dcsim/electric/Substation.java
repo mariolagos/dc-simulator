@@ -7,6 +7,8 @@ import org.dcsim.math.Real;
 import java.util.Map;
 
 public class Substation implements Device<Real> {
+    private String description; // Optional descriptive text
+
     private final String id;
     private final int fromNode; // typiskt: 0 (jord)
     private final int toNode;   // typiskt: matarspänning
@@ -22,6 +24,11 @@ public class Substation implements Device<Real> {
         this.emf = emf;
         this.internalResistance = internalResistance;
     }
+    public Substation(String id, int fromNode, int toNode, Real emf, Real internalResistance, String description) {
+        this(id, fromNode, toNode, emf, internalResistance);
+        this.description = description;
+    }
+
 
     public int getFromNode() {
         return fromNode;
@@ -103,5 +110,9 @@ public class Substation implements Device<Real> {
 
         jVector.addToEntry(i, jval);
         jVector.addToEntry(j, -jval);
+    }
+
+    public String getDescription() {
+        return description;
     }
 }

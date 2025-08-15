@@ -66,7 +66,7 @@ sequenceDiagram
 - At each tick:
   - Read current voltage
   - If below EMF → inject power
-  - No backfeed allowed (diode behavior)
+  - No back-feed allowed (diode behavior)
   - Optionally report to controller
 
 ## Event Handling – GridModelActor

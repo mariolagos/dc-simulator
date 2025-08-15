@@ -8,6 +8,8 @@ import org.dcsim.math.Real;
 import java.util.Map;
 
 public class Line implements Device<Real> {
+    private String description; // Optional descriptive text
+
     private final int fromNode;
     private final int toNode;
     private final Real resistance;
@@ -18,6 +20,11 @@ public class Line implements Device<Real> {
         this.toNode = toNode;
         this.resistance = resistance;
     }
+    public Line(int fromNode, int toNode, Real resistance, String description) {
+        this(fromNode, toNode, resistance);
+        this.description = description;
+    }
+
 
     @Override
     public String getId() {
@@ -86,5 +93,9 @@ public class Line implements Device<Real> {
     @Override
     public Real computeCurrent(Real nodeVoltage, double time) {
         throw new UnsupportedOperationException("Use computeCurrent(from, to) instead.");
+    }
+
+    public String getDescription() {
+        return description;
     }
 }

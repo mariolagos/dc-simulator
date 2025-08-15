@@ -6,6 +6,7 @@ import org.dcsim.math.Real;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class GridModel {
     private final List<Node> nodes = new ArrayList<>();
@@ -88,6 +89,19 @@ public class GridModel {
         return devices;
     }
 
+    public List<Device<Real>> getLines() {
+        return devices.stream()
+                .filter(d -> d instanceof Line)
+                .collect(Collectors.toList());
+    }
+
+    public List<Substation> getSubstations() {
+        return devices.stream()
+                .filter(d -> d instanceof Substation)
+                .map(d -> (Substation) d)
+                .collect(Collectors.toList());
+    }
+
     public void storeResult(GridResult result) {
         results.add(result);
     }
@@ -165,5 +179,4 @@ public class GridModel {
     public List<PowerPoint> getUpdatedPowerPoints(String deviceId) {
         return updatedPowerCurves.getOrDefault(deviceId, List.of());
     }
-
 }
