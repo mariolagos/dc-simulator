@@ -2,7 +2,6 @@ package org.dcsim;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import org.dcsim.PowerPoint;
 import org.dcsim.electric.DcElectricSolver;
 import org.dcsim.electric.Device;
 import org.dcsim.electric.ElectricSolver;

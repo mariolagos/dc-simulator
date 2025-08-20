@@ -1,21 +1,15 @@
 package org.dcsim.electric;
 
-import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.linear.RealVector;
-import org.apache.commons.math3.linear.ArrayRealVector;
-import org.apache.commons.math3.linear.DecompositionSolver;
-import org.apache.commons.math3.linear.LUDecomposition;
+import org.apache.commons.math3.linear.*;
 import org.dcsim.math.Real;
 import org.dcsim.math.SimMatrixUtils;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class DcElectricSolver implements ElectricSolver {
 
     private static final int MAX_ITERATIONS = 100;
-    private static final double TOLERANCE = 1e-6;
+    private static final double TOLERANCE = 1e-9;
 
     @Override
     public GridResult solve(GridModel model, double time, int timestep) {
@@ -30,83 +24,75 @@ public class DcElectricSolver implements ElectricSolver {
             nodeIndexMap.put(nodes.get(i).getId(), i);
         }
 
-        // Initiala voltages
-        RealVector voltageGuess = new ArrayRealVector(n);
+        // initial voltages; ground clamped at 0
         if (!nodeIndexMap.containsKey(model.getGroundNodeId())) {
             throw new IllegalArgumentException("Ground node ID " + model.getGroundNodeId() + " is not present in node list.");
         }
         int groundIndex = nodeIndexMap.get(model.getGroundNodeId());
-        voltageGuess.setEntry(groundIndex, 0.0);
+        RealVector solution = new ArrayRealVector(n);
+        solution.setEntry(groundIndex, 0.0);
 
-        RealVector solution = voltageGuess.copy();
         for (int iter = 0; iter < MAX_ITERATIONS; iter++) {
             yMatrix = SimMatrixUtils.createZeroMatrix(n);
             jVector = SimMatrixUtils.createZeroVector(n);
 
-            // Stampa komponenter
+            // stamp all devices with current operating point
             for (Device<Real> device : model.getDevices()) {
                 device.stamp(yMatrix, jVector, solution, timestep, nodeIndexMap);
             }
 
-            // Fixera jordnod
-            for (int col = 0; col < n; col++) {
-                yMatrix.setEntry(groundIndex, col, 0.0);
-            }
+            // fix ground
+            for (int col = 0; col < n; col++) yMatrix.setEntry(groundIndex, col, 0.0);
             yMatrix.setEntry(groundIndex, groundIndex, 1.0);
             jVector.setEntry(groundIndex, 0.0);
 
-            // Lös
             DecompositionSolver solver = new LUDecomposition(yMatrix).getSolver();
-            RealVector nextSolution = solver.solve(jVector);
+            RealVector next = solver.solve(jVector);
 
-            double delta = nextSolution.subtract(solution).getNorm();
-            solution = nextSolution;
+            double delta = next.subtract(solution).getNorm();
+            solution = next;
             if (delta < TOLERANCE) break;
         }
 
         GridResult result = new GridResult(yMatrix, jVector);
 
-        // Spara spänningar
+        // store node voltages
         for (int i = 0; i < n; i++) {
-            int nodeId = model.getNodes().get(i).getId();
-            Real voltage = Real.fromDouble(solution.getEntry(i));
-            result.setVoltage(nodeId, voltage);
+            int nodeId = nodes.get(i).getId();
+            result.setVoltage(nodeId, Real.fromDouble(solution.getEntry(i)));
         }
 
-        // Uppdatera ström och effekt
+        // update devices currents/powers (+ requested for trains)
         for (Device<Real> device : model.getDevices()) {
-            Real current = Real.ZERO;
-            Real power = Real.ZERO;
-
             if (device instanceof Line line) {
                 Real fromV = result.getLatestNodeVoltage(line.getFromNode());
-                Real toV = result.getLatestNodeVoltage(line.getToNode());
+                Real toV   = result.getLatestNodeVoltage(line.getToNode());
                 line.computeCurrent(fromV, toV);
-                current = line.getCurrent();
-                power = line.getPower(fromV, toV);
+                Real i = line.getCurrent();
+                Real p = line.getPower(fromV, toV);
+                result.setCurrent(line.getId(), i);
+                result.setPower(line.getId(), p);
 
             } else if (device instanceof Substation ss) {
                 Real fromV = result.getLatestNodeVoltage(ss.getFromNode());
-                Real toV = result.getLatestNodeVoltage(ss.getToNode());
-                current = ss.computeCurrent(fromV, toV);
-                power = ss.computePower(fromV, toV);
+                Real toV   = result.getLatestNodeVoltage(ss.getToNode());
+                Real i = ss.computeCurrent(fromV, toV);
+                Real p = ss.computePower(fromV, toV); // delivered to network
+                result.setCurrent(ss.getId(), i);
+                result.setPower(ss.getId(), p);
 
             } else if (device instanceof TrainLoad train) {
                 Real fromV = result.getLatestNodeVoltage(train.getFromNode());
-                Real toV = result.getLatestNodeVoltage(train.getToNode());
-                current = train.computeCurrent(fromV, toV);
-                power = train.getPower(fromV, toV);
+                Real toV   = result.getLatestNodeVoltage(train.getToNode());
+                Real i = train.computeCurrent(fromV, toV);
+                Real p = train.getPower(fromV, toV); // delivered from network to train (motoring +)
+                result.setCurrent(train.getId(), i);
+                result.setPower(train.getId(), p);
+                // requested power (what train wanted this tick)
+                result.setRequestedPower(train.getId(), train.getRequestedPower());
+                // NOTE: brake resistor power skrivs i writer via train.getBrakeResistorInstantPower(fromV,toV)
             }
-
-            result.setCurrent(device.getId(), current);
-            result.setPower(device.getId(), power);
         }
-
-        // Debug
-        System.out.println("=== Y-matrix ===");
-        SimMatrixUtils.printMatrix(yMatrix);
-        System.out.println("=== J-vector ===");
-        SimMatrixUtils.printVectorTransposed(jVector);
 
         return result;
     }

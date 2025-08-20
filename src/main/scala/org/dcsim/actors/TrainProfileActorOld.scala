@@ -4,7 +4,7 @@ import akka.actor.typed.{Behavior, ActorRef}
 import akka.actor.typed.scaladsl.Behaviors
 import scala.collection.mutable
 
-object TrainProfileActor {
+object TrainProfileActorOld {
 
   // Messages the TrainProfileActor can receive
   sealed trait Command

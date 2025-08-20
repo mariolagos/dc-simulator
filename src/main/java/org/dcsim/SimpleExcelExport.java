@@ -1,9 +1,11 @@
 package org.dcsim;
 
+import org.dcsim.utils.PositionUtils;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 
 import java.io.FileOutputStream;
 import java.util.List;
@@ -25,7 +27,7 @@ public class SimpleExcelExport {
             Row row = sheet.createRow(rowIdx++);
             row.createCell(0).setCellValue(p.time());
             row.createCell(1).setCellValue(p.position());
-            row.createCell(2).setCellValue(PositionUtils.parseKmPlus(p.position())[1]);
+            row.createCell(2).setCellValue(PositionUtils.toMeters(PositionUtils.parse(p.position())));
             row.createCell(3).setCellValue(useSI ? p.speed() : p.speed() * 3.6);
             row.createCell(4).setCellValue(useSI ? p.power() : p.power() / 1000.0);
         }

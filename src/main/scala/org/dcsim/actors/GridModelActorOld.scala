@@ -3,7 +3,7 @@ package org.dcsim.actors
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 
-object GridModelActor {
+object GridModelActorOld {
 
   sealed trait Command
   final case class UpdateVoltage(time: Double, voltage: Double) extends Command

@@ -2,8 +2,6 @@ package org.dcsim.power;
 
 import com.typesafe.config.Config;
 import org.dcsim.PowerPoint;
-import org.dcsim.math.Real;
-import org.dcsim.electric.TrainLoad;
 
 import java.io.File;
 import java.util.*;

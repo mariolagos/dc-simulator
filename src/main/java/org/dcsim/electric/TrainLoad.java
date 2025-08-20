@@ -3,20 +3,14 @@ package org.dcsim.electric;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.dcsim.math.Real;
-import org.dcsim.power.PowerProfile;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Map;
-
-/**
- * A train modeled as a power-injecting (or absorbing) element with braking behavior.
- * Supports regeneration into the line or braking resistor.
- */
 
 /**
  * A train modeled as a power-injecting (or absorbing) element with braking behavior.
@@ -24,11 +18,18 @@ import java.util.Map;
  */
 public class TrainLoad implements Device<Real> {
     private final String id;
-    private final int fromNode;
+    private int fromNode;
     private final int toNode;
-    private Real current = Real.ZERO;
+
+    // Requested components (W)
+    private Real requestedMotoringPower  = Real.ZERO;   // >= 0
+    private Real requestedBrakingPower   = Real.ZERO;   // <= 0 (already negative when braking)
+    private Real requestedAuxiliaryPower = Real.ZERO;   // >= 0
+
+    // Total requested (W) used by solver
     private Real requestedPower = Real.ZERO;
-    private PowerProfile powerProfile;
+
+    private Real current = Real.ZERO;
 
     private Real cutoffVoltage = Real.fromDouble(850.0);
     private Real maxVoltage = Real.fromDouble(1000.0);
@@ -47,69 +48,46 @@ public class TrainLoad implements Device<Real> {
         this.toNode = toNode;
     }
 
-    public void setPowerProfile(PowerProfile profile) {
-        this.powerProfile = profile;
+    public String getId() { return id; }
+
+    public int getFromNode() { return fromNode; }
+    public int getToNode() { return toNode; }
+
+    /** Allow topology to move train along the line later */
+    public void setFromNode(int newFromNode) { this.fromNode = newFromNode; }
+
+    /** Set requested motoring/braking/auxiliary in kW (braking is already negative). */
+    public void setRequestedComponents(double motoringKW, double brakingKW, double auxiliaryKW) {
+        this.requestedMotoringPower  = Real.fromDouble(motoringKW  * 1000.0);
+        this.requestedBrakingPower   = Real.fromDouble(brakingKW   * 1000.0);
+        this.requestedAuxiliaryPower = Real.fromDouble(auxiliaryKW * 1000.0);
+
+        this.requestedPower = requestedMotoringPower
+                .plus(requestedBrakingPower)
+                .plus(requestedAuxiliaryPower);
     }
 
-    public PowerProfile getPowerProfile() {
-        return powerProfile;
-    }
+    public Real getRequestedMotoringPower()  { return requestedMotoringPower; }
+    public Real getRequestedBrakingPower()   { return requestedBrakingPower; }
+    public Real getRequestedAuxiliaryPower() { return requestedAuxiliaryPower; }
+    public Real getRequestedTotalPower()     { return requestedPower; }
 
-    public void setRequestedPower(Real power) {
-        this.requestedPower = power;
-    }
+    public void setPowerProfile(org.dcsim.power.PowerProfile profile) { /* kept for compatibility */ }
+    public org.dcsim.power.PowerProfile getPowerProfile() { return null; }
 
-    public void setCutoffVoltage(Real cutoff) {
-        this.cutoffVoltage = cutoff;
-    }
+    public void setRequestedPower(Real power) { this.requestedPower = power; }
 
-    public void setMaxVoltage(Real maxVoltage) {
-        this.maxVoltage = maxVoltage;
-    }
+    public void setCutoffVoltage(Real cutoff) { this.cutoffVoltage = cutoff; }
+    public void setMaxVoltage(Real maxVoltage) { this.maxVoltage = maxVoltage; }
+    public void setMaxCurrent(Real maxCurrent) { this.maxCurrent = maxCurrent; }
 
-    public void setMaxCurrent(Real maxCurrent) {
-        this.maxCurrent = maxCurrent;
-    }
+    public Real getCutoffVoltage() { return cutoffVoltage; }
+    public Real getMaxVoltage() { return maxVoltage; }
+    public Real getMaxCurrent() { return maxCurrent; }
 
-    public Real getCutoffVoltage() {
-        return cutoffVoltage;
-    }
-
-    public Real getMaxVoltage() {
-        return maxVoltage;
-    }
-
-    public Real getMaxCurrent() {
-        return maxCurrent;
-    }
-
-    public int getFromNode() {
-        return fromNode;
-    }
-
-    public int getToNode() {
-        return toNode;
-    }
-
-    @Override
-    public String getId() {
-        return id;
-    }
-
-    @Override
-    public int getConnectedNode() {
-        throw new UnsupportedOperationException("TrainLoad is a two-node device");
-    }
-
-    @Override
-    public Real getCurrent() {
-        return current;
-    }
-
-    @Override
-    public Real getPower() {
-        throw new UnsupportedOperationException("Use getPower(from, to) instead");
-    }
+    @Override public int getConnectedNode() { throw new UnsupportedOperationException("TrainLoad is a two-node device"); }
+    @Override public Real getCurrent() { return current; }
+    @Override public Real getPower() { throw new UnsupportedOperationException("Use getPower(from, to) instead"); }
 
     @Override
     public Real computeCurrent(Real voltage, double time) {
@@ -125,26 +103,29 @@ public class TrainLoad implements Device<Real> {
         }
 
         if (requestedPower.isPositive()) {
-            // Motordrift
+            // motoring
             if (voltage.lt(cutoffVoltage)) {
                 current = Real.ZERO;
             } else {
                 current = requestedPower.divide(voltage);
             }
         } else {
-            // Bromsning
+            // braking
             if (voltage.lt(cutoffVoltage)) {
                 current = requestedPower.divide(voltage);
             } else {
-                // All effekt till bromsmotståndet om spänningen är hög nog
+                // Above cutoff: send to brake resistor (diode-like behavior)
                 Real brakeCurrent = voltage.divide(brakeResistance).negate();
                 Real regenCurrent = requestedPower.divide(voltage);
-
-                // Ta den minst negativa (begränsa till -requestedPower)
+                // pick the less negative magnitude (limit)
                 current = brakeCurrent.abs().lt(regenCurrent.abs()) ? brakeCurrent : regenCurrent;
             }
         }
-
+        // enforce max current
+        if (current.abs().compareTo(maxCurrent) > 0) {
+            Real sign = current.divide(current.abs()); // +1 or -1
+            current = sign.times(maxCurrent);
+        }
         return current;
     }
 
@@ -159,35 +140,24 @@ public class TrainLoad implements Device<Real> {
         times.add(time);
 
         if (requestedPower.isZero()) {
-            lineCurrents.add(0.0);
-            brakeCurrents.add(0.0);
-            linePowers.add(0.0);
-            brakePowers.add(0.0);
+            lineCurrents.add(0.0);  brakeCurrents.add(0.0);
+            linePowers.add(0.0);    brakePowers.add(0.0);
             return;
         }
 
         if (requestedPower.isPositive()) {
-            double i = current.asDouble();
-            double p = v * i;
-            lineCurrents.add(i);
-            linePowers.add(p);
-            brakeCurrents.add(0.0);
-            brakePowers.add(0.0);
+            double i = current.asDouble();  double p = v * i;
+            lineCurrents.add(i); linePowers.add(p);
+            brakeCurrents.add(0.0); brakePowers.add(0.0);
         } else {
             if (v < cutoffVoltage.asDouble()) {
-                double i = current.asDouble();
-                double p = v * i;
-                lineCurrents.add(i);
-                linePowers.add(p);
-                brakeCurrents.add(0.0);
-                brakePowers.add(0.0);
+                double i = current.asDouble();  double p = v * i;
+                lineCurrents.add(i); linePowers.add(p);
+                brakeCurrents.add(0.0); brakePowers.add(0.0);
             } else {
-                double i = current.asDouble();
-                double p = v * i;
-                lineCurrents.add(0.0);
-                linePowers.add(0.0);
-                brakeCurrents.add(i);
-                brakePowers.add(p);
+                double i = current.asDouble();  double p = v * i;
+                lineCurrents.add(0.0); linePowers.add(0.0);
+                brakeCurrents.add(i); brakePowers.add(p);
             }
         }
     }
@@ -222,9 +192,7 @@ public class TrainLoad implements Device<Real> {
         current = Real.ZERO;
     }
 
-    /**
-     * Returns power balance components: [linePower, brakeResistorPower, totalPower].
-     */
+    /** Returns power balance components: [linePower, brakeResistorPower, totalPower]. */
     public Real[] getPowerBalanceComponents(Real fromVoltage, Real toVoltage) {
         Real voltage = fromVoltage.minus(toVoltage);
         if (requestedPower.isZero()) {
@@ -245,4 +213,13 @@ public class TrainLoad implements Device<Real> {
         }
     }
 
+    /** Total requested power in W (motoring + braking + auxiliaries). */
+    public Real getRequestedPower() {
+        return requestedPower;
+    }
+
+    // Optional breakdown (in W)
+    public double getMotoringW()  { return requestedMotoringPower.asDouble(); }
+    public double getBrakingW()   { return requestedBrakingPower.asDouble(); }
+    public double getAuxiliaryW() { return requestedAuxiliaryPower.asDouble(); }
 }

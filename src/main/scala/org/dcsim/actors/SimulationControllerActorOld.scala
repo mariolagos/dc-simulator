@@ -3,13 +3,13 @@ package org.dcsim.actors
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 
-object SimulationControllerActor {
+object SimulationControllerActorOld {
 
   // Marker trait for commands accepted by SimulationController
   sealed trait Command
 
   // Messages
-  case class RegisterTrain(id: String, ref: ActorRef[TrainActor.Command]) extends Command
+  case class RegisterTrain(id: String, ref: ActorRef[TrainActorOld.Command]) extends Command
   case object StartSimulation extends Command
   case class TrainPowerRequest(time: Double, id: String, power: Double) extends Command
   case class TrainPositionUpdate(time: Double, id: String, position: Double) extends Command
@@ -17,7 +17,7 @@ object SimulationControllerActor {
 
   // Internal state for controller
   case class State(
-                    trains: Map[String, ActorRef[TrainActor.Command]],
+                    trains: Map[String, ActorRef[TrainActorOld.Command]],
                     time: Double
                   )
 
@@ -36,7 +36,7 @@ object SimulationControllerActor {
 
       case Tick(time) =>
         context.log.info(s"Tick @ $time s")
-        state.trains.values.foreach(_ ! TrainActor.Tick(time))
+        state.trains.values.foreach(_ ! TrainActorOld.Tick(time))
         context.self ! Tick(time + 1.0)
         controller(state.copy(time = time + 1.0))
 

@@ -6,81 +6,103 @@ import org.dcsim.math.Real;
 
 import java.util.Map;
 
+/**
+ * DC substation modeled with a Norton equivalent to ground:
+ * - Current source I = E/Rint in parallel with conductance G = 1/Rint to ground (when toNode == ground)
+ *
+ * Power accounting:
+ *  i_net = G * (E - v), where v = V(from) - V(to)
+ *  P_out (to network) = v * i_net
+ *  P_int (internal loss) = (E - v) * i_net    // series-equivalent internal loss
+ *
+ * Note: For stability and clean ground clamping, we stamp a ground-aware Norton when toNode == groundNodeId.
+ */
 public class Substation implements Device<Real> {
-    private String description; // Optional descriptive text
 
+    private String description; // Optional
     private final String id;
-    private final int fromNode; // typiskt: 0 (jord)
-    private final int toNode;   // typiskt: matarspänning
-    private final Real emf;     // ideal EMF [V]
-    private final Real internalResistance; // [Ω]
-    private Real current = Real.ZERO;
-    private Real power = Real.ZERO;
+    private final int fromNode;           // typically the fed node
+    private final int toNode;             // typically the return (ground)
+    private final int groundNodeId;       // explicit ground id from model
+    private final Real emf;               // [V]
+    private final Real internalResistance;// [ohm]
 
-    public Substation(String id, int fromNode, int toNode, Real emf, Real internalResistance) {
+    private Real current = Real.ZERO;     // last computed i_net (to network)
+    private Real power   = Real.ZERO;     // last computed P_out (to network)
+    private Real internalLoss = Real.ZERO;// last computed P_int
+
+    public Substation(String id, int fromNode, int toNode, int groundNodeId, Real emf, Real internalResistance) {
         this.id = id;
         this.fromNode = fromNode;
         this.toNode = toNode;
+        this.groundNodeId = groundNodeId;
         this.emf = emf;
         this.internalResistance = internalResistance;
     }
-    public Substation(String id, int fromNode, int toNode, Real emf, Real internalResistance, String description) {
-        this(id, fromNode, toNode, emf, internalResistance);
+
+    public Substation(String id, int fromNode, int toNode, int groundNodeId,
+                      Real emf, Real internalResistance, String description) {
+        this(id, fromNode, toNode, groundNodeId, emf, internalResistance);
         this.description = description;
     }
 
-
-    public int getFromNode() {
-        return fromNode;
-    }
-
-    public int getToNode() {
-        return toNode;
-    }
-
-    public Real getEmf() {
-        return emf;
-    }
-
-    public Real getInternalResistance() {
-        return internalResistance;
-    }
-
-    @Override
-    public String getId() {
-        return id;
-    }
+    public String getId() { return id; }
+    public int getFromNode() { return fromNode; }
+    public int getToNode() { return toNode; }
+    public Real getEmf() { return emf; }
+    public Real getInternalResistance() { return internalResistance; }
+    public Real getCurrent() { return current; }
+//    public Real getPower() { return power; }
+    public Real getInternalLoss() { return internalLoss; }
 
     @Override
     public int getConnectedNode() {
+        // Two-node device; not used
         throw new UnsupportedOperationException("Substation is a two-node device");
     }
 
     @Override
-    public Real getCurrent() {
-        return current;
+    public Real computeCurrent(Real voltage, double time) {
+        // Not used; two-node form below
+        throw new UnsupportedOperationException("Use computeCurrent(fromV, toV)");
+    }
+
+    public Real computeCurrent(Real fromVoltage, Real toVoltage) {
+        double v = fromVoltage.minus(toVoltage).asDouble();
+        double R = internalResistance.asDouble();
+        double G = (R > 0.0) ? 1.0 / R : 1e9;
+        double E = emf.asDouble();
+
+        double iNet = G * (E - v); // net current delivered to the network
+        this.current = Real.fromDouble(iNet);
+
+        // Keep power members consistent (optional precompute here)
+        this.power = Real.fromDouble(v * iNet);
+        this.internalLoss = Real.fromDouble((E - v) * iNet);
+
+        return this.current;
+    }
+
+    public Real computePower(Real fromVoltage, Real toVoltage) {
+        // P_out (to network)
+        double v = fromVoltage.minus(toVoltage).asDouble();
+        if (this.current == null) computeCurrent(fromVoltage, toVoltage);
+        return Real.fromDouble(v * this.current.asDouble());
+    }
+
+    /** Internal loss in substation's internal resistance (series-equivalent). */
+    public Real computeInternalLoss(Real fromVoltage, Real toVoltage) {
+        double v = fromVoltage.minus(toVoltage).asDouble();
+        double R = internalResistance.asDouble();
+        double G = (R > 0.0) ? 1.0 / R : 1e9;
+        double E = emf.asDouble();
+        double iNet = G * (E - v);
+        return Real.fromDouble((E - v) * iNet);
     }
 
     @Override
     public Real getPower() {
-        return power;
-    }
-
-    @Override
-    public Real computeCurrent(Real nodeVoltage, double time) {
-        throw new UnsupportedOperationException("Use computeCurrent(from, to) instead");
-    }
-
-    public Real computeCurrent(Real fromVoltage, Real toVoltage) {
-        // I = (emf - (V_to - V_from)) / R
-        Real voltageDiff = emf.minus(toVoltage.minus(fromVoltage));
-        current = voltageDiff.divide(internalResistance);
-        power = emf.times(current);
-        return current;
-    }
-
-    public Real computePower(Real fromVoltage, Real toVoltage) {
-        computeCurrent(fromVoltage, toVoltage);
+        // Not meaningful without node voltages
         return power;
     }
 
@@ -91,28 +113,24 @@ public class Substation implements Device<Real> {
         int i = nodeIndexMap.get(fromNode);
         int j = nodeIndexMap.get(toNode);
 
-        double u_i = xVector != null ? xVector.getEntry(i) : emf.asDouble();
-        double u_j = xVector != null ? xVector.getEntry(j) : 0.0;
-        double voltageDiff = u_i - u_j;
+        double R = internalResistance.asDouble();
+        double G = (R > 0.0) ? 1.0 / R : 1e9;
+        double I = emf.asDouble() * G;
 
-        if (voltageDiff >= emf.asDouble()) {
-            // Backfeed blockeras av likriktare
-            return;
+        boolean toIsGround = (toNode == groundNodeId);
+
+        if (toIsGround) {
+            // Ground-aware Norton (Vg=0 enforced by solver)
+            yMatrix.addToEntry(i, i, G);
+            jVector.addToEntry(i, I);
+        } else {
+            // General two-node Norton
+            yMatrix.addToEntry(i, i, G);
+            yMatrix.addToEntry(j, j, G);
+            yMatrix.addToEntry(i, j, -G);
+            yMatrix.addToEntry(j, i, -G);
+            jVector.addToEntry(i, I);
+            jVector.addToEntry(j, -I);
         }
-
-        double g = 1.0 / internalResistance.asDouble();
-        double jval = emf.asDouble() * g;
-
-        yMatrix.addToEntry(i, i, g);
-        yMatrix.addToEntry(j, j, g);
-        yMatrix.addToEntry(i, j, -g);
-        yMatrix.addToEntry(j, i, -g);
-
-        jVector.addToEntry(i, jval);
-        jVector.addToEntry(j, -jval);
-    }
-
-    public String getDescription() {
-        return description;
     }
 }

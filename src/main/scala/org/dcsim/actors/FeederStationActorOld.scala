@@ -3,7 +3,7 @@ package org.dcsim.actors
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 
-object FeederStationActor {
+object FeederStationActorOld {
 
   sealed trait Command
   final case class SupplyPower(time: Double, voltage: Double) extends Command

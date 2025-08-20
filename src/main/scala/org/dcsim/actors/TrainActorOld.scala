@@ -3,7 +3,7 @@ package org.dcsim.actors
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 
-object TrainActor {
+object TrainActorOld {
 
   // Messages that TrainActor can receive
   sealed trait Command
@@ -12,8 +12,8 @@ object TrainActor {
 
   def apply(
              id: String,
-             controller: ActorRef[SimulationControllerActor.Command],
-             gridModel: ActorRef[GridModelActor.Command],
+             controller: ActorRef[SimulationControllerActorOld.Command],
+             gridModel: ActorRef[GridModelActorOld.Command],
              startTime: Double
            ): Behavior[Command] = Behaviors.setup { context =>
 
@@ -26,8 +26,8 @@ object TrainActor {
         val requestedPower = 500000.0  // in watts
         val position = 1000.0 + time * 10 // dummy example position
 
-        controller ! SimulationControllerActor.TrainPowerRequest(time, id, requestedPower)
-        controller ! SimulationControllerActor.TrainPositionUpdate(time, id, position)
+        controller ! SimulationControllerActorOld.TrainPowerRequest(time, id, requestedPower)
+        controller ! SimulationControllerActorOld.TrainPositionUpdate(time, id, position)
 
         Behaviors.same
     }

@@ -3,7 +3,7 @@ package org.dcsim.actors
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 
-object ReporterActor {
+object ReporterActorOld {
 
   sealed trait Command
   final case class ReportTrainPosition(time: Double, trainId: String, position: Double) extends Command

@@ -1,35 +1,72 @@
 package org.dcsim.power;
 
-import com.typesafe.config.*;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigObject;
+import com.typesafe.config.ConfigValue;
 import org.dcsim.PowerPoint;
 
+import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
-public class PowerTemplateParser {
+/**
+ * Parses dcsim.powerProfiles.templates:
+ *
+ * powerProfiles {
+ *   motoringAndAuxiliariesInSameModel = false  // ignored here
+ *   auxiliaryPower = 5.0                       // ignored here
+ *
+ *   templates = [
+ *     {
+ *       id = "T1"
+ *       folder = "input/loads/T1"
+ *       legs = [
+ *         { fromStation = "A", toStation = "B", file = "A-B.xlsx" }
+ *       ]
+ *     }
+ *   ]
+ * }
+ *
+ * Returns: Map<templateId, List<PowerPoint>>
+ */
+public final class PowerTemplateParser {
 
-    public static Map<String, List<PowerPoint>> parse(Config rootConfig) {
-        Map<String, List<PowerPoint>> templates = new HashMap<>();
+    private PowerTemplateParser() {}
 
-        for (Map.Entry<String, ConfigValue> entry : rootConfig.root().entrySet()) {
-            String templateId = entry.getKey();
-            Config trainProfile = rootConfig.getConfig(templateId);
-            List<? extends Config> pointsConf = trainProfile.getConfigList("points");
+    public static Map<String, List<PowerPoint>> parse(Config powerProfilesRoot) {
+        Map<String, List<PowerPoint>> out = new HashMap<>();
 
-            List<PowerPoint> points = new ArrayList<>();
-            for (Config c : pointsConf) {
-                double time = c.getDouble("time");
-                String pos = c.getString("position");
-                double speed = c.getDouble("speed");
-                double power = c.getDouble("power");
-
-                PowerPoint p = new PowerPoint(time, pos, speed, power, 0., 0.);
-                points.add(p);
-            }
-
-            templates.put(templateId, points);
-            System.out.printf("Read power profile for %s: %d points%n", templateId, points.size());
+        if (!powerProfilesRoot.hasPath("templates")) {
+            // Nothing to parse; return empty map
+            return out;
         }
 
-        return templates;
+        List<? extends Config> templates = powerProfilesRoot.getConfigList("templates");
+        for (Config tpl : templates) {
+            String id     = tpl.getString("id");
+            String folder = tpl.getString("folder");
+
+            List<? extends Config> legs = tpl.getConfigList("legs");
+            List<PowerPoint> merged = new ArrayList<>();
+
+            for (Config leg : legs) {
+                String fileName = leg.getString("file");   // e.g. "A-B.xlsx"
+                File f = new File(folder, fileName);
+
+                // Load one Excel leg → points
+//                List<PowerPoint> points = ExcelProfileLoader.loadXlsx(f);
+                List<PowerPoint> points = ExcelProfileReader.read(f);
+                if (points != null && !points.isEmpty()) {
+                    merged.addAll(points);
+                }
+            }
+
+            // Ensure monotonically nondecreasing time
+            merged.sort(Comparator.comparingDouble(PowerPoint::time));
+
+            out.put(id, merged);
+        }
+
+        return out;
     }
 }

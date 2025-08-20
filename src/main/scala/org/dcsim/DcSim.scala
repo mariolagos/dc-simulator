@@ -16,13 +16,13 @@ object DcSim {
     def apply(): Behavior[Nothing] = Behaviors.setup[Nothing] { context =>
 
       // Skapa reporter
-      val reporter: ActorRef[ReporterActor.Command] =
-        context.spawn(ReporterActor(), "reporter")
+      val reporter: ActorRef[ReporterActorOld.Command] =
+        context.spawn(ReporterActorOld(), "reporter")
       context.log.info("ReporterActor spawned.")
 
       // Skapa profilhanterare
-      val profileManager: ActorRef[TrainProfileActor.Command] =
-        context.spawn(TrainProfileActor(), "trainProfileActor")
+      val profileManager: ActorRef[TrainProfileActorOld.Command] =
+        context.spawn(TrainProfileActorOld(), "trainProfileActor")
       context.log.info("TrainProfileActor spawned.")
 
       // Läs konfiguration från produktionsfil
@@ -33,13 +33,13 @@ object DcSim {
       context.log.info(s"Loaded ${gridData.getNodes.size} nodes, ${gridData.getLines.size} lines, ${gridData.getSubstations.size} substations")
 
       // Skapa elnätsmodell
-      val gridModel: ActorRef[GridModelActor.Command] =
-        context.spawn(GridModelActor(), "gridModel")
+      val gridModel: ActorRef[GridModelActorOld.Command] =
+        context.spawn(GridModelActorOld(), "gridModel")
       context.log.info("GridModelActor spawned.")
 
       // Skapa kontrollaktör
-      val controller: ActorRef[SimulationControllerActor.Command] =
-        context.spawn(SimulationControllerActor(), "simulationController")
+      val controller: ActorRef[SimulationControllerActorOld.Command] =
+        context.spawn(SimulationControllerActorOld(), "simulationController")
       context.log.info("SimulationControllerActor spawned.")
 
       // OBS: Inga tåg registreras här — det ska ske via konfiguration eller externa system

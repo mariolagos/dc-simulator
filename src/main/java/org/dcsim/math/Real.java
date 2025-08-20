@@ -1,6 +1,7 @@
 package org.dcsim.math;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 public final class Real implements FieldElement<Real>, Comparable<Real>, Serializable {
     private final double value;
@@ -107,4 +108,27 @@ public final class Real implements FieldElement<Real>, Comparable<Real>, Seriali
     public static Real fromDouble(double value) {
         return new Real(value);
     }
+
+    // --- Stub domain-specific accessors ---
+    public double motoringPowerKW() {
+        return value; // interpret value as motoring power in kW
+    }
+
+    public double brakingPowerKW() {
+        return value; // interpret value as braking power in kW
+    }
+
+    public double positionMeters() {
+        return value; // interpret value as position in meters
+    }
+
+    public Real signum() {
+        double s = Math.signum(this.value);   // ger -1.0, 0.0 eller 1.0
+        return new Real(s);
+    }
+
+    public boolean gte(Real other) {
+        return this.value >= other.value;
+    }
+
 }
