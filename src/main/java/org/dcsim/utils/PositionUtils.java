@@ -1,148 +1,87 @@
-// org/dcsim/util/PositionUtils.java
 package org.dcsim.utils;
 
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Objects;
 
 /**
- * Utilities to parse positions. Supports:
- * - "line km+meters"  e.g. "1 0+170"
- * - "km.m"            e.g. "1.170"   (x is km, y is meters)
- * - plain meters      e.g. "1170"    (interpreted as meters on line=1 by default)
+ * Position parsing utilities.
+ *
+ * Supported formats:
+ *  - "1 1+100"  -> line=1, km=1, m=100
+ *  - "10.250"   -> (default line) km=10, m=250   (x.y means x km and y meters, no decimals)
+ *  - "250"      -> meters on default line (interpreted as total meters)
+ *
+ * The legacy parse(String) keeps working and now accepts both "line km+m" and "km.m".
  */
 public final class PositionUtils {
 
-    private static final Pattern LINE_KM_M =
-            Pattern.compile("^\\s*(\\d+)\\s+(\\d+)\\+(\\d+)\\s*$"); // "1 0+170"
+    private PositionUtils() {}
 
-    private PositionUtils() {
+    /** Parse using default lineId=1 when not present in the string. */
+    public static int[] parse(String s) {
+        return parseFlexible(s, 1);
     }
 
-    public static class ParsedPosition {
-        public final int lineId;
-        public final double meters;
+    /**
+     * Flexible parser that supports both "line km+m" and "km.m".
+     * @param s position string
+     * @param defaultLineId used when the string has no explicit line id (e.g., "km.m")
+     * @return int[]{ lineId, km, meters }
+     */
+    public static int[] parseFlexible(String s, int defaultLineId) {
+        Objects.requireNonNull(s, "position string");
+        String t = s.trim();
 
-        public ParsedPosition(int lineId, double meters) {
-            this.lineId = lineId;
-            this.meters = meters;
-        }
-    }
-
-    /** Flexible parse: "1 0+170", "1.170", "1170" */
-    public static ParsedPosition parseFlexible(String text) {
-        if (text == null) throw new IllegalArgumentException("position text is null");
-        String s = text.trim();
-
-        // Case A: "line km+meters"
-        Matcher m = LINE_KM_M.matcher(s);
-        if (m.matches()) {
-            int line = Integer.parseInt(m.group(1));
-            int km   = Integer.parseInt(m.group(2));
-            int met  = Integer.parseInt(m.group(3));
-            return new ParsedPosition(line, km * 1000.0 + met);
+        if (t.isEmpty()) {
+            throw new IllegalArgumentException("Empty position string");
         }
 
-        // Case B: "km.m"  (x is km, y is meters)
-        // Example: "1.170" -> 1 km + 170 m => 1170 m
-        if (s.contains(".")) {
-            String[] parts = s.split("\\.");
-            if (parts.length == 2 && isInteger(parts[0]) && isInteger(parts[1])) {
-                int km  = Integer.parseInt(parts[0]);
-                int met = Integer.parseInt(parts[1]);
-                return new ParsedPosition(1, km * 1000.0 + met); // default line=1
+        if (t.contains("+")) {
+            // "line km+m" with a space between line and km+m, e.g. "1 1+100"
+            String[] line_rest = t.split("\\s+", 2);
+            if (line_rest.length != 2) {
+                throw new IllegalArgumentException("Expected 'line km+meters' format: " + s);
             }
+            int lineId = Integer.parseInt(line_rest[0]);
+            String[] km_m = line_rest[1].split("\\+");
+            if (km_m.length != 2) {
+                throw new IllegalArgumentException("Expected 'km+meters' after line: " + s);
+            }
+            int km = Integer.parseInt(km_m[0]);
+            int m  = Integer.parseInt(km_m[1]);
+            return new int[]{ lineId, km, m };
         }
 
-        // Case C: plain meters (integer)
-        if (isInteger(s)) {
-            int meters = Integer.parseInt(s);
-            return new ParsedPosition(1, meters); // default line=1
+        if (t.contains(".")) {
+            // "km.m" meaning x km and y meters (no decimals)
+            String[] parts = t.split("\\.");
+            if (parts.length != 2) {
+                throw new IllegalArgumentException("Expected 'km.m' (x km and y meters): " + s);
+            }
+            int km = Integer.parseInt(parts[0]);
+            int m  = Integer.parseInt(parts[1]);
+            return new int[]{ defaultLineId, km, m };
         }
 
-        throw new IllegalArgumentException("Unrecognized position format: '" + text + "'");
+        // Fallback: treat as absolute meters on default line
+        int abs = Integer.parseInt(t);
+        int km  = abs / 1000;
+        int m   = abs % 1000;
+        return new int[]{ defaultLineId, km, m };
     }
 
-    private static boolean isInteger(String t) {
-        if (t == null || t.isEmpty()) return false;
-        for (int i = 0; i < t.length(); i++) {
-            char c = t.charAt(i);
-            if (i == 0 && (c == '+' || c == '-')) continue;
-            if (c < '0' || c > '9') return false;
-        }
-        return true;
-    }
-
-    /**
-     * Parse "1 7+770" or "7+770" or "1 0+0" into [line, km, meters].
-     */
-    @Deprecated
-    public static int[] parse(String position) {
-
-        if (position == null) throw new IllegalArgumentException("null position");
-        String s = position.trim();
-        if (s.isEmpty()) throw new IllegalArgumentException("empty position");
-
-        String lineToken;
-        String kmPlus;
-        String[] parts = s.split("\\s+");
-        if (parts.length == 1) {
-            // No explicit line → default to 1
-            lineToken = "1";
-            kmPlus = parts[0];
-        } else {
-            lineToken = parts[0];
-            kmPlus = parts[1];
-        }
-
-        String[] km_m = kmPlus.split("\\+");
-        if (km_m.length != 2) {
-            throw new IllegalArgumentException("Invalid km+meters: " + position);
-        }
-
-        int line = Integer.parseInt(lineToken);
-        int km = Integer.parseInt(km_m[0]);
-        int m = Integer.parseInt(km_m[1]);
-        return new int[]{line, km, m};
-    }
-
-    /**
-     * Convert a parsed position [line, km, meters] to meters within that line.
-     */
+    /** Convert int[]{ lineId, km, m } to absolute meters along the line. */
     public static double toMeters(int[] pos) {
-        if (pos == null || pos.length != 3) throw new IllegalArgumentException("pos must be [line, km, meters]");
+        if (pos == null || pos.length < 3) {
+            throw new IllegalArgumentException("Position must be int[]{line, km, m}");
+        }
         return pos[1] * 1000.0 + pos[2];
     }
 
-    /**
-     * True if both positions are on the same line.
-     */
-    public static boolean sameLine(int[] a, int[] b) {
-        return a[0] == b[0];
-    }
 
-    /**
-     * Signed difference in meters within the same line: b - a.
-     */
-    public static double deltaMeters(int[] a, int[] b) {
-        if (!sameLine(a, b)) {
-            throw new IllegalArgumentException("Positions belong to different lines");
-        }
-        return toMeters(b) - toMeters(a);
-    }
-
-    /**
-     * Absolute distance in meters within the same line.
-     */
-    public static double distanceMeters(int[] a, int[] b) {
-        return Math.abs(deltaMeters(a, b));
-    }
-
-
-    public static String format(double meters) {
-        int km = (int) (meters / 1000);
-        int m = (int) (meters % 1000);
-        return String.format("1 %d+ %d", km, m);
+    /** Pretty print [line, km, m] → "line km+m". */
+    public static String format(int[] pos) {
+        if (pos == null || pos.length < 3) return "?";
+        return pos[0] + " " + pos[1] + "+" + String.format("%03d", pos[2]);
     }
 
 }

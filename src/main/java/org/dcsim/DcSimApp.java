@@ -13,10 +13,14 @@ import org.dcsim.utils.PositionUtils;
 import java.io.File;
 import java.io.UncheckedIOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Batch runner (no Akka): loads grid + traffic + profiles,
  * creates TrainLoad devices, and runs the DC solver while writing CSV.
+ *
+ * v0.4: Also maps each train to the nearest infrastructure node per tick
+ * based on its profile position (supports both "line km+m" and "km.m").
  */
 public final class DcSimApp {
 
@@ -74,11 +78,11 @@ public final class DcSimApp {
                 String id         = tr.getString("id");
                 String templateId = tr.getString("templateId");
 
-                // Pick start position from first stop in template → map to grid node by equal position string
+                // Start position from first stop signature
                 var stops = templates.getConfig(templateId).getConfigList("stops");
                 String firstSig = stops.get(0).getString("signature");
                 String startPos = stationPositionByAbbrev(dcsim.getConfig("track"), firstSig);
-                int startNodeId = gridNodeIdByPositionString(model, startPos); // simple mapping by string equality
+                int startNodeId = gridNodeIdByPositionString(model, startPos);
 
                 TrainLoad tl = new TrainLoad(id, startNodeId, ground);
                 model.addDevice(tl);
@@ -96,6 +100,12 @@ public final class DcSimApp {
         System.out.printf(Locale.ROOT, "[DcSim] Added %d TrainLoad device(s). Total devices: %d%n",
                 createdTrains, model.getDevices().size());
 
+        // -------- Build topology from infrastructure node positions --------
+        Map<Integer, String> infraPos = model.getNodes().stream()
+                .filter(n -> n.getPosition() != null && !n.getPosition().isBlank())
+                .collect(Collectors.toMap(Node::getId, Node::getPosition));
+        NearestNodeTopology topo = new NearestNodeTopology(infraPos);
+
         // -------- Solver & CSV writer --------
         DcElectricSolver solver = new DcElectricSolver();
 
@@ -106,7 +116,7 @@ public final class DcSimApp {
 
         ResultCsvWriter writer;
         try {
-            writer = new ResultCsvWriter(model, outPath); // your ctor already truncates/creates fresh
+            writer = new ResultCsvWriter(model, outPath); // truncates/creates fresh file
         } catch (UncheckedIOException e) {
             throw e;
         } catch (Exception e) {
@@ -114,24 +124,46 @@ public final class DcSimApp {
         }
 
         // -------- Main loop --------
+        // Default line if profile positions use "km.m" without explicit line id.
+        final int defaultLineId = 1;
+
         int step = 0;
         for (double t = startSec; t <= endSec; t += tickSec, step++) {
-            // set each train’s requested net power from its profile
+            // 1) For each train: sample requested power and map position → nearest node
             double sumReqW = 0.0;
+
             for (Device<Real> dev : model.getDevices()) {
                 if (dev instanceof TrainLoad tl) {
+
+                    // power
                     PowerProfile prof = tl.getPowerProfile();
                     Real req = (prof != null) ? prof.getPowerAtTime(t) : Real.ZERO;
                     tl.setRequestedPower(req);
                     sumReqW += req.asDouble();
+
+                    // position (if available in profile points) → nearest node
+                    if (prof != null && prof.getPoints() != null && !prof.getPoints().isEmpty()) {
+                        String bis = sampleBisPositionAt(prof.getPoints(), t);
+                        if (bis != null && !bis.isBlank()) {
+                            int[] pos = PositionUtils.parseFlexible(bis, defaultLineId);
+                            int node  = topo.nearestInfraNodeId(pos);
+                            if (node >= 0 && node != tl.getFromNode()) {
+                                tl.setFromNode(node);
+                            }
+                        }
+                    }
                 }
             }
-            if (step % 10 == 0) {
+
+            if ((step % 10) == 0) {
                 System.out.printf(Locale.ROOT, "[t=%s step=%d] ΣP_req = %.1f kW%n",
                         formatHms((int) t), step, sumReqW / 1000.0);
             }
 
+            // 2) Solve
             GridResult result = solver.solve(model, t, step);
+
+            // 3) CSV
             try {
                 writer.append(result, t, step);
             } catch (Exception ex) {
@@ -182,5 +214,27 @@ public final class DcSimApp {
                             .filter(id -> id != g).findFirst()
                             .orElseThrow(() -> new IllegalStateException("No non-ground nodes in grid"));
                 });
+    }
+
+    /**
+     * Linear sample of bisPosition at time t.
+     * Assumes PowerPoint has time() and bisPosition() accessors.
+     */
+    private static String sampleBisPositionAt(List<PowerPoint> pts, double tSec) {
+        if (pts == null || pts.isEmpty()) return null;
+
+        if (tSec <= pts.get(0).time()) return pts.get(0).position();
+        if (tSec >= pts.get(pts.size()-1).time()) return pts.get(pts.size()-1).position();
+
+        int hi = 1;
+        while (hi < pts.size() && pts.get(hi).time() < tSec) hi++;
+        int lo = hi - 1;
+
+        // If segment crosses different lineIds, pick the nearer in time.
+        // Here we just return the closer endpoint's string to avoid guessing interpolation across lines.
+        double tLo = pts.get(lo).time();
+        double tHi = pts.get(hi).time();
+        double a = (tSec - tLo) / Math.max(1e-9, (tHi - tLo));
+        return (a < 0.5) ? pts.get(lo).position() : pts.get(hi).position();
     }
 }
