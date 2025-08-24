@@ -2,98 +2,181 @@ package org.dcsim.electric;
 
 import org.apache.commons.math3.linear.*;
 import org.dcsim.math.Real;
-import org.dcsim.math.SimMatrixUtils;
 
 import java.util.*;
 
 public class DcElectricSolver implements ElectricSolver {
 
-    private static final int MAX_ITERATIONS = 100;
-    private static final double TOLERANCE = 1e-9;
+    // Iterationer för P-beroende last (tåg)
+    private static final int MAX_POWER_ITERS = 10;
+    private static final double SOLVE_TOL = 1e-9;
+    private static final double VDIFF_FLOOR = 50.0;   // min |ΔV| för I = P/ΔV (V)
+    private static final double SEED_EPS = 1e-6;
 
     @Override
     public GridResult solve(GridModel model, double time, int timestep) {
-        int n = model.getNodes().size();
-        RealMatrix yMatrix = SimMatrixUtils.createZeroMatrix(n);
-        RealVector jVector = SimMatrixUtils.createZeroVector(n);
-        RealVector xVector = SimMatrixUtils.createZeroVector(n);
+        final List<Node> nodes = model.getNodes();
+        final int n = nodes.size();
 
-        Map<Integer, Integer> nodeIndexMap = new HashMap<>();
-        List<Node> nodes = model.getNodes();
-        for (int i = 0; i < nodes.size(); i++) {
-            nodeIndexMap.put(nodes.get(i).getId(), i);
+        // nodeId -> index
+        final Map<Integer,Integer> idx = new HashMap<>(n);
+        for (int i = 0; i < n; i++) idx.put(nodes.get(i).getId(), i);
+
+        final Integer gnd = idx.get(model.getGroundNodeId());
+        if (gnd == null) throw new IllegalArgumentException("Ground node " + model.getGroundNodeId() + " missing.");
+
+        // ===== Seed V =====
+        RealVector V = new ArrayRealVector(n);
+        for (int i = 0; i < n; i++) V.setEntry(i, SEED_EPS);
+        V.setEntry(gnd, 0.0);
+        // ge stationernas "to"-noder ett rimligt startvärde
+        for (Device<Real> d : model.getDevices()) {
+            if (d instanceof Substation ss) {
+                Integer ti = idx.get(ss.getToNode());
+                if (ti != null) V.setEntry(ti, ss.getEmf().asDouble());
+            }
         }
 
-        // initial voltages; ground clamped at 0
-        if (!nodeIndexMap.containsKey(model.getGroundNodeId())) {
-            throw new IllegalArgumentException("Ground node ID " + model.getGroundNodeId() + " is not present in node list.");
-        }
-        int groundIndex = nodeIndexMap.get(model.getGroundNodeId());
-        RealVector solution = new ArrayRealVector(n);
-        solution.setEntry(groundIndex, 0.0);
+        // ===== Liten fast iteration: bygg G + J(sub)+J(train), lös GV=J =====
+        RealMatrix G = null;
+        RealVector J = null;
+        for (int it = 0; it < MAX_POWER_ITERS; it++) {
+            G = new Array2DRowRealMatrix(n, n);
+            J = new ArrayRealVector(n);
 
-        for (int iter = 0; iter < MAX_ITERATIONS; iter++) {
-            yMatrix = SimMatrixUtils.createZeroMatrix(n);
-            jVector = SimMatrixUtils.createZeroVector(n);
-
-            // stamp all devices with current operating point
-            for (Device<Real> device : model.getDevices()) {
-                device.stamp(yMatrix, jVector, solution, timestep, nodeIndexMap);
+            // 1) Linjer: konduktansgrenar
+            for (Device<Real> d : model.getDevices()) {
+                if (d instanceof Line line) {
+                    Integer a = idx.get(line.getFromNode());
+                    Integer b = idx.get(line.getToNode());
+                    if (a == null || b == null) continue;
+                    double R = line.getResistance().asDouble();
+                    if (R <= 0) continue;
+                    double g = 1.0 / R;
+                    G.addToEntry(a, a, g);
+                    G.addToEntry(b, b, g);
+                    G.addToEntry(a, b, -g);
+                    G.addToEntry(b, a, -g);
+                }
             }
 
-            // fix ground
-            for (int col = 0; col < n; col++) yMatrix.setEntry(groundIndex, col, 0.0);
-            yMatrix.setEntry(groundIndex, groundIndex, 1.0);
-            jVector.setEntry(groundIndex, 0.0);
+            // 2) Stationer (Thevenin a↔b) som Norton: g mellan a↔b och I=E/R från b→a
+            for (Device<Real> d : model.getDevices()) {
+                if (d instanceof Substation ss) {
+                    Integer a = idx.get(ss.getFromNode());
+                    Integer b = idx.get(ss.getToNode());
+                    if (a == null || b == null) continue;
+                    double R = ss.getInternalResistance().asDouble();
+                    if (R <= 0) continue;
+                    double g = 1.0 / R;
+                    double E = ss.getEmf().asDouble();
 
-            DecompositionSolver solver = new LUDecomposition(yMatrix).getSolver();
-            RealVector next = solver.solve(jVector);
+                    // konduktansgren
+                    G.addToEntry(a, a, g);
+                    G.addToEntry(b, b, g);
+                    G.addToEntry(a, b, -g);
+                    G.addToEntry(b, a, -g);
 
-            double delta = next.subtract(solution).getNorm();
-            solution = next;
-            if (delta < TOLERANCE) break;
+                    // strömkälla b->a (ger Vb - Va = E i öppet fall)
+                    double I = E * g;
+                    J.addToEntry(a, -I);
+                    J.addToEntry(b, +I);
+                }
+            }
+
+            // 3) Tåg: strömkällor a->b med I = P_req / ΔV (klampad)
+            for (Device<Real> d : model.getDevices()) {
+                if (d instanceof TrainLoad tr) {
+                    Integer a = idx.get(tr.getFromNode());
+                    Integer b = idx.get(tr.getToNode());
+                    if (a == null || b == null) continue;
+                    double preq = 0.0;
+                    Real rP = tr.getRequestedPower();
+                    if (rP != null) preq = rP.asDouble(); // W (+ motering, − regen)
+
+                    double Va = V.getEntry(a);
+                    double Vb = V.getEntry(b);
+                    double dV = Va - Vb;
+                    if (Math.abs(dV) < VDIFF_FLOOR) dV = (dV >= 0 ? VDIFF_FLOOR : -VDIFF_FLOOR);
+
+                    double Iab = preq / dV; // A (kan vara −)
+                    // nodal injektion: -I i a, +I i b
+                    J.addToEntry(a, -Iab);
+                    J.addToEntry(b, +Iab);
+                }
+            }
+
+            // 4) Kläm ground: V_g = 0
+            for (int col = 0; col < n; col++) G.setEntry(gnd, col, 0.0);
+            G.setEntry(gnd, gnd, 1.0);
+            J.setEntry(gnd, 0.0);
+
+            // 5) Lös
+            RealVector Vnext = new LUDecomposition(G).getSolver().solve(J);
+            double delta = Vnext.subtract(V).getNorm();
+            V = Vnext;
+            if (delta < SOLVE_TOL) break;
         }
 
-        GridResult result = new GridResult(yMatrix, jVector);
+        // ===== Skriv ut resultat =====
+        GridResult res = new GridResult(G, J);
 
-        // store node voltages
+        // Nodspänningar
         for (int i = 0; i < n; i++) {
             int nodeId = nodes.get(i).getId();
-            result.setVoltage(nodeId, Real.fromDouble(solution.getEntry(i)));
+            res.setVoltage(nodeId, Real.fromDouble(V.getEntry(i)));
         }
 
-        // update devices currents/powers (+ requested for trains)
-        for (Device<Real> device : model.getDevices()) {
-            if (device instanceof Line line) {
-                Real fromV = result.getLatestNodeVoltage(line.getFromNode());
-                Real toV   = result.getLatestNodeVoltage(line.getToNode());
-                line.computeCurrent(fromV, toV);
-                Real i = line.getCurrent();
-                Real p = line.getPower(fromV, toV);
-                result.setCurrent(line.getId(), i);
-                result.setPower(line.getId(), p);
+        // Enhetsströmmar/effekter
+        for (Device<Real> d : model.getDevices()) {
+            if (d instanceof Line line) {
+                int aId = line.getFromNode();
+                int bId = line.getToNode();
+                double Va = res.getLatestNodeVoltage(aId).asDouble();
+                double Vb = res.getLatestNodeVoltage(bId).asDouble();
+                double R = line.getResistance().asDouble();
+                double Iab = (R > 0) ? (Va - Vb) / R : 0.0;   // A, från a till b
+                double Ploss = Iab * Iab * Math.max(R, 0.0); // W (≥0)
+                res.setCurrent(line.getId(), Real.fromDouble(Iab));
+                res.setPower(line.getId(), Real.fromDouble(Ploss));
 
-            } else if (device instanceof Substation ss) {
-                Real fromV = result.getLatestNodeVoltage(ss.getFromNode());
-                Real toV   = result.getLatestNodeVoltage(ss.getToNode());
-                Real i = ss.computeCurrent(fromV, toV);
-                Real p = ss.computePower(fromV, toV); // delivered to network
-                result.setCurrent(ss.getId(), i);
-                result.setPower(ss.getId(), p);
+            } else if (d instanceof Substation ss) {
+                int aId = ss.getFromNode();
+                int bId = ss.getToNode();
+                double Va = res.getLatestNodeVoltage(aId).asDouble();
+                double Vb = res.getLatestNodeVoltage(bId).asDouble();
+                double E  = ss.getEmf().asDouble();
+                double R  = ss.getInternalResistance().asDouble();
+                double g  = (R > 0) ? 1.0 / R : 0.0;
+                double dV = Vb - Va; // (b minus a)
 
-            } else if (device instanceof TrainLoad train) {
-                Real fromV = result.getLatestNodeVoltage(train.getFromNode());
-                Real toV   = result.getLatestNodeVoltage(train.getToNode());
+                // Ström enligt Norton: I = g*(E - dV) från b->a
+                double Inorton = g * (E - dV);
+                res.setCurrent(ss.getId(), Real.fromDouble(-Inorton)); // valfritt tecken; inte kritiskt
+
+                // Effekt levererad till nätet
+                double Pnet = g * (E * dV - dV * dV); // >0 matning, <0 regen
+                res.setPower(ss.getId(), Real.fromDouble(Pnet));
+
+            } else if (d instanceof TrainLoad train) {
+                Real fromV = res.getLatestNodeVoltage(train.getFromNode());
+                Real toV   = res.getLatestNodeVoltage(train.getToNode());
+
+                // deltaV = V(to) - V(from)
+                Real dv = toV.minus(fromV);
+
+                // computeCurrent använder den begärda effekten (mot +, broms -)
                 Real i = train.computeCurrent(fromV, toV);
-                Real p = train.getPower(fromV, toV); // delivered from network to train (motoring +)
-                result.setCurrent(train.getId(), i);
-                result.setPower(train.getId(), p);
-                // requested power (what train wanted this tick)
-                result.setRequestedPower(train.getId(), train.getRequestedPower());
-                // NOTE: brake resistor power skrivs i writer via train.getBrakeResistorInstantPower(fromV,toV)
+
+                // Viktigt: levererad effekt från nätets synvinkel = I * ΔV (med tecken)
+                Real p = i.times(dv);
+
+                res.setCurrent(train.getId(), i);
+                res.setPower(train.getId(), p);               // <— nu negativ vid broms
+                res.setRequestedPower(train.getId(), train.getRequestedPower());
             }
         }
 
-        return result;
+        return res;
     }
 }

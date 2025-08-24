@@ -43,8 +43,8 @@ public class PowerProfile {
             if (p1.time() <= time && time <= p2.time()) {
                 double fraction = (time - p1.time()) / (p2.time() - p1.time());
                 double interpolated = p1.power() + fraction * (p2.power() - p1.power());
-                System.out.printf("Looking up power at t=%.1f, points available: %d%n", time, points.size());
-                points.forEach(p -> System.out.printf("  point @ t=%.1f, P=%.1f%n", p.time(), p.power()));
+//                System.out.printf("Looking up power at t=%.1f, points available: %d%n", time, points.size());
+//                points.forEach(p -> System.out.printf("  point @ t=%.1f, P=%.1f%n", p.time(), p.power()));
                 return Real.fromDouble(interpolated);
             }
         }

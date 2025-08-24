@@ -33,7 +33,7 @@ public final class NearestNodeTopology implements Topology {
         Map<Integer, List<Entry>> tmp = new HashMap<>();
         for (Map.Entry<Integer, String> e : infraNodePositions.entrySet()) {
             int id = e.getKey();
-            int[] parsed = PositionUtils.parse(e.getValue());
+            int[] parsed = PositionUtils.parseFlexible(e.getValue());
             tmp.computeIfAbsent(parsed[0], k -> new ArrayList<>()).add(new Entry(id, parsed));
         }
         // Sort by meters within each line

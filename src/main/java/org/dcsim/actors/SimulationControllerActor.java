@@ -1,6 +1,7 @@
 package org.dcsim.actors;
 
-import akka.actor.typed.*;
+import akka.actor.typed.ActorRef;
+import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.*;
 
 import java.time.Duration;
@@ -9,7 +10,6 @@ import java.util.Map;
 
 public class SimulationControllerActor extends AbstractBehavior<SimulationControllerActor.Command> {
 
-    // ===== Protocol =====
     public interface Command {}
 
     public static final class RegisterTrain implements Command {
@@ -20,29 +20,41 @@ public class SimulationControllerActor extends AbstractBehavior<SimulationContro
         }
     }
 
+    // === NYTT: StartSimulation kan ta även SimulationSpeed ===
     public static final class StartSimulation implements Command {
-        public final double tickDurationSec;
-        public StartSimulation(double tickDurationSec) { this.tickDurationSec = tickDurationSec; }
+        public final double tickDurationSec;       // steg i SIMTID
+        public final SimulationSpeed speed;        // FAST eller REAL_TIME
+
+        // Bakåtkompatibel ctor (gamla anrop fortsätter funka)
+        public StartSimulation(double tickDurationSec) {
+            this.tickDurationSec = tickDurationSec == 0.0 ? 1.0 : Math.abs(tickDurationSec);
+            this.speed = (tickDurationSec <= 0.0) ? SimulationSpeed.FAST : SimulationSpeed.REAL_TIME;
+        }
+        // Ny ctor: explicit hastighetsläge
+        public StartSimulation(double tickDurationSec, SimulationSpeed speed) {
+            this.tickDurationSec = tickDurationSec == 0.0 ? 1.0 : Math.abs(tickDurationSec);
+            this.speed = (speed == null) ? SimulationSpeed.REAL_TIME : speed;
+        }
     }
 
-    /** Optional: end after a fixed number of steps */
     public static final class StopAfterSteps implements Command {
         public final int steps;
         public StopAfterSteps(int steps) { this.steps = steps; }
     }
-
     public static final class StopSimulation implements Command {}
-
     private static final class InternalTick implements Command {}
 
-    // ===== State =====
     private final ActorRef<GridModelActor.Command> grid;
     private final Map<String, ActorRef<TrainActor.Command>> trains = new LinkedHashMap<>();
     private final TimerScheduler<Command> timers;
-    private double dt = 1.0;
-    private double tSec = 0.0;
+
+    private double dt = 1.0;     // simtid per steg
+    private double tSec = 0.0;   // aktuell simtid
     private int step = 0;
-    private int stopAfter = -1; // <0 => run until externally stopped
+    private int stopAfter = -1;
+
+    private boolean fastMode = false;
+    private final int fastBurst;
 
     public static Behavior<Command> create(ActorRef<GridModelActor.Command> grid) {
         return Behaviors.setup(ctx -> Behaviors.withTimers(timers -> new SimulationControllerActor(ctx, timers, grid)));
@@ -54,7 +66,15 @@ public class SimulationControllerActor extends AbstractBehavior<SimulationContro
         super(ctx);
         this.timers = timers;
         this.grid = grid;
-        ctx.getLog().info("SimulationControllerActor started.");
+
+        int fb = 200;
+        try {
+            String prop = System.getProperty("dcsim.fastBurst");
+            if (prop != null) fb = Math.max(1, Integer.parseInt(prop.trim()));
+        } catch (Exception ignore) {}
+        this.fastBurst = fb;
+
+        ctx.getLog().info("SimulationControllerActor started. fastBurst={}", fastBurst);
     }
 
     @Override
@@ -71,20 +91,27 @@ public class SimulationControllerActor extends AbstractBehavior<SimulationContro
     private Behavior<Command> onRegisterTrain(RegisterTrain msg) {
         getContext().getLog().info("Controller: registered train {}", msg.trainId);
         trains.put(msg.trainId, msg.ref);
+        grid.tell(new GridModelActor.EnsureTrainDevice(msg.trainId));
         return this;
     }
 
     private Behavior<Command> onStart(StartSimulation msg) {
         this.dt = msg.tickDurationSec;
-        getContext().getLog().info("Controller: starting simulation, dt={} s", msg.tickDurationSec);
-        timers.startTimerAtFixedRate(new InternalTick(),
-                Duration.ofMillis((long) Math.round(dt * 1000.0)));
+        this.fastMode = (msg.speed == SimulationSpeed.FAST);
+
+        getContext().getLog().info("Controller: starting simulation, dt={} s (sim), speed={}", dt, msg.speed);
+
+        if (fastMode) {
+            getContext().scheduleOnce(Duration.ZERO, getContext().getSelf(), new InternalTick());
+        } else {
+            timers.startTimerAtFixedRate(new InternalTick(), Duration.ofMillis(Math.round(dt * 1000.0)));
+        }
         return this;
     }
 
     private Behavior<Command> onStopAfter(StopAfterSteps msg) {
         this.stopAfter = msg.steps;
-        getContext().getLog().info("Controller: will stop after {} steps", Integer.valueOf(msg.steps));
+        getContext().getLog().info("Controller: will stop after {} steps", msg.steps);
         return this;
     }
 
@@ -96,21 +123,29 @@ public class SimulationControllerActor extends AbstractBehavior<SimulationContro
     }
 
     private Behavior<Command> onInternalTick(InternalTick t) {
-        // 1) Dispatch tick to trains
-        for (var e : trains.entrySet()) {
-            e.getValue().tell(new TrainActor.Tick(tSec));
+        if (!fastMode) {
+            dispatchTickOnce();
+            advanceOneStep();
+            if (shouldStop()) return onStop(new StopSimulation());
+            return this;
         }
-        // 2) Solve tick
-        grid.tell(new GridModelActor.SolveTick(tSec, step));
 
-        // Advance
-        tSec += dt;
-        step++;
-
-        if (stopAfter >= 0 && step >= stopAfter) {
-            // Stop condition reached
-            return onStop(new StopSimulation());
+        for (int i = 0; i < fastBurst; i++) {
+            dispatchTickOnce();
+            advanceOneStep();
+            if (shouldStop()) return onStop(new StopSimulation());
         }
+        getContext().scheduleOnce(Duration.ZERO, getContext().getSelf(), new InternalTick());
         return this;
     }
+
+    private void dispatchTickOnce() {
+        final double thisT = tSec;
+        final int thisStep = step;
+        for (var e : trains.entrySet()) e.getValue().tell(new TrainActor.Tick(thisT));
+        grid.tell(new GridModelActor.SolveTick(thisT, thisStep));
+    }
+
+    private void advanceOneStep() { tSec += dt; step++; }
+    private boolean shouldStop() { return (stopAfter >= 0 && step >= stopAfter); }
 }

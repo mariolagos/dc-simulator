@@ -1,240 +1,251 @@
 package org.dcsim;
 
+import akka.actor.typed.ActorRef;
+import akka.actor.typed.ActorSystem;
+import akka.actor.typed.Behavior;
+import akka.actor.typed.javadsl.*;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import org.dcsim.actors.GridModelActor;
+import org.dcsim.actors.SimulationSpeed; // enum FAST, REAL_TIME
+import org.dcsim.actors.TrainActor;
 import org.dcsim.electric.*;
 import org.dcsim.export.ResultCsvWriter;
-import org.dcsim.math.Real;
 import org.dcsim.power.PowerProfile;
 import org.dcsim.power.PowerTemplateParser;
-import org.dcsim.PowerPoint;
-import org.dcsim.utils.PositionUtils;
 
 import java.io.File;
-import java.io.UncheckedIOException;
+import java.io.IOException;
+import java.time.Duration;
 import java.util.*;
-import java.util.stream.Collectors;
 
-/**
- * Batch runner (no Akka): loads grid + traffic + profiles,
- * creates TrainLoad devices, and runs the DC solver while writing CSV.
- *
- * v0.4: Also maps each train to the nearest infrastructure node per tick
- * based on its profile position (supports both "line km+m" and "km.m").
- */
 public final class DcSimApp {
+
+    // ----- Root actor that wires everything -----
+    public static final class Root extends AbstractBehavior<Root.Command> {
+        interface Command {}
+        private static final class Tick implements Command {}
+
+        private final TimerScheduler<Command> timers;
+
+        private final double tickSec;
+        private final double endAtSec;   // hard stop (min of endSec and step-limit)
+        private double nowSec;
+        private long step;
+
+        private final SimulationSpeed speed;
+        private final ActorRef<GridModelActor.Command> grid;
+        private final List<ActorRef<TrainActor.Command>> trains = new ArrayList<>();
+
+        public static Behavior<Command> create(
+                GridModel model,
+                DcElectricSolver solver,
+                String csvOut,
+                double tickSec,
+                int startSec,
+                int endSec,               // may be Integer.MAX_VALUE if missing
+                List<TrainSpawn> trainSpawns,
+                SimulationSpeed speed,
+                int stopAfterSteps        // <0 if missing
+        ) {
+            return Behaviors.setup(ctx ->
+                    Behaviors.withTimers(timers ->
+                            new Root(ctx, timers, model, solver, csvOut, tickSec, startSec, endSec, trainSpawns, speed, stopAfterSteps)
+                    )
+            );
+        }
+
+        private Root(
+                ActorContext<Command> ctx,
+                TimerScheduler<Command> timers,
+                GridModel model,
+                DcElectricSolver solver,
+                String csvOut,
+                double tickSec,
+                int startSec,
+                int endSec,
+                List<TrainSpawn> trainSpawns,
+                SimulationSpeed speed,
+                int stopAfterSteps
+        ) {
+            super(ctx);
+            this.timers = timers;
+            this.tickSec = tickSec;
+            this.nowSec = startSec;
+            this.step = 0;
+            this.speed = speed;
+
+            // compute hard stop
+            double stopByTime  = (endSec <= 0 ? Double.POSITIVE_INFINITY : endSec);
+            double stopBySteps = (stopAfterSteps > 0)
+                    ? (startSec + stopAfterSteps * tickSec)
+                    : Double.POSITIVE_INFINITY;
+            this.endAtSec = Math.min(stopByTime, stopBySteps);
+
+            // Grid actor (anchorNode could be from config; hard-coded 1 here)
+            int anchorNodeId = 1;
+            this.grid = ctx.spawn(
+                    GridModelActor.create(model, solver, csvOut, anchorNodeId),
+                    "grid"
+            );
+
+            // spawn trains and prime TrainLoad devices in the grid
+            for (var ts : trainSpawns) {
+                var tr = ctx.spawn(
+                        TrainActor.create(ts.trainId, grid, ts.profile, ts.departureSec, ts.sameModel, ts.auxKW),
+                        "train_" + ts.trainId
+                );
+                trains.add(tr);
+                grid.tell(new GridModelActor.EnsureTrainDevice(ts.trainId)); // prime so first solve writes a row
+            }
+
+            // Kick off ticking – exactly once, per mode
+            if (speed == SimulationSpeed.REAL_TIME) {
+                long periodMs = Math.max(1L, Math.round(tickSec * 1000.0));
+                timers.startTimerAtFixedRate(new Tick(), Duration.ZERO, Duration.ofMillis(periodMs));
+                ctx.getLog().info("Simulation started (REAL_TIME), dt={} s.", tickSec);
+            } else {
+                // FAST: start after 1 ms to let EnsureTrainDevice messages process first
+                ctx.scheduleOnce(Duration.ofMillis(1), ctx.getSelf(), new Tick());
+                ctx.getLog().info("Simulation started (FAST), dt={} s.", tickSec);
+            }
+        }
+
+        @Override
+        public Receive<Command> createReceive() {
+            return newReceiveBuilder()
+                    .onMessage(Tick.class, t -> onTick())
+                    .build();
+        }
+
+        private Behavior<Command> onTick() {
+            // Frys värden för det här steget
+            final double t = nowSec;
+            final int s = (int) step;
+
+            // 1) dispatch ticks to trains
+            for (var tr : trains) {
+                tr.tell(new TrainActor.Tick(t));
+            }
+
+            // 2) solve current time/step
+            grid.tell(new GridModelActor.SolveTick(t, s));
+
+            // 3) advance simulation time (görs efter att vi skickat SolveTick)
+            nowSec = t + tickSec;
+            step = s + 1;
+
+            // 4) stop AFTER producing this row, när nästa tick skulle kliva förbi endAtSec
+            if (nowSec >= endAtSec - 1e-9) {
+                grid.tell(new GridModelActor.SimulationFinished());
+                return Behaviors.stopped();
+            }
+
+            // 5) FAST => reschedulera exakt en gång; REAL_TIME använder timers
+            if (speed == SimulationSpeed.FAST) {
+                getContext().scheduleOnce(java.time.Duration.ZERO, getContext().getSelf(), new Tick());
+            }
+
+            return this;
+        }
+    }
+
+    private record TrainSpawn(String trainId, PowerProfile profile, int departureSec, boolean sameModel, double auxKW) {}
 
     public static void main(String[] args) {
         if (args.length != 1) {
             System.err.println("Usage: DcSimApp <path-to-application.conf>");
             System.exit(1);
         }
-
         File confFile = new File(args[0]);
         if (!confFile.exists()) {
-            System.err.println("[ERROR] Config file not found: " + confFile.getAbsolutePath());
+            System.err.println("[ERROR] Config not found: " + confFile.getAbsolutePath());
             System.exit(2);
         }
 
-        // -------- Load config --------
-        Config root  = ConfigFactory.parseFile(confFile).resolve();
+        // ---- Config ----
+        Config root = ConfigFactory.parseFile(confFile).resolve();
         Config dcsim = root.getConfig("dcsim");
 
-        // -------- Simulation control --------
-        Config sim   = dcsim.getConfig("simulationControl");
-        double tickSec = sim.getDouble("tickDuration");
-        int startSec   = parseHmsToSeconds(sim.getString("simulationStart"));
-        int endSec     = parseHmsToSeconds(sim.getString("simulationEnd"));
-        if (endSec <= startSec) throw new IllegalArgumentException("simulationEnd must be after simulationStart.");
+        // ---- Sim control ----
+        Config sim = dcsim.getConfig("simulationControl");
 
-        // -------- Grid model --------
+        double tickSec = sim.hasPath("tickDurationSec")
+                ? sim.getDouble("tickDurationSec")
+                : sim.getDouble("tickDuration"); // fallback to legacy key
+
+        int startSec = sim.hasPath("simulationStart")
+                ? parseHmsToSeconds(sim.getString("simulationStart"))
+                : 0;
+
+        int endSec = sim.hasPath("simulationEnd")
+                ? parseHmsToSeconds(sim.getString("simulationEnd"))
+                : Integer.MAX_VALUE; // step limit controls if time end missing
+
+        SimulationSpeed speed = sim.hasPath("simulationSpeed")
+                ? SimulationSpeed.valueOf(sim.getString("simulationSpeed").trim().toUpperCase(Locale.ROOT))
+                : SimulationSpeed.FAST;
+
+        int stopAfterSteps = sim.hasPath("stopAfterSteps")
+                ? sim.getInt("stopAfterSteps")
+                : -1;
+
+        // ---- Grid ----
         GridModel model = GridModelLoader.load(dcsim.getConfig("grid"));
-        System.out.printf(Locale.ROOT, "[DcSim] Loaded grid: %d nodes, %d devices%n",
-                model.getNodes().size(), model.getDevices().size());
 
-        // -------- Power templates (Excel) --------
-        Map<String, List<PowerPoint>> profileMap = Collections.emptyMap();
-        if (dcsim.hasPath("powerProfiles")) {
-            profileMap = PowerTemplateParser.parse(dcsim.getConfig("powerProfiles"));
-            System.out.println("[DcSim] Templates loaded: " + profileMap.keySet());
-        }
+        // ---- Power templates ----
+        Map<String, List<PowerPoint>> byTpl = dcsim.hasPath("powerProfiles")
+                ? PowerTemplateParser.parse(dcsim.getConfig("powerProfiles"))
+                : Collections.emptyMap();
 
-        // -------- Traffic → create TrainLoad devices and bind profiles --------
         Map<String, PowerProfile> profileByTemplate = new HashMap<>();
-        for (var e : profileMap.entrySet()) {
+        for (var e : byTpl.entrySet()) {
             profileByTemplate.put(e.getKey(), new PowerProfile(e.getValue()));
         }
 
-        int ground = model.getGroundNodeId();
-        int createdTrains = 0;
+        boolean sameModel = dcsim.hasPath("powerProfiles.motoringAndAuxiliariesInSameModel")
+                && dcsim.getBoolean("powerProfiles.motoringAndAuxiliariesInSameModel");
 
+        double auxKW = dcsim.hasPath("powerProfiles.auxiliaryPower")
+                ? dcsim.getDouble("powerProfiles.auxiliaryPower") : 0.0;
+
+        // ---- Traffic → Train spawns ----
+        List<TrainSpawn> spawns = new ArrayList<>();
         if (dcsim.hasPath("traffic")) {
-            Config traffic   = dcsim.getConfig("traffic");
-            var timetable    = traffic.getConfig("timetable");
-            var trainsConf   = timetable.getConfigList("trains");
-            Config templates = traffic.getConfig("templates");
-
+            var timetable = dcsim.getConfig("traffic.timetable");
+            var trainsConf = timetable.getConfigList("trains");
             for (Config tr : trainsConf) {
-                String id         = tr.getString("id");
-                String templateId = tr.getString("templateId");
-
-                // Start position from first stop signature
-                var stops = templates.getConfig(templateId).getConfigList("stops");
-                String firstSig = stops.get(0).getString("signature");
-                String startPos = stationPositionByAbbrev(dcsim.getConfig("track"), firstSig);
-                int startNodeId = gridNodeIdByPositionString(model, startPos);
-
-                TrainLoad tl = new TrainLoad(id, startNodeId, ground);
-                model.addDevice(tl);
-                createdTrains++;
-
-                PowerProfile prof = profileByTemplate.get(templateId);
-                if (prof != null) {
-                    tl.setPowerProfile(prof);
-                }
-                System.out.printf(Locale.ROOT, "[DcSim] Train %s created at node %d (template=%s, profile=%s)%n",
-                        id, startNodeId, templateId, (prof != null));
+                String id = tr.getString("id");
+                String tpl = tr.getString("templateId");
+                int depSec = parseHmsToSeconds(tr.getString("departure"));
+                PowerProfile prof = profileByTemplate.get(tpl);
+                spawns.add(new TrainSpawn(id, prof, depSec, sameModel, auxKW));
             }
         }
 
-        System.out.printf(Locale.ROOT, "[DcSim] Added %d TrainLoad device(s). Total devices: %d%n",
-                createdTrains, model.getDevices().size());
-
-        // -------- Build topology from infrastructure node positions --------
-        Map<Integer, String> infraPos = model.getNodes().stream()
-                .filter(n -> n.getPosition() != null && !n.getPosition().isBlank())
-                .collect(Collectors.toMap(Node::getId, Node::getPosition));
-        NearestNodeTopology topo = new NearestNodeTopology(infraPos);
-
-        // -------- Solver & CSV writer --------
+        // ---- Solver + CSV path ----
         DcElectricSolver solver = new DcElectricSolver();
-
         String outPath = "output/electrical.csv";
-        File outFile = new File(outPath);
-        outFile.getParentFile().mkdirs();
-        System.out.println("[DcSim] Writing results to: " + outFile.getAbsolutePath());
-
-        ResultCsvWriter writer;
-        try {
-            writer = new ResultCsvWriter(model, outPath); // truncates/creates fresh file
-        } catch (UncheckedIOException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create ResultCsvWriter: " + e, e);
+        new File(outPath).getParentFile().mkdirs();
+        try (ResultCsvWriter pre = new ResultCsvWriter(model, outPath)) {
+            // pre-create/clear file
+        } catch (IOException e) {
+            System.err.println("[WARN] Could not prepare CSV file: " + e.getMessage());
         }
 
-        // -------- Main loop --------
-        // Default line if profile positions use "km.m" without explicit line id.
-        final int defaultLineId = 1;
-
-        int step = 0;
-        for (double t = startSec; t <= endSec; t += tickSec, step++) {
-            // 1) For each train: sample requested power and map position → nearest node
-            double sumReqW = 0.0;
-
-            for (Device<Real> dev : model.getDevices()) {
-                if (dev instanceof TrainLoad tl) {
-
-                    // power
-                    PowerProfile prof = tl.getPowerProfile();
-                    Real req = (prof != null) ? prof.getPowerAtTime(t) : Real.ZERO;
-                    tl.setRequestedPower(req);
-                    sumReqW += req.asDouble();
-
-                    // position (if available in profile points) → nearest node
-                    if (prof != null && prof.getPoints() != null && !prof.getPoints().isEmpty()) {
-                        String bis = sampleBisPositionAt(prof.getPoints(), t);
-                        if (bis != null && !bis.isBlank()) {
-                            int[] pos = PositionUtils.parseFlexible(bis, defaultLineId);
-                            int node  = topo.nearestInfraNodeId(pos);
-                            if (node >= 0 && node != tl.getFromNode()) {
-                                tl.setFromNode(node);
-                            }
-                        }
-                    }
-                }
-            }
-
-            if ((step % 10) == 0) {
-                System.out.printf(Locale.ROOT, "[t=%s step=%d] ΣP_req = %.1f kW%n",
-                        formatHms((int) t), step, sumReqW / 1000.0);
-            }
-
-            // 2) Solve
-            GridResult result = solver.solve(model, t, step);
-
-            // 3) CSV
-            try {
-                writer.append(result, t, step);
-            } catch (Exception ex) {
-                System.err.println("[DcSim] CSV append failed at t=" + t + ": " + ex);
-                break;
-            }
-        }
-
-        try { writer.close(); } catch (Exception ignore) {}
-        System.out.println("[DcSim] Finished OK.");
+        // ---- Start Akka ----
+        ActorSystem<Root.Command> system = ActorSystem.create(
+                Root.create(model, solver, outPath, tickSec, startSec, endSec, spawns, speed, stopAfterSteps),
+                "SimulatorSystem"
+        );
+        // System terminates when Root stops after SimulationFinished
     }
-
-    // --- helpers ---
 
     private static int parseHmsToSeconds(String s) {
         String[] p = s.trim().split(":");
-        if (p.length < 2 || p.length > 3) throw new IllegalArgumentException("HH:mm or HH:mm:ss: " + s);
-        int h = Integer.parseInt(p[0]), m = Integer.parseInt(p[1]);
+        int h = Integer.parseInt(p[0]);
+        int m = Integer.parseInt(p[1]);
         int sec = (p.length == 3) ? Integer.parseInt(p[2]) : 0;
         return h * 3600 + m * 60 + sec;
-    }
-
-    private static String formatHms(int sec) {
-        int h = sec / 3600, m = (sec % 3600) / 60, s = sec % 60;
-        return String.format(Locale.ROOT, "%02d:%02d:%02d", h, m, s);
-    }
-
-    /** Look up a station position string by abbreviation in dcsim.track.stations */
-    private static String stationPositionByAbbrev(Config trackCfg, String abbrev) {
-        for (Config st : trackCfg.getConfigList("stations")) {
-            if (st.getString("abbreviation").equals(abbrev)) {
-                return st.getString("position");
-            }
-        }
-        throw new IllegalArgumentException("Station abbreviation not found: " + abbrev);
-    }
-
-    /** Map a position string (e.g. "1 0+000") to the id of the grid node with the same stored position string. */
-    private static int gridNodeIdByPositionString(GridModel model, String positionString) {
-        return model.getNodes().stream()
-                .filter(n -> positionString.equals(n.getPosition()))
-                .findFirst()
-                .map(Node::getId)
-                .orElseGet(() -> {
-                    // fallback: the first non-ground node
-                    int g = model.getGroundNodeId();
-                    return model.getNodes().stream().map(Node::getId)
-                            .filter(id -> id != g).findFirst()
-                            .orElseThrow(() -> new IllegalStateException("No non-ground nodes in grid"));
-                });
-    }
-
-    /**
-     * Linear sample of bisPosition at time t.
-     * Assumes PowerPoint has time() and bisPosition() accessors.
-     */
-    private static String sampleBisPositionAt(List<PowerPoint> pts, double tSec) {
-        if (pts == null || pts.isEmpty()) return null;
-
-        if (tSec <= pts.get(0).time()) return pts.get(0).position();
-        if (tSec >= pts.get(pts.size()-1).time()) return pts.get(pts.size()-1).position();
-
-        int hi = 1;
-        while (hi < pts.size() && pts.get(hi).time() < tSec) hi++;
-        int lo = hi - 1;
-
-        // If segment crosses different lineIds, pick the nearer in time.
-        // Here we just return the closer endpoint's string to avoid guessing interpolation across lines.
-        double tLo = pts.get(lo).time();
-        double tHi = pts.get(hi).time();
-        double a = (tSec - tLo) / Math.max(1e-9, (tHi - tLo));
-        return (a < 0.5) ? pts.get(lo).position() : pts.get(hi).position();
     }
 }

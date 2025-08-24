@@ -45,7 +45,10 @@ public class ExcelExport {
                     row.createCell(col++).setCellValue(TimeUtils.format((int) state.time()));
                     row.createCell(col++).setCellValue(state.time());
                     row.createCell(col++).setCellValue(state.position());
-                    row.createCell(col++).setCellValue(PositionUtils.format(state.position()));
+                    row.createCell(col++).setCellValue(
+                            PositionUtils.format(state.getLineId(), state.getPositionMeters())
+                    );
+
                     row.createCell(col++).setCellValue(state.speed());
                     row.createCell(col++).setCellValue(state.power());
                     row.createCell(col++).setCellValue(state.position()); // placeholder for actual obtained position

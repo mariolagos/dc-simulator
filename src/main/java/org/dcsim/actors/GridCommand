@@ -1,0 +1,11 @@
+package org.dcsim.actors;
+
+public interface GridCommand {}
+
+public class LoadUpdate implements GridCommand {
+    public final String trainId;
+    public final double pKw;
+    public LoadUpdate(String trainId, double pKw) {
+        this.trainId = trainId;
+        this.pKw = pKw;
+    }
