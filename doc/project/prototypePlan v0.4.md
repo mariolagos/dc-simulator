@@ -1,4 +1,4 @@
-# Prototype Plan
+# Prototype Plan v0.4
 
 ## Vision
 The project aims to develop a **DC railway power system simulator** ("DcSim") capable of handling multi-train scenarios with dynamic topology, AC/DC conversion, and realistic load-flow calculations.  
