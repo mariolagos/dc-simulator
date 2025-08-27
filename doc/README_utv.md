@@ -1,224 +1,11 @@
 # README_utv.md – Development and Architecture Guide
 
-This document provides implementation-specific guidance for developers working on the simulator's internals. It covers the Akka actor system, message handling, and component lifecycles.
+This document provides implementation-specific guidance for developers working on the simulator's internals. It covers the Akka actor system, message handling, component lifecycles, and operational checklists for commits and documentation hygiene.
 
 ## Purpose
 This guide documents how the system is structured in terms of concurrent components and actors. It is focused on the simulation engine and its extensibility using Akka.
 
 ---
-# README\_utv.md – Development and Architecture Guide
-
-This document provides implementation-specific guidance for developers working on the simulator's internals. It covers the Akka actor system, message handling, and component lifecycles.
-
-## Purpose
-
-This guide documents how the system is structured in terms of concurrent components and actors. It is focused on the simulation engine and its extensibility using Akka.
-
----
-
-## Actor Overview
-
-The simulation loop is built using Akka actors. Each key component is modeled as an actor:
-
-* `SimulationControllerActor`: master actor that advances the clock and coordinates other actors.
-* `TrainActor`: manages an individual train, updates its power demand and reports position.
-* `GridModelActor`: maintains the nodal admittance matrix, updates voltages.
-* `FeederStationActor`: injects substation power into the grid model.
-
-## Actor Interaction – Sequence Diagram
-
-```mermaid
-sequenceDiagram
-    participant SC as SimulationController
-    participant Train as TrainActor
-    participant Grid as GridModelActor
-    participant Feeder as FeederStationActor
-
-    SC->>Train: StartTrain(trainId)
-    SC->>Feeder: Tick(time)
-    SC->>Train: Tick(time)
-    SC->>Grid: Tick(time)
-
-    Train->>Grid: TrainPowerRequest
-    Train->>Grid: TrainPositionUpdate
-    Grid->>Train: VoltageUpdate
-
-    Feeder->>Grid: SubstationVoltageCommand
-    Grid->>Feeder: VoltageUpdate (optional feedback)
-
-    SC->>Train: StopTrain(trainId)
-```
-
-## Event Handling – TrainActor
-
-* **At scheduled start time:**
-
-  * Spawn `TrainActor`
-  * Split overhead line at train position → create node
-  * Connect train to grid
-
-* **At scheduled end:**
-
-  * Disconnect train
-  * Remove node
-  * Stop `TrainActor`
-
-* **During simulation:**
-
-  * Request power from profile
-  * Update position
-  * Receive voltage
-  * Compute current and send to grid
-
-* **When passing a node:** update topology if needed.
-
-## Event Handling – FeederStationActor
-
-* At each tick:
-
-  * Read current voltage
-  * If below EMF → inject power
-  * No back-feed allowed (diode behavior)
-  * Optionally report to controller
-
-## Event Handling – GridModelActor
-
-* Receives all `TrainPowerRequest`, `SubstationCommand`
-* Updates Y-matrix
-* Solves voltage
-* Responds with `VoltageUpdate`s
-
-## Lifecycle Considerations TODO
-
-* Actor creation: `context.spawn(...)`
-* Shutdown: `context.stop(...)`
-* Supervision for crash recovery
-* Virtual time control
-* Tick frequency setup
-* Logging to file or terminal
-
-## Message Format TODO
-
-Include formal definitions in codebase, e.g.
-
-```scala
-case class Tick(time: Double)
-case class StartTrain(trainId: String)
-case class StopTrain(trainId: String)
-case class TrainPowerRequest(time: Double, id: String, power: Double)
-case class VoltageUpdate(voltage: Double)
-```
-
-## Configuration Handling TODO
-
-* All parameters configurable via `.conf` files (HOCON)
-* Train start times
-* Grid topology
-* Substation parameters
-* Tick frequency
-
-## Future Work TODO
-
-* Supervisor strategy
-* Reusable testing harness
-* Akka Typed migration (if not already used)
-* Integration with GUI/logging backend
-
----
-
-## Power profile data flow (Excel → sampler → actors → solver)
-
-### Sequence (high level)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Conf as application.conf
-    participant PTP as PowerTemplateParser
-    participant EPL as ExcelProfileLoader
-    participant PS as PowerProfileSampler
-    participant TPA as TrainProfileActor
-    participant GMA as GridModelActor
-    participant DCS as DcElectricSolver
-    participant GM as GridModel
-    participant CSV as ResultCsvWriter
-
-    Conf->>PTP: dcsim.powerProfiles.templates (id, folder, legs[])
-    PTP->>EPL: for each leg: load A-B.xlsx
-    EPL-->>PTP: List<ProfilePoint> (t, bisPos, speed, motKW, brkKW)
-    PTP->>PS: build sampler (interpolates profile)
-
-    loop every tick
-        TPA->>PS: sampleAt(timeSec, auxKW)
-        PS-->>TPA: ProfileSample {motoringKW, brakingKW, auxiliaryKW, positionMeters}
-        TPA->>GMA: UpdateTrainPower(trainId, motKW, brkKW, auxKW, pos_m)
-        GMA->>GM: bind/move TrainLoad terminals via Topology (nearest node)
-        GMA->>DCS: solve(model, timeSec, step)
-        DCS-->>GMA: GridResult (V, I, P per node/device)
-        GMA->>CSV: append(result, timeSec, step)
-    end
-```
-
-### Flowchart (where data lives)
-
-```mermaid
-flowchart LR
-    A[application.conf<br/>powerProfiles.templates] -->|folders + legs| B(PowerTemplateParser)
-    B -->|xlsx paths| C[ExcelProfileLoader]
-    C -->|List&lt;ProfilePoint&gt;| D(PowerProfileSampler)
-    D -->|ProfileSample per tick| E[TrainProfileActor]
-    E -->|UpdateTrainPower| F[GridModelActor]
-    F -->|Topologi map| G[GridModel/TrainLoad]
-    F -->|solve(...)| H[DcElectricSolver]
-    H -->|GridResult| I[ResultCsvWriter]
-    I -->|CSV rows| J[(output/electrical.csv)]
-```
-
-### Notes for implementers
-
-* **Config → files**
-  `dcsim.powerProfiles.templates[].folder` + `legs[].file` pekar på Excel-filerna:
-
-  ```
-  powerProfiles {
-    templates = [
-      {
-        id = "T1"
-        folder = "input/loads/T1"
-        legs = [
-          { fromStation = "A", toStation = "B", file = "A-B.xlsx" }
-        ]
-      }
-    ]
-  }
-  ```
-* **Excel columns (per USER\_GUIDE):**
-  `time [s]`, `bisPosition [km,m]`, `speed [m/s]`,
-  `primaryMotoringPower [kW]`, `primaryMotorBrakingPower [kW]`.
-* **Sampler API:**
-  `ProfileSample sampleAt(double timeSec, double auxiliaryKW)` → returnerar (motoringKW, brakingKW, auxiliaryKW, positionMeters).
-  Hjälplaster hanteras enligt flaggan `motoringAndAuxiliariesInSameModel`.
-* **Binding/topologi:**
-  Per tick placerar `GridModelActor` tågets `TrainLoad` på närmaste nod (v0.4) via `Topology.nearestNode(lineId, meters)` och kopplar `toNode = ground`.
-* **Solver/output:**
-  `DcElectricSolver.solve(...)` ger `GridResult`.
-  `ResultCsvWriter.append(...)` skriver tidrad (noder, per-device P, aggregat, balans) till `output/electrical.csv`.
-
----
-
-## Getting started
-
-To quickly verify the pipeline end-to-end:
-
-1. **Minimal test:** Run `MinimalTest` – checks actor startup, parsing, and solver loop with dummy data.
-2. **Symphony scenario:** Run `symphony.conf` – larger setup with multiple trains and feeders.
-3. **3subs1train scenario:** Run `3subs1train` – dedicated case for verifying train movement and transitions between multiple substations.
-
-Expected output: `output/electrical.csv` with per-tick node/device values. Use Excel or a plotting tool to inspect voltage profiles, requested/delivered power, and energy balances.
-
----
-
-(c) Railway Simulation Project, 2025
 
 ## Actor Overview
 
@@ -226,9 +13,8 @@ The simulation loop is built using Akka actors. Each key component is modeled as
 
 - `SimulationControllerActor`: master actor that advances the clock and coordinates other actors.
 - `TrainActor`: manages an individual train, updates its power demand and reports position.
-- `GridModelActor`: maintains the nodal admittance matrix, updates voltages.
-- `FeederStationActor`: injects substation power into the grid model.
-
+- `GridModelActor`: maintains the nodal admittance matrix (Y), updates voltages, and writes results.
+- `FeederStationActor` (optional, concept): injects substation power commands into the grid model.
 
 ## Actor Interaction – Sequence Diagram
 
@@ -242,83 +28,139 @@ sequenceDiagram
     SC->>Train: StartTrain(trainId)
     SC->>Feeder: Tick(time)
     SC->>Train: Tick(time)
-    SC->>Grid: Tick(time)
+    SC->>Grid: SolveTick(time, step)
 
-    Train->>Grid: TrainPowerRequest
-    Train->>Grid: TrainPositionUpdate
-    Grid->>Train: VoltageUpdate
+    Train->>Grid: UpdateTrainPower(motKW, brkKW, auxKW, pos_m)
+    Grid->>Train: (optional) VoltageUpdate
 
-    Feeder->>Grid: SubstationVoltageCommand
-    Grid->>Feeder: VoltageUpdate (optional feedback)
-
-    SC->>Train: StopTrain(trainId)
+    Feeder->>Grid: (optional) SubstationControl
+    Grid->>Feeder: (optional) VoltageUpdate
 ```
 
 ## Event Handling – TrainActor
 
-- **At scheduled start time:**
+- **At scheduled start time**
   - Spawn `TrainActor`
-  - Split overhead line at train position → create node
-  - Connect train to grid
+  - (Future) split line and create/move coupling node near train position
+  - Connect `TrainLoad` to grid
 
-- **At scheduled end:**
+- **At scheduled end**
   - Disconnect train
-  - Remove node
+  - Remove temporary node(s)
   - Stop `TrainActor`
 
-- **During simulation:**
-  - Request power from profile
+- **Each tick**
+  - Sample power profile (motoring, braking, auxiliaries)
   - Update position
-  - Receive voltage
-  - Compute current and send to grid
-
-- **When passing a node:** update topology if needed.
-
-## Event Handling – FeederStationActor
-
-- At each tick:
-  - Read current voltage
-  - If below EMF → inject power
-  - No back-feed allowed (diode behavior)
-  - Optionally report to controller
+  - Send `UpdateTrainPower` to `GridModelActor`
 
 ## Event Handling – GridModelActor
 
-- Receives all `TrainPowerRequest`, `SubstationCommand`
-- Updates Y-matrix
-- Solves voltage
-- Responds with `VoltageUpdate`s
+- Receives `UpdateTrainPower`
+- Ensures a `TrainLoad` device exists and binds it to the (current) anchor node
+- Calls solver and obtains `GridResult` (node voltages + per-device powers/currents)
+- Post-processes powers (substations diode behavior, lines I²R, trains incl. brake pseudo-devices)
+- Appends CSV row via `ResultCsvWriter`
 
-## Lifecycle Considerations ✅ TODO
+## Lifecycle & Supervision (TODO)
 - Actor creation: `context.spawn(...)`
-- Shutdown: `context.stop(...)`
-- Supervision for crash recovery
-- Virtual time control
-- Tick frequency setup
-- Logging to file or terminal
+- Shutdown and coordinated stop
+- Supervision strategy for recovery
+- Virtual time control and tick scheduling
+- Logging configuration (file/console) and log levels
 
-## Message Format ✅ TODO
-Include formal definitions in codebase, e.g.
+## Message Format (TODO – formalize)
 ```scala
 case class Tick(time: Double)
+case class SolveTick(time: Double, step: Int)
 case class StartTrain(trainId: String)
 case class StopTrain(trainId: String)
-case class TrainPowerRequest(time: Double, id: String, power: Double)
-case class VoltageUpdate(voltage: Double)
+case class UpdateTrainPower(trainId: String, motoringKW: Double, brakingKW: Double, auxiliaryKW: Double, positionMeters: Double)
 ```
 
-## Configuration Handling ✅ TODO
-- All parameters configurable via `.conf` files (HOCON)
-- Train start times
-- Grid topology
-- Substation parameters
-- Tick frequency
-
-## Future Work ✅ TODO
-- Supervisor strategy
-- Reusable testing harness
-- Akka Typed migration (if not already used)
-- Integration with GUI/logging backend
+## Configuration (HOCON) (TODO – expand)
+- `simulationControl`: tick duration, start/end time, `simulationSpeed` (FAST/REAL_TIME)
+- `grid`: nodes, lines, substations (EMF, Rint), ground node id
+- `powerProfiles`: templates, auxiliary handling, file paths
+- `traffic`: timetable with departures, template mapping
 
 ---
+
+## Developer Checklists
+
+### A. Commit Checklist (what to do at commit time)
+1. **Build & format**
+  - Project compiles cleanly (no warnings if possible).
+  - Code formatted (Java/Scala) and imports optimized.
+2. **Fast functional smoke**
+  - Run the `3subs1train` scenario (FAST mode); verify CSV is non-empty and coherent.
+  - Spot-check: node voltages reasonable, substations positive output when feeding, line losses ≥ 0, train requested vs delivered powers make sense.
+3. **Result I/O sanity**
+  - CSV header contains nodes, `P[...]` per device, `P_req[train]`, `P_brake[train]`, aggregates.
+  - No accidental header duplication when appending.
+4. **Logs**
+  - No stack traces or ERROR logs on nominal runs.
+5. **Docs and metadata**
+  - Update `CHANGELOG.md` (see routines below).
+  - Update `ProgressLog.md` with a concise summary of what changed and why.
+  - If scope/plan changed, adjust `PrototypePlan.md` (see routines below).
+6. **Version/tag (if applicable)**
+  - If the change warrants it, bump version and tag.
+7. **Run time check (REAL_TIME only if needed)**
+  - If you touched scheduling, quick run in REAL_TIME to confirm pacing.
+
+### B. Routines for: `CHANGELOG.md`, `ProgressLog.md`, `PrototypePlan.md`
+- **CHANGELOG.md**
+  - Under `## [Unreleased]`, add entries for `Added / Changed / Fixed / Removed`.
+  - On release, cut a new section with date; move entries from `Unreleased` to the new section.
+  - Keep entries terse but specific (“Compute substation diode power in post-process”, not “misc fixes”).
+- **ProgressLog.md**
+  - Append the day’s work: the problem, approach, key commits, and any regressions found.
+  - Focus on traceability and intent—someone should be able to reconstruct *why* a change occurred.
+- **PrototypePlan.md**
+  - Update the “Next steps” section when priorities change.
+  - Keep acceptance criteria explicit (inputs/outputs, expected signs/ranges, plots to verify).
+  - Note dependencies on data (e.g., profiles) and on grid topology.
+
+---
+
+## Power profile data flow (Excel → sampler → actors → solver)
+
+```mermaid
+flowchart LR
+  A[Excel power profiles] --> B[PowerProfileReader]
+  B --> C[PowerTemplateParser]
+  C --> D[ProfileSampler]
+  D --> E[TrainActor]
+  E -->|SolveTick| F[GridModelActor]
+  F -->|solve| G[DcElectricSolver]
+  G --> H[GridModel]
+  F --> I[ResultCsvWriter]
+```
+
+### Excel columns (as of USER_GUIDE)
+- `time [s]`, `bisPosition [km,m]`, `speed [m/s]`,
+- `primaryMotoringPower [kW]` (≥ 0),
+- `primaryMotorBrakingPower [kW]` (≤ 0 for regen in our pipeline).
+
+---
+
+## Quick Scenarios
+
+- **Minimal test:** actor bootstrap and CSV creation
+- **3subs1train:** end-to-end validation of node voltages, diode substations, line losses, braking transition
+- **Larger timetable:** performance sweep (FAST vs REAL_TIME)
+
+---
+
+## TODOs & Backlog Hooks
+- Add `P_lack = P_req - P_trains` column (per-train & total).
+- Replace or redefine “Balance” as a strict conservation check (should be ≈ 0).
+- Option to flip voltage signs at export to present positive node potentials.
+- Multi-sheet export: global, per-train, per-substation, per-line.
+- Write checklists for commit hygiene and doc updates (this file).
+- Expand unit tests (diode behavior, braking transitions, topology churn).
+
+---
+
 (c) Railway Simulation Project, 2025
