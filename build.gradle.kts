@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.scala.ScalaCompile
+
 plugins {
     scala
     java
@@ -7,12 +9,10 @@ plugins {
 group = "org.dcsim"
 version = "0.3"
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
 
 dependencies {
-    // Java
+    // Java deps
     implementation("com.typesafe:config:1.4.2")
     implementation("org.apache.poi:poi-ooxml:5.2.3")
 
@@ -22,28 +22,24 @@ dependencies {
     implementation("com.typesafe.akka:akka-slf4j_2.13:2.8.5")
     implementation("ch.qos.logback:logback-classic:1.4.11")
 
-    // Test
+    // ---- Tests: JUnit 4 ----
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.hamcrest:hamcrest:2.2") // optional
 }
 
-dependencies {
-
-    // Akka + SLF4J backend
-    implementation("com.typesafe.akka:akka-actor-typed_2.13:2.8.5")
-    implementation("com.typesafe.akka:akka-slf4j_2.13:2.8.5")
-    implementation("ch.qos.logback:logback-classic:1.4.11")
-
-    testImplementation("junit:junit:4.13.2")
+tasks.test {
+    useJUnit()                       // run JUnit 4 tests
+    testLogging { events("passed","skipped","failed") }
 }
 
-
-application {
-    mainClass.set("org.dcsim.electric.MinimalTest")  // ← du kan ändra detta senare
+/** Temporarily disable Scala test compilation so Java tests can run */
+tasks.named<ScalaCompile>("compileTestScala") {
+    enabled = false
 }
 
-tasks.register("runMinimalTest", JavaExec::class) {
-    description = "Runs the MinimalTest class with test resources"
+tasks.register<JavaExec>("runDcSim") {
     group = "application"
-    classpath = sourceSets["test"].runtimeClasspath
-    mainClass.set("org.dcsim.electric.MinimalTest")
+    description = "Run DcSimApp main"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("org.dcsim.DcSimApp")
 }

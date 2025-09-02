@@ -1,11 +1,6 @@
 package org.dcsim.export;
 
-import org.dcsim.electric.Device;
-import org.dcsim.electric.GridModel;
-import org.dcsim.electric.GridResult;
-import org.dcsim.electric.Line;
-import org.dcsim.electric.Substation;
-import org.dcsim.electric.TrainLoad;
+import org.dcsim.electric.*;
 import org.dcsim.math.Real;
 
 import java.io.*;
@@ -13,159 +8,231 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
- * CSV-writer: can truncate or append; has append(...) and close().
- * Header is written lazily on the first append so that dynamically created TrainLoad
- * devices are included in the exported columns.
+ * CSV writer for node voltages and device powers/currents.
+ * Lazy header build (on first append) so trains created by EnsureTrainDevice
+ * are present. Falls back to I^2 R for line losses if solver didn’t fill them.
+ *
+ * Aggregates (sign convention):
+ *  - Substations:  P > 0 = delivering to the network
+ *  - Trains:       P > 0 = consuming from the network
+ *  - Lines:        P > 0 = losses (always ≥ 0)
+ *  - Brake:        P > 0 = dissipated in the brake resistor (off-network)
+ *
+ * mismatch = sumSub - sumTrain - sumLine          (network KCL check; ≈ 0)
+ * balance  = sumSub - sumTrain - sumLine - sumBrake (total energy incl. brake; ≈ 0)
+ * underSup = max(0, sumReq - sumTrain)            (requested vs actually served to trains)
+ * underRecv (regen case) ~ how much regen exceeds substation absorption.
  */
 public final class ResultCsvWriter implements Closeable, Flushable {
 
+    static {
+        System.out.println("[WHERE] ResultCsvWriter loaded from: "
+                + ResultCsvWriter.class.getProtectionDomain().getCodeSource().getLocation());
+    }
+
     private final GridModel model;
-    private final File file;
-    private BufferedWriter out;
+    private final BufferedWriter out;
+
     private boolean headerWritten = false;
 
-    private List<Integer> nodeIds;
-    private List<String> deviceIds;
-    private List<String> trainIds; // subset of deviceIds that are trains
+    // Built when writing the first row:
+    private final List<String> deviceOrder = new ArrayList<>();
+    private final Map<String, String> prettyP = new LinkedHashMap<>();
+    private final Map<String, String> prettyI = new LinkedHashMap<>();
+    private final List<String> trainIds = new ArrayList<>();
 
-    public ResultCsvWriter(GridModel model, String outputPath) {
-        this(model, outputPath, true);
+    public ResultCsvWriter(GridModel model, String path) throws IOException {
+        this(model, path, false);
     }
 
-    public ResultCsvWriter(GridModel model, String outputPath, boolean truncateOnStart) {
+    public ResultCsvWriter(GridModel model, String path, boolean overwrite) throws IOException {
         this.model = model;
-        this.file = new File(outputPath);
-
-        if (file.getParentFile() != null) file.getParentFile().mkdirs();
-
-        final boolean append = !truncateOnStart;
-        try {
-            boolean fileExists = file.exists();
-            boolean empty = !fileExists || file.length() == 0L;
-            this.out = new BufferedWriter(
-                    new OutputStreamWriter(new FileOutputStream(file, append), StandardCharsets.UTF_8)
-            );
-            // If appending to a non-empty file, assume header exists already.
-            this.headerWritten = append && !empty;
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to open CSV for writing: " + outputPath, e);
+        File f = new File(path);
+        if (overwrite) {
+            File parent = f.getParentFile();
+            if (parent != null) parent.mkdirs();
+            try (FileOutputStream trunc = new FileOutputStream(f, false)) { /* truncate */ }
         }
+        this.out = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(f, true), StandardCharsets.UTF_8));
     }
 
-    private void writeHeaderIfNeeded() throws IOException {
-        if (headerWritten) return;
+    // ---------- lazy metadata ----------
 
-        // Capture current topology (after TrainLoad devices may have been created)
-        this.nodeIds = new ArrayList<>(model.getNodeIds());
-        this.deviceIds = new ArrayList<>(model.getDeviceIds());
-        this.trainIds = new ArrayList<>();
-        for (String did : deviceIds) {
-            Device<Real> d = model.getDevice(did);
-            if (d instanceof TrainLoad) trainIds.add(did);
-        }
-
-        List<String> cols = new ArrayList<>();
-        cols.add("time");
-        cols.add("step");
-
-        // Node voltages
-        for (int nid : nodeIds) cols.add("V(" + nid + ")");
-
-        // Per-device signed powers (includes trains, lines, substations)
-        for (String did : deviceIds) cols.add("P[" + did + "]");
-
-        // Requested power for trains (if available in GridResult)
-        for (String tid : trainIds) cols.add("P_req[" + tid + "]");
-
-        // Brake resistor power per train (pseudo-device id tid + "#brake")
-        for (String tid : trainIds) cols.add("P_brake[" + tid + "]");
-
-        // Aggregates
-        cols.add("P_substations_out");
-        cols.add("P_trains");
-        cols.add("P_lines");
-        cols.add("P_brake");   // total brake resistor power (sum of per-train)
-        cols.add("Balance");   // sum of (sub + trains + lines) — kept for compatibility
-        cols.add("Mismatch");  // sub - trains - lines (≈ 0 if network balances)
-
-        out.write(String.join(",", cols));
-        out.write("\n");
-        headerWritten = true;
+    private static String catAbbrev(String cat) {
+        if (cat == null || cat.isEmpty()) return "line";
+        String lc = cat.toLowerCase(Locale.ROOT);
+        if (lc.startsWith("feeder"))   return "feeder";
+        if (lc.startsWith("catenary")) return "catenary";
+        return cat;
     }
+
+    private static String uniquify(Collection<String> used, String base) {
+        if (!used.contains(base)) return base;
+        int k = 2;
+        while (used.contains(base + "#" + k)) k++;
+        return base + "#" + k;
+    }
+
+    private void buildMetadataFromModel() {
+        deviceOrder.clear(); prettyP.clear(); prettyI.clear(); trainIds.clear();
+
+        for (String id : model.getDeviceIds()) {
+            deviceOrder.add(id);
+            Device<Real> d = model.getDevice(id);
+            String pName, iName;
+
+            if (d instanceof Line line) {
+                String cat = null;
+                try { cat = line.getCategory(); } catch (Throwable ignore) {}
+                if (cat == null || cat.isEmpty()) {
+                    try { cat = line.getDescription(); } catch (Throwable ignore) {}
+                }
+                cat = catAbbrev(cat);
+                String base = "L_" + line.getFromNode() + "_" + line.getToNode() + "|" + cat;
+                pName = "P[" + base + "]";
+                iName = "I[" + base + "]";
+            } else {
+                pName = "P[" + id + "]";
+                iName = "I[" + id + "]";
+            }
+
+            // ensure unique labels
+            pName = uniquify(prettyP.values(), pName);
+            iName = uniquify(prettyI.values(), iName);
+            prettyP.put(id, pName);
+            prettyI.put(id, iName);
+
+            if (d instanceof TrainLoad) trainIds.add(id);
+        }
+        Collections.sort(trainIds);
+    }
+
+    private void writeHeader() throws IOException {
+        StringBuilder h = new StringBuilder(4096);
+        h.append("time,step");
+        for (int nodeId : model.getNodeIds()) h.append(",V(").append(nodeId).append(")");
+        for (String id : deviceOrder) h.append(',').append(prettyP.get(id));
+        for (String id : deviceOrder) h.append(',').append(prettyI.get(id));
+        for (String tid : trainIds)   h.append(",P_req[").append(tid).append(']');
+        for (String tid : trainIds)   h.append(",P_brake[").append(tid).append(']');
+        h.append(",P_substations_out,P_trains,P_lines,P_brake,P_req_trains,Balance,Mismatch,UnderSupply,UnderReceptivity\n");
+        out.write(h.toString());
+    }
+
+    // ---------- public API ----------
 
     public void append(GridResult res, double timeSec, int step) throws IOException {
-        writeHeaderIfNeeded();
-
-        List<String> row = new ArrayList<>();
-        row.add(fmt(timeSec));
-        row.add(Integer.toString(step));
-
-        // Voltages
-        for (int nid : nodeIds) {
-            Real v = res.getLatestNodeVoltage(nid);
-            row.add(fmt(v.asDouble()));
+        if (!headerWritten) {
+            buildMetadataFromModel();          // trains now exist → include them
+            writeHeader();
+            headerWritten = true;
         }
 
-        // Per-device power + aggregate sums
-        double sumSub = 0.0, sumTrain = 0.0, sumLine = 0.0;
-        for (String did : deviceIds) {
-            Real p = res.getLatestDevicePower(did); // signed
-            double pd = p.asDouble();
-            row.add(fmt(pd));
+        StringBuilder row = new StringBuilder(4096);
+        row.append(timeToHms(timeSec)).append(',').append(step);
 
-            Device<Real> d = model.getDevice(did);
-            if (d instanceof Substation)       sumSub  += pd;
-            else if (d instanceof TrainLoad)   sumTrain += pd;
-            else if (d instanceof Line)        sumLine  += pd;
+        // --- node voltages ---
+        for (int nodeId : model.getNodeIds()) {
+            row.append(',').append(fmt(res.getLatestNodeVoltage(nodeId)));
         }
 
-        // Requested power per train (informative; not used in mismatch)
+        // --- device powers & aggregates ---
+        double sumSub = 0.0, sumLine = 0.0, sumTrain = 0.0, sumBrake = 0.0;
+
+        for (String id : deviceOrder) {
+            Device<Real> d = model.getDevice(id);
+            Real p = res.getLatestDevicePower(id);
+
+            // Fallback: compute I^2R if a line has no power set
+            if (p == null && d instanceof Line line) {
+                Real Va = res.getLatestNodeVoltage(line.getFromNode());
+                Real Vb = res.getLatestNodeVoltage(line.getToNode());
+                double R = line.getResistance().asDouble();
+                if (Va != null && Vb != null && R > 0.0) {
+                    double I = (Va.asDouble() - Vb.asDouble()) / R;
+                    p = Real.fromDouble(I * I * R);
+                }
+            }
+
+            double val = (p == null) ? 0.0 : p.asDouble();
+            row.append(',').append(fmt(val));
+
+            if (d instanceof Substation)      sumSub  += val;
+            else if (d instanceof Line)       sumLine += val;
+            else if (d instanceof TrainLoad)  sumTrain+= val;
+
+            // collect per-train brake pseudo-device if present
+            Real pb = res.getLatestDevicePower(id + "#brake");
+            if (pb != null) sumBrake += pb.asDouble();
+        }
+
+        // --- currents ---
+        for (String id : deviceOrder) {
+            row.append(',').append(fmt(res.getLatestDeviceCurrent(id)));
+        }
+
+        // --- requested & brake per train ---
+        double sumReq = 0.0;
         for (String tid : trainIds) {
-            Real pr = res.getLatestDeviceRequestedPower(tid);
-            row.add(fmt(pr.asDouble()));
+            Real r = res.getLatestDeviceRequestedPower(tid);
+            double v = (r == null) ? 0.0 : r.asDouble();
+            sumReq += v;
+            row.append(',').append(fmt(v));
         }
-
-        // Brake resistor power per train (pseudo device "tid#brake") + total
-        double sumBrake = 0.0;
         for (String tid : trainIds) {
-            Real pb = res.getLatestDevicePower(tid + "#brake");
-            double pbd = pb.asDouble();
-            row.add(fmt(pbd));
-            sumBrake += pbd;
+            row.append(',').append(fmt(res.getLatestDevicePower(tid + "#brake")));
         }
 
-        // Aggregates
-        double balance  = sumSub + sumTrain + sumLine; // kept for compatibility (network-only)
-        double mismatch = sumSub - sumTrain - sumLine; // network balance check
+        // --- aggregates ---
+        double mismatch  = sumSub - sumTrain - sumLine;              // network-only (≈ 0)
+        double balance   = mismatch - sumBrake;                      // total incl brake (≈ 0)
 
-        row.add(fmt(sumSub));
-        row.add(fmt(sumTrain));
-        row.add(fmt(sumLine));
-        row.add(fmt(sumBrake));
-        row.add(fmt(balance));
-        row.add(fmt(mismatch));
-
-        out.write(String.join(",", row));
-        out.write("\n");
-    }
-
-    @Override
-    public void flush() throws IOException {
-        if (out != null) out.flush();
-    }
-
-    @Override
-    public void close() throws IOException {
-        if (out != null) {
-            out.flush();
-            out.close();
-            out = null;
+        // Request fulfilment and receptivity
+        double underSup  = Math.max(0.0, sumReq - sumTrain);         // requested vs actually served
+        double underRecv = 0.0;
+        if (sumTrain < 0.0) {
+            // regen case: how much regen not absorbed by substations (network view)
+            double absorption = Math.max(0.0, -sumSub);              // substations absorbing
+            underRecv = Math.max(0.0, (-sumTrain) - absorption);
         }
+
+        // optional cosmetic zeroing
+        final double EPS_BAL = 1e-9;
+        if (Math.abs(mismatch) < EPS_BAL) mismatch = 0.0;
+        if (Math.abs(balance)  < EPS_BAL) balance  = 0.0;
+
+        row.append(',')
+                .append(fmt(sumSub)).append(',')
+                .append(fmt(sumTrain)).append(',')
+                .append(fmt(sumLine)).append(',')
+                .append(fmt(sumBrake)).append(',')
+                .append(fmt(sumReq)).append(',')
+                .append(fmt(balance)).append(',')
+                .append(fmt(mismatch)).append(',')
+                .append(fmt(underSup)).append(',')
+                .append(fmt(underRecv))
+                .append('\n');
+
+        out.write(row.toString());
     }
 
-    private static String fmt(double v) {
-        if (Math.abs(v) >= 0.01) return String.format(Locale.US, "%.6g", v);
-        if (v == 0.0) return "0";
-        return String.format(Locale.US, "%.3e", v);
+    // ---------- utils ----------
+
+    private static String fmt(Real r) { return (r == null) ? "0" : fmt(r.asDouble()); }
+
+    private static String fmt(double d) {
+        if (!Double.isFinite(d)) return "0";
+        return String.format(Locale.ROOT, "%.6f", d);
     }
+
+    private static String timeToHms(double sec) {
+        int s = (int)Math.floor(sec + 0.5);
+        int h = s / 3600; s -= h*3600;
+        int m = s / 60;   s -= m*60;
+        return String.format(Locale.ROOT, "%02d:%02d:%02d", h, m, s);
+    }
+
+    @Override public void flush() throws IOException { out.flush(); }
+    @Override public void close() throws IOException { out.close(); }
 }

@@ -6,142 +6,96 @@ import org.dcsim.math.Real;
 
 import java.util.*;
 
-/**
- * Per-tick storage for solved network state.
- * - Voltages per node
- * - Currents and net powers per device (network viewpoint)
- * - Requested power per device (for power-controlled devices like trains)
- * - Brake-resistor power per device (non-network dissipation; e.g. trains)
- */
-public class GridResult {
+public final class GridResult {
 
-    private final Map<Integer, List<Real>> nodeVoltages = new HashMap<>();
+    // ---- device/node snapshots ----
+    private final Map<String, Real> devicePowers          = new LinkedHashMap<>();
+    private final Map<String, Real> deviceCurrents        = new LinkedHashMap<>();
+    private final Map<String, Real> deviceRequestedPowers = new LinkedHashMap<>();
+    private final Map<Integer, Real> nodeVoltages         = new LinkedHashMap<>();
 
-    private final Map<String, List<Real>> deviceCurrents = new HashMap<>();
-    /** Net/delivered power from the network perspective (can be +/-) */
-    private final Map<String, List<Real>> devicePowers   = new HashMap<>();
-    /** Requested power by device (e.g., train’s requested total line power) */
-    private final Map<String, List<Real>> deviceRequestedPowers = new HashMap<>();
-    /** Brake resistor (or other local dissipation) power per device (>= 0) */
-    private final Map<String, List<Real>> deviceBrakePowers = new HashMap<>();
+    // (optional) matrices used for debugging / reconstruction
+    private final RealMatrix Y;
+    private final RealVector J;
 
-    private final RealMatrix yMatrix;
-    private final RealVector jVector;
+    // headline totals for writer/plots
+    private Totals totals;
 
-    public GridResult(RealMatrix yMatrix, RealVector jVector) {
-        this.yMatrix = yMatrix;
-        this.jVector = jVector;
+    public GridResult(RealMatrix Y, RealVector J) {
+        this.Y = Y;
+        this.J = J;
     }
 
-    // ---- setters ----
+    // ---- writes from solver/actor ----
+    public void setCurrent(String deviceId, Real current)          { deviceCurrents.put(deviceId, current); }
+    public void setPower(String deviceId, Real power)              { devicePowers.put(deviceId, power); }
+    public void setRequestedPower(String deviceId, Real p)         { deviceRequestedPowers.put(deviceId, p); }
+    public void setVoltage(int nodeId, Real voltage)               { nodeVoltages.put(nodeId, voltage); }
 
-    public void setVoltage(int nodeId, Real value) {
-        nodeVoltages.computeIfAbsent(nodeId, k -> new ArrayList<>()).add(value);
-    }
+    // ---- reads for writer/plots ----
+    public Real getPower(String deviceId)              { return devicePowers.get(deviceId); }
+    public Real getCurrent(String deviceId)            { return deviceCurrents.get(deviceId); }
+    public Real getRequestedPower(String deviceId)     { return deviceRequestedPowers.get(deviceId); }
 
-    public void setCurrent(String deviceId, Real value) {
-        deviceCurrents.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(value);
-    }
+    // handy null-safe doubles (optional; use if you like)
+    public double getPowerAsDouble(String id)          { return asDouble(getPower(id)); }
+    public double getRequestedPowerAsDouble(String id) { return asDouble(getRequestedPower(id)); }
+    public double getVoltageAsDouble(int nodeId)       { return asDouble(getLatestNodeVoltage(nodeId)); }
+    private static double asDouble(Real r)             { return (r == null) ? 0.0 : r.asDouble(); }
 
-    /** Net (signed) power from the network viewpoint. */
-    public void setPower(String deviceId, Real value) {
-        devicePowers.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(value);
-    }
+    // matrices (may be null)
+    public RealMatrix getYMatrix() { return Y; }
+    public RealVector getJVector() { return J; }
 
-    /** Requested (signed) power for a device (e.g. train). */
-    public void setRequestedPower(String deviceId, Real value) {
-        deviceRequestedPowers.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(value);
-    }
+    // ---- headline totals ----
+    public void setTotals(Totals t)  { this.totals = t; }
+    public void addTotals(Totals t)  { this.totals = t; }   // alias for your current call site
+    public Totals getTotals()        { return totals; }
 
-    /** Local dissipation power (e.g. brake resistor), expected >= 0. */
-    public void setBrakePower(String deviceId, Real value) {
-        deviceBrakePowers.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(value);
-    }
+    // ----------- Back-compat aliases (older code paths call these) -----------
+    public Real getLatestDevicePower(String deviceId)      { return getPower(deviceId); }
+    public Real getLatestDeviceCurrent(String deviceId)    { return getCurrent(deviceId); }
+    public Real getLatestRequestedPower(String deviceId)   { return getRequestedPower(deviceId); }
+    public Real getLatestNodeVoltage(int nodeId)           { return nodeVoltages.getOrDefault(nodeId, Real.ZERO); }
 
-    // ---- getters (full series) ----
+    public void setLatestDevicePower(String deviceId, Real p)    { setPower(deviceId, p); }
+    public void setLatestDeviceCurrent(String deviceId, Real i)  { setCurrent(deviceId, i); }
+    public void setLatestRequestedPower(String deviceId, Real p) { setRequestedPower(deviceId, p); }
+    public void setLatestNodeVoltage(int nodeId, Real v)         { setVoltage(nodeId, v); }
 
-    public List<Real> getNodeVoltage(int nodeId) {
-        return nodeVoltages.getOrDefault(nodeId, Collections.emptyList());
-    }
+    // ---- legacy/compat aliases expected by ResultCsvWriter ----
+    public Real getLatestDeviceRequestedPower(String deviceId)    { return deviceRequestedPowers.get(deviceId); }
 
-    public List<Real> getDeviceCurrent(String deviceId) {
-        return deviceCurrents.getOrDefault(deviceId, Collections.emptyList());
-    }
+    public Real getVoltage(int nodeId)                            { return getLatestNodeVoltage(nodeId); } // alias
 
-    public List<Real> getDevicePower(String deviceId) {
-        return devicePowers.getOrDefault(deviceId, Collections.emptyList());
-    }
 
-    public List<Real> getDeviceRequestedPower(String deviceId) {
-        return deviceRequestedPowers.getOrDefault(deviceId, Collections.emptyList());
-    }
+    // immutable value carrier for “summa-summarum"
+    public static final class Totals {
+        public final double pStations;         // Σ substation P_out (to network)
+        public final double pTrains;           // Σ train line-side power (signed)
+        public final double pLineLoss;         // Σ I^2R ≥ 0
+        public final double pBrake;            // Σ brake resistor ≥ 0
+        public final double pReqTrains;        // Σ requested train power (signed)
+        public final double pMismatch;         // pStations − (pTrains + pLineLoss)
+        public final double pUndersupply;      // max(0, (pTrains + pLineLoss) − pStations)
+        public final double pUnderreceptivity; // max(0, pBrake)
 
-    public List<Real> getDeviceBrakePower(String deviceId) {
-        return deviceBrakePowers.getOrDefault(deviceId, Collections.emptyList());
-    }
-
-    // ---- getters (latest) ----
-
-    public Real getLatestNodeVoltage(int nodeId) {
-        return latestOf(getNodeVoltage(nodeId));
-    }
-
-    public Real getLatestDeviceCurrent(String deviceId) {
-        return latestOf(getDeviceCurrent(deviceId));
-    }
-
-    public Real getLatestDevicePower(String deviceId) {
-        return latestOf(getDevicePower(deviceId));
-    }
-
-    public Real getLatestDeviceRequestedPower(String deviceId) {
-        return latestOf(getDeviceRequestedPower(deviceId));
-    }
-
-    public Real getLatestDeviceBrakePower(String deviceId) {
-        return latestOf(getDeviceBrakePower(deviceId));
-    }
-
-    // ---- getters (by index) ----
-
-    public Real getDevicePowerAt(String deviceId, int index) {
-        return atOrZero(getDevicePower(deviceId), index);
-    }
-
-    public Real getDeviceRequestedPowerAt(String deviceId, int index) {
-        return atOrZero(getDeviceRequestedPower(deviceId), index);
-    }
-
-    public Real getDeviceBrakePowerAt(String deviceId, int index) {
-        return atOrZero(getDeviceBrakePower(deviceId), index);
-    }
-
-    // ---- snapshot copy ----
-
-    public void storeSnapshot(GridModel model, GridResult snapshot) {
-        for (Integer nodeId : model.getNodeIds()) {
-            setVoltage(nodeId, snapshot.getLatestNodeVoltage(nodeId));
+        public Totals(double pStations,
+                      double pTrains,
+                      double pLineLoss,
+                      double pBrake,
+                      double pReqTrains,
+                      double pMismatch,
+                      double pUndersupply,
+                      double pUnderreceptivity) {
+            this.pStations         = pStations;
+            this.pTrains           = pTrains;
+            this.pLineLoss         = pLineLoss;
+            this.pBrake            = pBrake;
+            this.pReqTrains        = pReqTrains;
+            this.pMismatch         = pMismatch;
+            this.pUndersupply      = pUndersupply;
+            this.pUnderreceptivity = pUnderreceptivity;
         }
-        for (String deviceId : model.getDeviceIds()) {
-            setCurrent(deviceId,        snapshot.getLatestDeviceCurrent(deviceId));
-            setPower(deviceId,          snapshot.getLatestDevicePower(deviceId));
-            setRequestedPower(deviceId, snapshot.getLatestDeviceRequestedPower(deviceId));
-            setBrakePower(deviceId,     snapshot.getLatestDeviceBrakePower(deviceId));
-        }
-    }
-
-    // ---- raw matrices (for post-solve reconstruction if needed) ----
-
-    public RealMatrix getYMatrix() { return yMatrix; }
-    public RealVector getJVector() { return jVector; }
-
-    // ---- helpers ----
-
-    private static Real latestOf(List<Real> list) {
-        return list.isEmpty() ? Real.ZERO : list.get(list.size() - 1);
-    }
-
-    private static Real atOrZero(List<Real> list, int idx) {
-        return (idx >= 0 && idx < list.size()) ? list.get(idx) : Real.ZERO;
     }
 }

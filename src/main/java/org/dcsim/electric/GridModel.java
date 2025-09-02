@@ -19,6 +19,26 @@ public class GridModel {
     private final Map<String, List<CurrentPowerSample>> currentPowerResults = new HashMap<>();
     private final Map<String, List<PowerPoint>> updatedPowerCurves = new HashMap<>();
 
+    // >>> Add this field near other model state:
+    private volatile boolean anyBackfeedAllowed = false;
+
+    /** Returns true if at least one substation in the model allows backfeed. */
+    public boolean isAnyBackfeedAllowed() {
+        return anyBackfeedAllowed;
+    }
+
+    /** (Re)computes the cached “any backfeed allowed?" flag from current devices. */
+    public void recomputeBackfeedFlag() {
+        boolean any = false;
+        for (String id : getDeviceIds()) {
+            Device<org.dcsim.math.Real> d = getDevice(id);
+            if (d instanceof Substation ss && ss.isAllowBackfeed()) {
+                any = true; break;
+            }
+        }
+        anyBackfeedAllowed = any;
+    }
+
     public GridModel(int groundNodeId) {
         this.groundNodeId = groundNodeId;
     }
@@ -33,6 +53,9 @@ public class GridModel {
 
     public void addDevice(Device<Real> device) {
         devices.add(device);
+        if (device instanceof Substation) {
+            recomputeBackfeedFlag();
+        }
     }
 
     public void setPowerProfile(String deviceId, List<PowerPoint> profile) {

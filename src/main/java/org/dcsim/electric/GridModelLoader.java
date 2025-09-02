@@ -2,24 +2,47 @@
 package org.dcsim.electric;
 
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import org.dcsim.math.Real;
 
 public class GridModelLoader {
 
     public static GridModel load(Config config) {
-        System.out.println("=== GridModelLoader: Received config ===");
-        System.out.println(config.root().render(ConfigRenderOptions.concise()));
+        // Accept either a root config or a subtree under "dcsim"
+        Config root = config.hasPath("dcsim") ? config.getConfig("dcsim") : config;
 
-        int groundNodeId = config.getInt("groundNodeId");
+        // Sections (empty if missing → defaults below)
+        Config electrics = root.hasPath("electrics") ? root.getConfig("electrics") : ConfigFactory.empty();
+        Config trainsCfg = root.hasPath("trains")    ? root.getConfig("trains")    : ConfigFactory.empty();
+        Config grid      = root.getConfig("grid");   // must exist
+
+        // ---- Electrics/Substations config (diode vs. backfeed + optional current limit) ----
+        boolean ssDefaultAllowBackfeed =
+                electrics.hasPath("substations.defaults.allowBackfeed")
+                        && electrics.getBoolean("substations.defaults.allowBackfeed");
+        Config ssOverrides =
+                electrics.hasPath("substations.overrides")
+                        ? electrics.getConfig("substations.overrides")
+                        : ConfigFactory.empty();
+
+        // ---- Train defaults (used only for legacy pre-created trains here) ----
+        double tCutoffDefault = trainsCfg.hasPath("defaults.cutoffVoltage")
+                ? trainsCfg.getDouble("defaults.cutoffVoltage") : 850.0;
+        double tMaxVDefault = trainsCfg.hasPath("defaults.maxVoltage")
+                ? trainsCfg.getDouble("defaults.maxVoltage") : 1000.0;
+        double tMaxADefault = trainsCfg.hasPath("defaults.maxCurrentA")
+                ? trainsCfg.getDouble("defaults.maxCurrentA") : 4000.0;
+
+        // ---- Grid core ----
+        int groundNodeId = grid.getInt("groundNodeId");
         GridModel model = new GridModel(groundNodeId);
 
-        // nodes
-        var nodeList = config.getConfigList("nodes");
+        // Nodes (voltage optional → default 0.0)
+        var nodeList = grid.getConfigList("nodes");
         for (var nodeConf : nodeList) {
             int id = nodeConf.getInt("id");
             String position = nodeConf.getString("position");
-            // voltage may be omitted in new configs → default 0.0
             Real voltage = nodeConf.hasPath("voltage")
                     ? Real.fromDouble(nodeConf.getDouble("voltage"))
                     : Real.ZERO;
@@ -27,35 +50,53 @@ public class GridModelLoader {
             model.addNode(node);
         }
 
-        // substations: connect FROM feeder node TO ground (diode toward network)
-        var substationList = config.getConfigList("substations");
+        // Substations: connect FROM feeder bus TO ground (diode toward the network)
+        var substationList = grid.getConfigList("substations");
         for (var sub : substationList) {
             String id = sub.getString("id");
-            int nodeId = sub.getInt("nodeId"); // explicit in our configs
+            int nodeIdOnBus = sub.getInt("nodeId"); // busbar node
             Real emf = Real.fromDouble(sub.getDouble("emf"));
             Real rInternal = Real.fromDouble(sub.getDouble("internalResistance"));
 
-            // NOTE: orientation is important:
-            //   from = network node (feeder), to = ground
-            //   measureNode kept as nodeId (if your Substation uses it)
             Substation ss = new Substation(
                     id,
-                    /* from */        nodeId,
-                    /* to */          groundNodeId,
-                    /* measureNode */ nodeId,
+                    /* from */        nodeIdOnBus,
+                    /* to   */        groundNodeId,
+                    /* groundId */    groundNodeId,
                     emf,
                     rInternal,
                     sub.hasPath("description") ? sub.getString("description") : null
             );
+
+            // allowBackfeed: default from electrics.*, per-station override in electrics.*,
+            // and inline override on grid.substations item (if present).
+            boolean allow = ssDefaultAllowBackfeed;
+            if (ssOverrides.hasPath(id + ".allowBackfeed")) {
+                allow = ssOverrides.getBoolean(id + ".allowBackfeed");
+            }
+            if (sub.hasPath("allowBackfeed")) {
+                allow = sub.getBoolean("allowBackfeed");
+            }
+            ss.setAllowBackfeed(allow);
+
+            // Optional per-station current limit (A)
+            if (ssOverrides.hasPath(id + ".maxCurrentA")) {
+                ss.setMaxCurrentA(ssOverrides.getDouble(id + ".maxCurrentA"));
+            }
+            if (sub.hasPath("maxCurrentA")) {
+                ss.setMaxCurrentA(sub.getDouble("maxCurrentA"));
+            }
+
             model.addDevice(ss);
         }
+        model.recomputeBackfeedFlag();
 
-        // lines (description/category optional)
-        if (config.hasPath("lines")) {
-            var lineList = config.getConfigList("lines");
+        // Lines (description/category optional)
+        if (grid.hasPath("lines")) {
+            var lineList = grid.getConfigList("lines");
             for (var line : lineList) {
                 int from = line.getInt("from");
-                int to   = line.getInt("to");
+                int to = line.getInt("to");
                 Real resistance = Real.fromDouble(line.getDouble("resistance"));
 
                 Line l;
@@ -63,7 +104,9 @@ public class GridModelLoader {
                 boolean hasCat  = line.hasPath("category");
 
                 if (hasDesc && hasCat) {
-                    l = new Line(from, to, resistance, line.getString("description"), line.getString("category"));
+                    l = new Line(from, to, resistance,
+                            line.getString("description"),
+                            line.getString("category"));
                 } else if (hasCat) {
                     l = Line.ofCategory(from, to, resistance, line.getString("category"));
                 } else if (hasDesc) {
@@ -75,29 +118,53 @@ public class GridModelLoader {
             }
         }
 
-        // trains (legacy: trains inside grid; new flow spawns via 'traffic')
-        if (config.hasPath("trains")) {
-            var trainList = config.getConfigList("trains");
+        // Legacy: pre-created trains defined under grid.trains (great for small deterministic tests).
+        // This does NOT use TrainActor/traffic/power profiles.
+        if (grid.hasPath("trains")) {
+            var trainList = grid.getConfigList("trains");
             for (var tr : trainList) {
                 String id = tr.getString("id");
-                // older configs may have fromNode/toNode; new use nodeId (to ground)
+                // Older configs may have fromNode/toNode; newer ones use nodeId→ground
                 int fromNode = tr.hasPath("fromNode") ? tr.getInt("fromNode") : groundNodeId;
                 int toNode   = tr.hasPath("toNode")   ? tr.getInt("toNode")   : groundNodeId;
                 if (tr.hasPath("nodeId")) {
-                    // interpret as train between nodeId and ground
                     fromNode = tr.getInt("nodeId");
                     toNode   = groundNodeId;
                 }
+
                 TrainLoad train = new TrainLoad(id, fromNode, toNode);
-                if (tr.hasPath("cutoffVoltage")) {
-                    train.setCutoffVoltage(Real.fromDouble(tr.getDouble("cutoffVoltage")));
+
+                // Apply per-train overrides from trains.overrides.<ID>.*, else fall back to defaults,
+                // else honor inline values on the device entry if present.
+                double cutoff = tCutoffDefault;
+                double maxV   = tMaxVDefault;
+                double maxA   = tMaxADefault;
+
+                if (trainsCfg.hasPath("overrides." + id)) {
+                    var ov = trainsCfg.getConfig("overrides." + id);
+                    if (ov.hasPath("cutoffVoltage")) cutoff = ov.getDouble("cutoffVoltage");
+                    if (ov.hasPath("maxVoltage"))    maxV   = ov.getDouble("maxVoltage");
+                    if (ov.hasPath("maxCurrentA"))   maxA   = ov.getDouble("maxCurrentA");
+                } else {
+                    if (tr.hasPath("cutoffVoltage")) cutoff = tr.getDouble("cutoffVoltage");
+                    if (tr.hasPath("maxVoltage"))    maxV   = tr.getDouble("maxVoltage");
+                    if (tr.hasPath("maxCurrentA"))   maxA   = tr.getDouble("maxCurrentA");
                 }
+
+                train.setCutoffVoltage(Real.fromDouble(cutoff));
+                train.setMaxVoltage(Real.fromDouble(maxV));
+                train.setMaxCurrent(Real.fromDouble(maxA));
+
+                // NEW: constant requested power (kW) for simple tests (sign: + motoring, − braking).
+                // Stored internally in watts.
+                if (tr.hasPath("requestedPowerKW")) {
+                    double kw = tr.getDouble("requestedPowerKW");
+                    train.setRequestedPower(Real.fromDouble(kw * 1000.0));
+                }
+
                 model.addDevice(train);
             }
         }
-
-        System.out.println("Nodes: " + model.getNodes());
-        System.out.println("Devices: " + model.getDevices());
 
         return model;
     }

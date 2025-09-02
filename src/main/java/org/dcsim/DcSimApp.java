@@ -16,17 +16,27 @@ import org.dcsim.power.PowerTemplateParser;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.*;
 
 public final class DcSimApp {
 
-    // ----- Root actor that wires everything -----
+    // ----- Root actor that wires everything with backpressure -----
     public static final class Root extends AbstractBehavior<Root.Command> {
-        interface Command {}
-        private static final class Tick implements Command {}
+        interface Command {
+        }
 
-        private final TimerScheduler<Command> timers;
+        // Internal “start next step"
+        private static final class Kick implements Command {
+        }
+
+        // Adapter for replies from GridModelActor
+        private static final class FromGrid implements Command {
+            final GridModelActor.SolveReply reply;
+
+            FromGrid(GridModelActor.SolveReply r) {
+                this.reply = r;
+            }
+        }
 
         private final double tickSec;
         private final double endAtSec;   // hard stop (min of endSec and step-limit)
@@ -37,6 +47,12 @@ public final class DcSimApp {
         private final ActorRef<GridModelActor.Command> grid;
         private final List<ActorRef<TrainActor.Command>> trains = new ArrayList<>();
 
+        // Reply adapter (GridModelActor acks arrive here)
+        private final ActorRef<GridModelActor.SolveReply> gridReplyAdapter;
+
+        // Wall clock reference for REAL_TIME pacing
+        private final long wallStartNanos;
+
         public static Behavior<Command> create(
                 GridModel model,
                 DcElectricSolver solver,
@@ -46,18 +62,17 @@ public final class DcSimApp {
                 int endSec,               // may be Integer.MAX_VALUE if missing
                 List<TrainSpawn> trainSpawns,
                 SimulationSpeed speed,
-                int stopAfterSteps        // <0 if missing
+                int stopAfterSteps,       // <0 if missing
+                int anchorNodeId          // catenary/feeder node to attach trains to
         ) {
             return Behaviors.setup(ctx ->
-                    Behaviors.withTimers(timers ->
-                            new Root(ctx, timers, model, solver, csvOut, tickSec, startSec, endSec, trainSpawns, speed, stopAfterSteps)
-                    )
+                    new Root(ctx, model, solver, csvOut, tickSec, startSec, endSec,
+                            trainSpawns, speed, stopAfterSteps, anchorNodeId)
             );
         }
 
         private Root(
                 ActorContext<Command> ctx,
-                TimerScheduler<Command> timers,
                 GridModel model,
                 DcElectricSolver solver,
                 String csvOut,
@@ -66,24 +81,23 @@ public final class DcSimApp {
                 int endSec,
                 List<TrainSpawn> trainSpawns,
                 SimulationSpeed speed,
-                int stopAfterSteps
+                int stopAfterSteps,
+                int anchorNodeId
         ) {
             super(ctx);
-            this.timers = timers;
             this.tickSec = tickSec;
             this.nowSec = startSec;
             this.step = 0;
             this.speed = speed;
 
             // compute hard stop
-            double stopByTime  = (endSec <= 0 ? Double.POSITIVE_INFINITY : endSec);
+            double stopByTime = (endSec <= 0 ? Double.POSITIVE_INFINITY : endSec);
             double stopBySteps = (stopAfterSteps > 0)
                     ? (startSec + stopAfterSteps * tickSec)
                     : Double.POSITIVE_INFINITY;
             this.endAtSec = Math.min(stopByTime, stopBySteps);
 
-            // Grid actor (anchorNode could be from config; hard-coded 1 here)
-            int anchorNodeId = 1;
+            // Grid actor
             this.grid = ctx.spawn(
                     GridModelActor.create(model, solver, csvOut, anchorNodeId),
                     "grid"
@@ -99,60 +113,77 @@ public final class DcSimApp {
                 grid.tell(new GridModelActor.EnsureTrainDevice(ts.trainId)); // prime so first solve writes a row
             }
 
-            // Kick off ticking – exactly once, per mode
-            if (speed == SimulationSpeed.REAL_TIME) {
-                long periodMs = Math.max(1L, Math.round(tickSec * 1000.0));
-                timers.startTimerAtFixedRate(new Tick(), Duration.ZERO, Duration.ofMillis(periodMs));
-                ctx.getLog().info("Simulation started (REAL_TIME), dt={} s.", tickSec);
-            } else {
-                // FAST: start after 1 ms to let EnsureTrainDevice messages process first
-                ctx.scheduleOnce(Duration.ofMillis(1), ctx.getSelf(), new Tick());
-                ctx.getLog().info("Simulation started (FAST), dt={} s.", tickSec);
-            }
+            // Build adapter for acks from grid
+            this.gridReplyAdapter = ctx.messageAdapter(GridModelActor.SolveReply.class, FromGrid::new);
+
+            this.wallStartNanos = System.nanoTime();
+
+            // Start after 1 ms so EnsureTrainDevice reaches grid first
+            ctx.scheduleOnce(java.time.Duration.ofMillis(1), ctx.getSelf(), new Kick());
+            ctx.getLog().info("Simulation started ({}), dt={} s.", speed, tickSec);
         }
 
         @Override
         public Receive<Command> createReceive() {
             return newReceiveBuilder()
-                    .onMessage(Tick.class, t -> onTick())
+                    .onMessage(Kick.class, k -> onKick())
+                    .onMessage(FromGrid.class, this::onFromGrid)
                     .build();
         }
 
-        private Behavior<Command> onTick() {
-            // Frys värden för det här steget
-            final double t = nowSec;
-            final int s = (int) step;
-
-            // 1) dispatch ticks to trains
-            for (var tr : trains) {
-                tr.tell(new TrainActor.Tick(t));
-            }
-
-            // 2) solve current time/step
-            grid.tell(new GridModelActor.SolveTick(t, s));
-
-            // 3) advance simulation time (görs efter att vi skickat SolveTick)
-            nowSec = t + tickSec;
-            step = s + 1;
-
-            // 4) stop AFTER producing this row, när nästa tick skulle kliva förbi endAtSec
+        private Behavior<Command> onKick() {
+            // Safety: check stop before issuing a new step
             if (nowSec >= endAtSec - 1e-9) {
                 grid.tell(new GridModelActor.SimulationFinished());
                 return Behaviors.stopped();
             }
 
-            // 5) FAST => reschedulera exakt en gång; REAL_TIME använder timers
-            if (speed == SimulationSpeed.FAST) {
-                getContext().scheduleOnce(java.time.Duration.ZERO, getContext().getSelf(), new Tick());
-            }
+            final double t = nowSec;
+            final int s = (int) step;
 
+            // 1) tick trains
+            for (var tr : trains) tr.tell(new TrainActor.Tick(t));
+
+            // 2) ask grid to solve and ACK after write+flush
+            grid.tell(new GridModelActor.SolveTick(t, s, gridReplyAdapter));
+
+            // Do NOT advance time here; we wait for the ACK.
+            return this;
+        }
+
+        private Behavior<Command> onFromGrid(FromGrid fg) {
+            if (fg.reply instanceof GridModelActor.Solved) {
+                // Advance AFTER row has been flushed
+                nowSec = nowSec + tickSec;
+                step = step + 1;
+
+                // Stop after producing this row if next step would pass the end time
+                if (nowSec >= endAtSec - 1e-9) {
+                    grid.tell(new GridModelActor.SimulationFinished());
+                    return Behaviors.stopped();
+                }
+
+                // Schedule next Kick — immediate (FAST) or paced to wall time (REAL_TIME)
+                if (speed == SimulationSpeed.REAL_TIME) {
+                    long elapsed = System.nanoTime() - wallStartNanos;
+                    long shouldElapsed = (long) Math.round(nowSec * 1_000_000_000.0);
+                    long delayNanos = Math.max(0L, shouldElapsed - elapsed);
+                    getContext().scheduleOnce(java.time.Duration.ofNanos(delayNanos), getContext().getSelf(), new Kick());
+                } else {
+                    getContext().scheduleOnce(java.time.Duration.ZERO, getContext().getSelf(), new Kick());
+                }
+            }
             return this;
         }
     }
 
-    private record TrainSpawn(String trainId, PowerProfile profile, int departureSec, boolean sameModel, double auxKW) {}
+    private record TrainSpawn(String trainId, PowerProfile profile, int departureSec,
+                              boolean sameModel, double auxKW) {
+    }
 
     public static void main(String[] args) {
+        System.out.println("[MAIN] DcSimApp starting");
+
         if (args.length != 1) {
             System.err.println("Usage: DcSimApp <path-to-application.conf>");
             System.exit(1);
@@ -163,16 +194,16 @@ public final class DcSimApp {
             System.exit(2);
         }
 
-        // ---- Config ----
+        // ---- Config (support full dcsim subtree) ----
         Config root = ConfigFactory.parseFile(confFile).resolve();
-        Config dcsim = root.getConfig("dcsim");
+        Config dcsim = root.hasPath("dcsim") ? root.getConfig("dcsim") : root;
 
         // ---- Sim control ----
         Config sim = dcsim.getConfig("simulationControl");
 
         double tickSec = sim.hasPath("tickDurationSec")
                 ? sim.getDouble("tickDurationSec")
-                : sim.getDouble("tickDuration"); // fallback to legacy key
+                : sim.getDouble("tickDuration"); // legacy key
 
         int startSec = sim.hasPath("simulationStart")
                 ? parseHmsToSeconds(sim.getString("simulationStart"))
@@ -186,12 +217,15 @@ public final class DcSimApp {
                 ? SimulationSpeed.valueOf(sim.getString("simulationSpeed").trim().toUpperCase(Locale.ROOT))
                 : SimulationSpeed.FAST;
 
-        int stopAfterSteps = sim.hasPath("stopAfterSteps")
-                ? sim.getInt("stopAfterSteps")
-                : -1;
+        int stopAfterSteps = sim.hasPath("stopAfterSteps") ? sim.getInt("stopAfterSteps") : -1;
 
-        // ---- Grid ----
-        GridModel model = GridModelLoader.load(dcsim.getConfig("grid"));
+        // ---- Grid model (pass FULL dcsim so GridModelLoader can see electrics/trains/grid) ----
+        GridModel model = GridModelLoader.load(dcsim);
+
+        // Optional anchor node config; fallback to first non-ground node
+        int anchorNodeId = dcsim.hasPath("grid.anchorNodeId")
+                ? dcsim.getInt("grid.anchorNodeId")
+                : firstNonGround(model);
 
         // ---- Power templates ----
         Map<String, List<PowerPoint>> byTpl = dcsim.hasPath("powerProfiles")
@@ -225,9 +259,11 @@ public final class DcSimApp {
 
         // ---- Solver + CSV path ----
         DcElectricSolver solver = new DcElectricSolver();
-        String outPath = "output/electrical.csv";
+        String[] parts = args[0].split("/");
+        String testName = parts[parts.length-1].split("\\.")[0];
+                        String outPath = "output/electrical_" + testName + ".csv";
         new File(outPath).getParentFile().mkdirs();
-        try (ResultCsvWriter pre = new ResultCsvWriter(model, outPath)) {
+        try (ResultCsvWriter ignored = new ResultCsvWriter(model, outPath)) {
             // pre-create/clear file
         } catch (IOException e) {
             System.err.println("[WARN] Could not prepare CSV file: " + e.getMessage());
@@ -235,10 +271,17 @@ public final class DcSimApp {
 
         // ---- Start Akka ----
         ActorSystem<Root.Command> system = ActorSystem.create(
-                Root.create(model, solver, outPath, tickSec, startSec, endSec, spawns, speed, stopAfterSteps),
+                Root.create(model, solver, outPath, tickSec, startSec, endSec,
+                        spawns, speed, stopAfterSteps, anchorNodeId),
                 "SimulatorSystem"
         );
         // System terminates when Root stops after SimulationFinished
+    }
+
+    private static int firstNonGround(GridModel m) {
+        int g = m.getGroundNodeId();
+        for (int id : m.getNodeIds()) if (id != g) return id;
+        return g; // fallback (should not happen with a valid grid)
     }
 
     private static int parseHmsToSeconds(String s) {
