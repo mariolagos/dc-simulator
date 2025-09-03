@@ -5,6 +5,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigRenderOptions;
 import org.dcsim.math.Real;
+import org.dcsim.utils.PositionUtils;
 
 public class GridModelLoader {
 
@@ -97,22 +98,25 @@ public class GridModelLoader {
             for (var line : lineList) {
                 int from = line.getInt("from");
                 int to = line.getInt("to");
-                Real resistance = Real.fromDouble(line.getDouble("resistance"));
+                Real resistancePerKm = Real.fromDouble(line.getDouble("resistance"));
+                String positionFrom = model.getNodes().get(from).getPosition();
+                String positionTo = model.getNodes().get(to).getPosition();
+                double lenKm = PositionUtils.distance(positionFrom, positionTo)/1000;
 
                 Line l;
                 boolean hasDesc = line.hasPath("description");
                 boolean hasCat  = line.hasPath("category");
 
                 if (hasDesc && hasCat) {
-                    l = new Line(from, to, resistance,
+                    l = new Line(from, to, resistancePerKm.times(lenKm),
                             line.getString("description"),
                             line.getString("category"));
                 } else if (hasCat) {
-                    l = Line.ofCategory(from, to, resistance, line.getString("category"));
+                    l = Line.ofCategory(from, to, resistancePerKm.times(lenKm), line.getString("category"));
                 } else if (hasDesc) {
-                    l = Line.of(from, to, resistance, line.getString("description"));
+                    l = Line.of(from, to, resistancePerKm.times(lenKm), line.getString("description"));
                 } else {
-                    l = Line.of(from, to, resistance);
+                    l = Line.of(from, to, resistancePerKm.times(lenKm));
                 }
                 model.addDevice(l);
             }

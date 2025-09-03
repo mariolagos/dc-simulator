@@ -78,4 +78,8 @@ public final class PositionUtils {
         int[] p = parseFlexible(pos);
         return String.format("%d %d+%03d", p[0], p[1], p[2]);
     }
+
+    public static double distance(String position, String position1) {
+        return Math.abs(toMeters(parseFlexible(position))-toMeters(parseFlexible(position1)));
+    }
 }
