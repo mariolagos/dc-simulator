@@ -41,6 +41,31 @@ Typical use cases:
   - Currents and powers per device vs. time
   - Train energy balances
 
+## DC solver architecture & workflow
+
+**Två sätt att bygga ett nät:**
+
+1. **Production path**: `GridModel<Real>` → `DcNet` via `NetBuilder.makeNet(...)`
+2. **Test/fixture path**: Skapa `DcNet` direkt med `NetFixtures`  
+   (här fungerar `new DcNet(...)` som själva “makeNet”-steget).
+
+**Kedja:**
+- `MatrixBuilder.build(net, VseedOrNull)` bygger basmatrisen `G` och källvektorn `J`
+  (linjer + substationers Norton-stämpling), utan jordklamp.
+- `DcIterativeSolver.solveVoltages(net)` itererar icke-linjära delar (diodstationer, tåg),
+  lägger små shuntar för numerisk stabilitet, klampar jord, och löser för `V`.
+
+**Indexering:**
+- `DcNet` använder kompakta index `0..n-1`.
+- `groundIndex()` är index för jord.
+- `indexById()` mappar original-ID → kompakt index.
+
+**Produktionsflöde:**
+```java
+DcNet net = NetBuilder.makeNet(gridModel);
+RealVector V = DcIterativeSolver.solveVoltages(net);
+```
+
 ## 2. How to Run
 Make sure you are in the root directory of the project.
 
@@ -73,3 +98,29 @@ Detailed format and examples: see **USER_GUIDE.md**.
 ## 5. References
 - **USER_GUIDE.md** – Detailed configuration instructions
 - **SoftwareSpecification.md** – High-level system design
+-  USER GUIDE (dcSimulator)
+
+This guide provides instructions for users of dcSimulator, including setup, configuration, and example case studies.
+
+## Case Studies
+
+The following examples are provided as **case studies**. They illustrate how to set up and run different simulation scenarios.  
+New cases can be added as the project evolves.
+
+| Case | Description | Purpose | Input files | Expected outcome |
+|------|-------------|---------|--------------|------------------|
+| 3subs1train | Three substations feeding one train | Illustrates basic DC supply with single train | `application.conf` (3 substations, 1 train) | Voltage profile along line; power balance |
+| 3subs2train | Three substations feeding two trains | Demonstrates interaction between multiple trains | `application.conf` (3 substations, 2 trains) | Shared load, regenerative effects |
+| symphony | Realistic multi-train setup (based on Symphony data) | Showcases system handling of timetable-driven trains | `application.conf` + timetable/power profiles | Aggregated load, timetable plots |
+
+## Running a Case Study
+
+1. Select the desired case study and corresponding input files.
+2. Configure `application.conf` with grid, traffic, and power profiles.
+3. Run the simulator using the main application.
+4. Review output files (CSV, plots) for results.
+
+---
+
+Refer to [terms.md](terms.md) for all terminology used in this guide.
+
