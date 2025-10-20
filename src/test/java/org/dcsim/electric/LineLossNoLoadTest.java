@@ -17,7 +17,7 @@ public class LineLossNoLoadTest {
 
         m.addDevice(new Substation("S1", 0, 1, 1, Real.fromDouble(1000), Real.fromDouble(0.05), null));
         m.addDevice(new Substation("S2", 0, 2, 2, Real.fromDouble(1000), Real.fromDouble(0.05), null));
-        m.addDevice(Line.of(1, 2, Real.fromDouble(0.1)));
+        m.addDevice(Line.of(1, 2, Real.fromDouble(0.1), 1000));
 
         DcElectricSolver solver = new DcElectricSolver(); // din befintliga
         GridResult res = solver.solve(m, 0.0, 0);

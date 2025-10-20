@@ -39,8 +39,8 @@ public class Substation implements Device<Real> {
     private final int fromNode;              // DC bus node (positive terminal)
     private final int toNode;                // return (often ground)
     private final int groundNodeId;          // explicit ground id from the model
-    private final Real emf;                  // [V]
-    private final Real internalResistance;   // [ohm]
+    private Real emf;                  // [V]
+    private Real internalResistance;   // [ohm]
 
     private Real current = Real.ZERO;   // last computed i_net (to network)
     private Real power = Real.ZERO;   // last computed P_out (to network)
@@ -248,5 +248,13 @@ public class Substation implements Device<Real> {
             }
             // No source injection when blocked.
         }
+    }
+
+    public void setInternalResistance(Real real) {
+        internalResistance = real;
+    }
+
+    public void setEmf(Real real) {
+        emf = real;
     }
 }

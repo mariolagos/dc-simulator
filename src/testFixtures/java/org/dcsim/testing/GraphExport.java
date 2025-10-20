@@ -1,4 +1,4 @@
-package org.dcsim.utils;
+package org.dcsim.testing;
 
 import org.dcsim.electric.Device;
 import org.dcsim.electric.GridModel;

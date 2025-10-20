@@ -1,115 +1,100 @@
-// src/test/java/org/dcsim/it/TestSupport.java
 package org.dcsim.it;
 
 import org.dcsim.electric.*;
 import org.dcsim.math.Real;
 
-import java.util.*;
-
 public final class TestSupport {
 
-    private TestSupport() {}
+    private TestSupport() {
+    }
 
-    /** Bygger en minimal 3-noder grid: SS0 — Nmid — SS1, med tåget på Nmid. */
-    public static GridModel<Real> buildMiniGrid(boolean allowBackfeed, double emfV) {
-        GridModel<Real> m = new GridModel<>();
-        int GND = 0, N0 = 1, NMID = 2, N1 = 3;
-        m.addNode(GND); m.setGroundNodeId(GND);
-        m.addNode(N0);  m.addNode(NMID); m.addNode(N1);
+    /**
+     * Bygg ett enkelt 3-SS-nät med en linje mellan varje station (1.5 km).
+     */
+    public static GridModel<Real> buildMiniGrid(double emfV, double rInt, boolean allowBackfeed) {
+        int grdId = 0;
+        int nd0Id = 1;
+        int ankId = 99;
+        int nd1Id = 2;
+        int nd2Id = 3;
+        Node GRD = new Node(grdId, new Real(0.), "0 0+100");
+        Node ND0 = new Node(nd0Id, new Real(0.), "0 0+000");
+        Node ND1 = new Node(nd1Id, new Real(0.), "0 1+500");
+//        Node ND2 = new Node(nd2Id, new Real(0.), "3 0+000");
+        Node ANK = new Node(ankId, new Real(0.), "0 0+200");
+        GridModel<Real> m = new GridModel<>(grdId);
+        m.setGroundNodeId(GRD);
 
-        // Två likriktarstationer med internresistans (ohmig källa).
-        Substation ss0 = new Substation("SS0", N0, Real.fromDouble(emfV), Real.fromDouble(0.01));
-        ss0.setAllowBackfeed(allowBackfeed); // TODO: om din klass använder annat namn/flagga — anpassa
-        Substation ss1 = new Substation("SS1", N1, Real.fromDouble(emfV), Real.fromDouble(0.01));
-        ss1.setAllowBackfeed(allowBackfeed);
+        // noder
+        m.addNode(GRD); // GND
+        m.addNode(ND0);
+        m.addNode(ND1);
+        m.addNode(ANK);
 
-        m.addDevice(ss0);
-        m.addDevice(ss1);
+        // linjer (ohm/km antas redan till Real i Line)
+        m.addDevice(new Line(nd0Id, ankId, Real.fromDouble(0.1), "L0", "u", 1500));
+        m.addDevice(new Line(ankId, nd1Id, Real.fromDouble(0.2), "L1", "u", 1500));
 
-        // Två linor N0—NMID—N1 (1.5 km vardera, 0.03 ohm/km)
-        m.addDevice(new Line("L0", N0, NMID, 1500.0, Real.fromDouble(0.03)));
-        m.addDevice(new Line("L1", NMID, N1, 1500.0, Real.fromDouble(0.03)));
+        // stationer
+        m.addDevice(new Substation("SS0", nd0Id, grdId, grdId, Real.fromDouble(emfV), Real.fromDouble(rInt)));
+        m.addDevice(new Substation("SS1", nd1Id, grdId, grdId, Real.fromDouble(emfV), Real.fromDouble(rInt)));
 
-        // Tåg-”device” på mittennoden (profilstyrt via setRequestedComponents)
-        TrainLoad t = new TrainLoad("T1", NMID);
-        t.setMaxVoltage(Real.fromDouble(900.0)); // Vmax
-        t.setCutoffVoltage(Real.fromDouble(880.0)); // Vmin
-        // ingen strömbegränsning för test
-        m.addDevice(t);
-
+        // Lägg alltid till T1 på mittnoden
+        if (!m.getDeviceIds().contains("T1")) {
+            TrainLoad t1 = new TrainLoad("T1", ankId, grdId);
+            m.addDevice(t1);
+        }
         return m;
     }
 
-    /** Hämtar tåget T1 ur modellen (kastar om det saknas). */
-    public static TrainLoad train(GridModel<Real> m) {
-        Device<Real> d = m.getDevice("T1");
-        if (!(d instanceof TrainLoad)) throw new IllegalStateException("Train T1 not found");
-        return (TrainLoad) d;
+    /**
+     * Lägg in ett TrainLoad på noden.
+     */
+    public static TrainLoad addTrain(GridModel<Real> m,
+                                     String id,
+                                     int nodeId,
+                                     int grdId,
+                                     double cutoffV,
+                                     double maxV,
+                                     double maxA) {
+        TrainLoad tl = new TrainLoad(id, grdId, nodeId);
+        tl.setCutoffVoltage(Real.fromDouble(cutoffV));
+        tl.setMaxVoltage(Real.fromDouble(maxV));
+        tl.setMaxCurrent(Real.fromDouble(maxA));
+        m.addDevice(tl);
+        return tl;
     }
 
-    /** Sätter begäran för T1 (kW): motordrift (+), regen (negativ brakingKW), eller ohmisk broms (+brakingKW). */
-    public static void requestTrain(TrainLoad t1, double motoringKW, double brakingKW, double auxKW) {
-        // TODO: anpassa om din signatur skiljer: (motoringKW, brakingKW, auxiliaryKW)
-        t1.setRequestedComponents(motoringKW, brakingKW, auxKW);
+    /**
+     * Kör en steglösning och returnerar GridResult.
+     */
+    public static GridResult solveOnce(GridModel<Real> m, double tSec, int step) {
+        DcElectricSolver solver = new DcElectricSolver();
+        return solver.solve(m, tSec, step);
     }
 
-    // ===== Diod-iteration (samma idé som i GridModelActor) =====
-    public static GridResult solveWithRectifierBlocks(GridModel<Real> model, DcElectricSolver solver,
-                                                      double timeSec, int step) throws Exception {
-        final double BF_EPS_A = 1e-6;
-        final int MAX_IT = 3;
-
-        // samla SS + originalparametrar
-        class Orig { final double emf, r; Orig(double e, double r){this.emf=e; this.r=r;} }
-        Map<String, Orig> orig = new HashMap<>();
-        List<Substation> all = new ArrayList<>();
-        for (Object idObj : model.getDeviceIds()) {
-            Device<Real> d = model.getDevice(String.valueOf(idObj));
-            if (d instanceof Substation ss) {
-                all.add(ss);
-                orig.put(ss.getId(), new Orig(ss.getEmf().asDouble(), ss.getInternalResistance().asDouble()));
-            }
-        }
-
-        GridResult res = null;
-        for (int it = 0; it < MAX_IT; it++) {
-            res = solver.solve(model, timeSec, step);
-
-            boolean changed = false;
-            for (Substation ss : all) {
-                if (ss.isAllowBackfeed()) continue; // tillåter backfeed → blockera ej
-
-                Real iR = res.getLatestDeviceCurrent(ss.getId());
-                double i = (iR != null) ? iR.asDouble() : 0.0;
-                // backfeed in i stationen? (tecken enl. dina konventioner)
-                if (i < -BF_EPS_A) {
-                    ss.setInternalResistance(Real.fromDouble(1e12));
-                    ss.setEmf(Real.fromDouble(0.0));
-                    changed = true;
-                }
-            }
-            if (!changed) break;
-        }
-
-        // återställ
-        for (Substation ss : all) {
-            Orig o = orig.get(ss.getId());
-            ss.setInternalResistance(Real.fromDouble(o.r));
-            ss.setEmf(Real.fromDouble(o.emf));
-        }
-        return res;
+    /**
+     * Hämta nodspänning (double) med säker fallback.
+     */
+    public static double v(GridResult r, int nodeId) {
+        Real rv = r.getLatestNodeVoltage(nodeId);
+        return (rv != null) ? rv.asDouble() : 0.0;
     }
 
-    public static double powW(GridResult res, String devId) {
-        Real p = res.getLatestDevicePower(devId);
-        return p == null ? 0.0 : p.asDouble();
+    /**
+     * Hämta device-effekt (double) med säker fallback.
+     */
+    public static double p(GridResult r, String devId) {
+        Real rp = r.getLatestDevicePower(devId);
+        return (rp != null) ? rp.asDouble() : 0.0;
     }
-    public static double curA(GridResult res, String devId) {
-        Real i = res.getLatestDeviceCurrent(devId);
-        return i == null ? 0.0 : i.asDouble();
-    }
-    public static double nodeV(GridResult res, int nodeId) {
-        Real v = res.getLatestNodeVoltage(nodeId);
-        return v == null ? 0.0 : v.asDouble();
+
+    /**
+     * Summera device-effekt för en lista.
+     */
+    public static double sumP(GridResult r, String... devIds) {
+        double s = 0.0;
+        for (String id : devIds) s += p(r, id);
+        return s;
     }
 }

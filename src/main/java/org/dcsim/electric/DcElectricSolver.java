@@ -4,6 +4,7 @@ import org.apache.commons.math3.linear.*;
 import org.dcsim.math.Real;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 public class DcElectricSolver implements ElectricSolver {
 
@@ -22,6 +23,44 @@ public class DcElectricSolver implements ElectricSolver {
 
     // optional quick diag
     private static final boolean LOG_SS_AFTER_SOLVE = false;
+
+    // --- typed view over devices to avoid raw -> Object issues ---
+    @SuppressWarnings("unchecked")
+    private static List<Device<Real>> devices(GridModel<Real> model) {
+        return (List<Device<Real>>) (List<?>) model.getDevices();
+    }
+
+// GridModel model;  // if you can, prefer: GridModel<Real> model
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private static void primeSubstationGuesses(
+            GridModel model,
+            java.util.Map<Object, Integer> idx,                    // use your actual key type
+            org.apache.commons.math3.linear.RealVector V
+    ) {
+        // give substation bus nodes a sensible initial guess (slightly below E)
+        for (Object o : model.getDevices()) {                  // raw-safe iteration
+            Device<Real> d = (Device<Real>) o;                 // cast once per element
+
+            if (d instanceof Substation) {                    // Substation is NON-generic
+                Substation ss = (Substation) d;               // <-- plain Substation
+                Integer ai = idx.get(ss.getFromNode());
+                if (ai != null) {
+                    double emf = ss.getEmf() instanceof org.dcsim.math.Real
+                            ? ((org.dcsim.math.Real) ss.getEmf()).asDouble()
+                            : ss.getEmf().asDouble();
+                    V.setEntry(ai, emf - 1e-3);
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private static void forEachDevice(GridModel model, Consumer<Device<Real>> fn) {
+        for (Object o : model.getDevices()) {
+            fn.accept((Device<Real>) o);
+        }
+    }
 
     @Override
     public GridResult solve(GridModel model, double timeSec, int timestep) {
@@ -44,12 +83,27 @@ public class DcElectricSolver implements ElectricSolver {
         V.setEntry(gnd, 0.0);
 
         // give substation bus nodes a sensible initial guess (slightly below E)
-        for (Device<Real> d : model.getDevices()) {
-            if (d instanceof Substation ss) {
+//        for (Device<Real> d : devices(model)) {
+//            if (d instanceof Substation ss) {
+//                Integer ai = idx.get(ss.getFromNode());
+//                if (ai != null) V.setEntry(ai, ss.getEmf().asDouble() - 1e-3);
+//            }
+//        }
+        forEachDevice(model, d -> {
+            if (d instanceof Substation) {
+                Substation ss = (Substation) d; // Substation är icke-generisk
                 Integer ai = idx.get(ss.getFromNode());
-                if (ai != null) V.setEntry(ai, ss.getEmf().asDouble() - 1e-3);
+                if (ai != null) {
+                    // robust emf-uppslag (Real eller annat)
+                    double emf = (ss.getEmf() instanceof org.dcsim.math.Real)
+                            ? ((org.dcsim.math.Real) ss.getEmf()).asDouble()
+                            : (ss.getEmf() instanceof Number
+                            ? ((Number) ss.getEmf()).doubleValue()
+                            : ss.getEmf().asDouble());
+                    V.setEntry(ai, emf - 1e-3);
+                }
             }
-        }
+        });
 
         // ===== fixed-point like iteration: build G, J and solve G·V = J =====
         RealMatrix G = null;

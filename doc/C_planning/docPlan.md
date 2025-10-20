@@ -1,84 +1,104 @@
-# Documentation Plan (dcSimulator)
-**Document Level: C (Planning)**  
-**Purpose:** Define ownership, structure, and update rules for all project documentation.
+# docPlan.md
+**Document Level:** C (Planning)  
+**Purpose:** Define the structure and hierarchy of all DcSimulator documentation.  
+**Audience:** Developers, architects, and maintainers.
 
 ---
 
-## 1. Overview
-This plan ensures consistency across all documentation levels in `dcSimulator`.  
-Each feature or revision must update the corresponding document(s) according to the A–B–C hierarchy.
-
-**Principle:**
-> A < B < C (A-docs may be referenced by B, and both may be referenced by C, but never duplicated.)
+## 1. Purpose
+This plan defines roles, hierarchy, and cross‑references between all documentation components in the DcSimulator project.  
+Each topic has a **single authoritative source** to avoid duplication; other docs **link** to that source.
 
 ---
 
-## 2. Hierarchy Overview
+## 2. Entry Points
+- **README.md (repo root)** — Front‑door overview for developers: what the project is, quickstart, and where docs live.
+- **docs/** — All A/B/C level documentation (see hierarchy below).
 
-| Level | Audience | Purpose | Main Documents |
-|-------|-----------|----------|----------------|
-| **A. User-level** | Operators, analysts | Explain usage, configuration, and models | `USER_GUIDE.md`, `modelDescription.md`, `terms.md` |
-| **B. Developer-level** | Developers, maintainers | Explain architecture, APIs, tests, and coding practices | `softwareSpecification.md`, `README.md`, `README_utv.md`, `testPlan.md` |
-| **C. Planning-level** | Project managers, architects | Track documentation, progress, and plans | `docPlan.md`, `prototypePlan.md`, `progressStatus.md`, `todo.md` |
+> Note: Content from legacy `README.md` (v0.4) has been integrated into the new root README and A/B docs where applicable. fileciteturn1file0
 
 ---
 
-## 3. File Structure
+## 3. Hierarchy Overview
+
+| Level | Audience | Purpose | Main Documents                                                  |
+|------|----------|---------|-----------------------------------------------------------------|
+| **A. User‑level** | Operators, analysts | Usage, configuration, model understanding | `USER_GUIDE.md`, `modelDescription.md`, `terms.md`              |
+| **B. Developer‑level** | Developers, maintainers | Architecture, APIs, implementation, tests | `README_dev.md`, `softwareSpecification_v1_1.md`, `testPlan.md` |
+| **C. Planning‑level** | PM/Architects | Plans and project status | `docPlan.md`, `prototypePlan_v1_1.md`, `progressStatus.md`      |
+
+**Hierarchy rule:** Documents may reference the same or **lower** levels; never upwards.
+
+---
+
+## 4. Directory Layout
 
 ```
+README.md              (repo root entry point)
+
 docs/
-├── A_user/
-│ ├── USER_GUIDE.md
-│ ├── modelDescription.md
-│ ├── terms.md
-│ └── examples/
-│
-├── B_developer/
-│ ├── softwareSpecification.md
-│ ├── README.md
-│ ├── README_utv.md
-│ ├── testPlan.md
-│ └── architecture/
-│
-└── C_planning/
-├── docPlan.md
-├── prototypePlan.md
-├── progressStatus.md
-└── todo.md
+├─ A_user/
+│  ├─ USER_GUIDE.md
+│  ├─ modelDescription.md
+│  └─ terms.md
+├─ B_developer/
+│  ├─ README_dev.md
+│  ├─ softwareSpecification_v1_1.md
+│  └─ testPlan.md
+└─ C_planning/
+   ├─ docPlan.md
+   ├─ prototypePlan_v_1.md
+   └─ progressStatus.md
 ```
 
 ---
+## Note on Track Topologies
+The system must support **both single-track and double-track** configurations. Prototype and acceptance criteria in `prototypePlan_v1_1.md` explicitly cover both cases.
 
-## 4. Update Protocol
+## 5. Document Roles
 
-Whenever a new feature or improvement is added:
-1. **A:** Update `USER_GUIDE.md` (user impact) and `modelDescription.md` (if new physical models).
-2. **B:** Update `README_utv.md` (story), `softwareSpecification.md` (traceability), and `testPlan.md` (new tests).
-3. **C:** Add entry to `progressStatus.md` and, if major, `prototypePlan.md`.
+### A. User‑level
+Focus on system operation and model.  
+Primary files: `USER_GUIDE.md`, `modelDescription.md`, `terms.md`.
 
-> Each merge or release should include a doc review to ensure all levels remain consistent.
+### B. Developer‑level
+Focus on architecture, code practices, tests.  
+Primary files: `README_dev.md`, `softwareSpecification_v1_1.md`, `testPlan.md`.
 
----
-
-## 5. Cross-References
-
-- `USER_GUIDE.md` → `terms.md`, `modelDescription.md`
-- `README_utv.md` → `softwareSpecification.md`, `testPlan.md`
-- `docPlan.md` → all C-level docs
-- `progressStatus.md` → references prototypePlan.md for milestones
+### C. Planning‑level
+Focus on strategy, planning, status.  
+Primary files: `docPlan.md`, `prototypePlan.md`, `progressStatus.md`.
 
 ---
 
-## 6. Future Enhancements
-- Add auto-generation of document index in CI.
-- Introduce document metadata headers (`Document Level`, `Owner`, `Last Updated`, `Related Docs`).
-- Optional: publish docs via MkDocs or Sphinx for web viewing.
+## 6. Cross‑References
+
+| From | To | Purpose |
+|------|----|--------|
+| `README.md` (root) | A/B/C folders | Navigation / documentation map |
+| `USER_GUIDE.md` | `modelDescription.md`, `terms.md` | Model logic & vocabulary |
+| `README_dev.md` | `softwareSpecification_v1_1.md`, `testPlan.md` | Implementation & verification |
+| `docPlan.md` | All | Governance of hierarchy and completeness |
 
 ---
 
-## 7. Version History
-| Version | Date | Author | Change |
-|----------|------|---------|--------|
-| 0.1 | 2025-10-06 | System refactor | Introduced unified doc structure (A/B/C) |
-| 0.2 | (planned) | – | Merge legacy tech docs → `modelDescription.md` |
-| 0.3 | (planned) | – | Merge progress logs → `progressStatus.md` |
+## 7. Maintenance Rules
+- New docs must declare **Level (A/B/C)** and **Purpose** at the top.
+- Keep **single‑source** per topic; link instead of duplicating.
+- Archive legacy content; summarize changes in `progressStatus.md`.
+- Update cross‑links when filenames change (e.g., spec version bumps).
+
+---
+
+## 8. Quick Links
+- **Root README:** `../README.md`
+- **A_user:** `./A_user/USER_GUIDE.md`, `./A_user/modelDescription.md`, `./A_user/terms.md`
+- **B_developer:** `./B_developer/README_dev.md`, `./B_developer/softwareSpecification_v1_1.md`, `./B_developer/testPlan.md`
+- **C_planning:** `./C_planning/progressStatus.md`, `./C_planning/prototypePlan.md`
+
+---
+
+_Last updated: 2025‑10‑10._
+
+
+**Maintenance note:** Testframeworkets konventioner och körkommandon är single-source i `docs/B_developer/README_dev.md` och `docs/B_developer/testPlan.md`.
