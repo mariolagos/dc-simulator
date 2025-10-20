@@ -1,3 +1,16 @@
+# README_utv (Developer Documentation)
+
+This document provides developer-oriented stories describing the architecture and functionality of **dcSimulator**.  
+Each story captures a coherent part of the system.  
+_All original content is preserved, reorganized and expanded._
+
+---
+
+## Story 1: Simulation Loop
+
+The simulation loop orchestrates the execution of the system.  
+Actors, scheduling, message flow, and state transitions are described here.
+
 # README_utv.md – Development and Architecture Guide
 
 This document provides implementation-specific guidance for developers working on the simulator's internals. It covers the Akka actor system, message handling, component lifecycles, and operational checklists for commits and documentation hygiene.
@@ -90,24 +103,24 @@ case class UpdateTrainPower(trainId: String, motoringKW: Double, brakingKW: Doub
 
 ### A. Commit Checklist (what to do at commit time)
 1. **Build & format**
-  - Project compiles cleanly (no warnings if possible).
-  - Code formatted (Java/Scala) and imports optimized.
+- Project compiles cleanly (no warnings if possible).
+- Code formatted (Java/Scala) and imports optimized.
 2. **Fast functional smoke**
-  - Run the `3subs1train` scenario (FAST mode); verify CSV is non-empty and coherent.
-  - Spot-check: node voltages reasonable, substations positive output when feeding, line losses ≥ 0, train requested vs delivered powers make sense.
+- Run the `3subs1train` scenario (FAST mode); verify CSV is non-empty and coherent.
+- Spot-check: node voltages reasonable, substations positive output when feeding, line losses ≥ 0, train requested vs delivered powers make sense.
 3. **Result I/O sanity**
-  - CSV header contains nodes, `P[...]` per device, `P_req[train]`, `P_brake[train]`, aggregates.
-  - No accidental header duplication when appending.
+- CSV header contains nodes, `P[...]` per device, `P_req[train]`, `P_brake[train]`, aggregates.
+- No accidental header duplication when appending.
 4. **Logs**
-  - No stack traces or ERROR logs on nominal runs.
+- No stack traces or ERROR logs on nominal runs.
 5. **Docs and metadata**
-  - Update `CHANGELOG.md` (see routines below).
-  - Update `ProgressLog.md` with a concise summary of what changed and why.
-  - If scope/plan changed, adjust `PrototypePlan.md` (see routines below).
+- Update `CHANGELOG.md` (see routines below).
+- Update `ProgressLog.md` with a concise summary of what changed and why.
+- If scope/plan changed, adjust `PrototypePlan.md` (see routines below).
 6. **Version/tag (if applicable)**
-  - If the change warrants it, bump version and tag.
+- If the change warrants it, bump version and tag.
 7. **Run time check (REAL_TIME only if needed)**
-  - If you touched scheduling, quick run in REAL_TIME to confirm pacing.
+- If you touched scheduling, quick run in REAL_TIME to confirm pacing.
 
 ### B. Routines for: `CHANGELOG.md`, `ProgressLog.md`, `PrototypePlan.md`
 - **CHANGELOG.md**
@@ -164,3 +177,134 @@ flowchart LR
 ---
 
 (c) Railway Simulation Project, 2025
+
+
+---
+
+## Story 2: Calculation Process (Beräkningsprocessen)
+
+The **calculation process** is the solver’s heart.  
+It determines how electrical states are computed at each simulation step.
+
+### Solver cycle
+1. **Initialization** – Y-matrix and node set created, devices registered.
+2. **Stamping** – Each device contributes its conductance/current to Y and J.
+3. **Seed / Relaxation** – Initial guesses (seed) may be applied; iterative relaxation (e.g. Gauss–Seidel) can refine solution.
+4. **Solve** – Linear solver (LU factorization or relaxation) computes node voltages.
+5. **Clamp / Island handling** – Overvoltage is clamped (e.g. diode clamp), isolated islands are handled separately.
+6. **Post-processing** – Currents and powers are computed, mismatches checked.
+7. **Events** – Tick, TrainStart, TrainStop, SimulationFinished are dispatched.
+
+### States and events
+- **Idle** – System configured, not running.
+- **Running** – Loop active, solvers executed per tick.
+- **Paused** – Simulation suspended by controller.
+- **Finished** – End condition reached, actors terminated.
+
+Events include: `Tick`, `TrainStart`, `TrainStop`, `EnsureTrainDevice`, `UpdateTrainPower`, `SolveTick`, `SimulationFinished`.
+
+---
+
+## Story 3: Result Handling (Resultathantering)
+
+Simulation produces structured results. Handling ensures usability for analysis.
+
+### Output artifacts
+- **CSV files** – Lazy-header, per-device and aggregate columns.
+- **Plots** – Timetable, load profiles, voltage profiles.
+- **Aggregates** – Summed train load, substations output, losses.
+
+### Long table format
+All results can be represented in a **normalized long table**:
+
+| time | object | signal | value |
+|------|--------|--------|-------|
+| 12.0 | Train_1 | P_req | 5000 |
+| 12.0 | Train_1 | P_delivered | 4800 |
+| 12.0 | Substation_A | Voltage | 740 |
+
+This long table format allows **Excel PivotTables** or BI tools to easily slice and aggregate data by object, signal, or time.
+
+---
+
+## Story 4: Configuration & Input Data
+
+Configuration is based on **HOCON** files.  
+Inputs include:
+- Grid description (`dcsim.grid`)
+- Traffic definitions (`dcsim.traffic`)
+- Power profiles (`dcsim.powerProfiles`)
+- Simulation control (`dcsim.simulationControl`)
+
+Excel-based power profiles are interpolated into `PowerPoint` series.  
+Timetables define train instantiations.
+
+---
+
+## Story 5: Lifecycle & Supervision
+
+Actors follow a lifecycle coordinated by Akka supervision.
+- Creation: via SimulationController.
+- Running: periodic `Tick` messages.
+- Shutdown: `CoordinatedShutdown`, ensuring CSVs flushed.
+- Dead letters logged and monitored.
+
+---
+
+## Story 6: Developer Hygiene & Routines
+
+- **Checklists** ensure consistent development.
+- **Coding standards**: English comments, clear naming, separation of domain vs IT.
+- **Regression tests** (see `testPlan.md`) keep solver correctness intact.
+
+---
+
+## Story 7: Scenarios & Tests
+
+- **User-facing scenarios** are documented in [USER_GUIDE.md](USER_GUIDE.md).
+- **Developer test cases** are tracked in [testPlan.md](testPlan.md).
+- Tests cover solver stability, integration, and regression against known cases.
+
+---
+
+
+---
+
+## Calculation Model — State/Event Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+
+    Idle --> Running: StartSimulation / init grid, seed solver
+    Idle --> Finished: Abort
+
+    state Running {
+        [*] --> Ticking
+        Ticking --> Ticking: Tick / UpdateTrainPower, EnsureTrainDevice, SolveTick
+        Ticking --> Paused: Pause
+        Paused --> Ticking: Resume
+        Ticking --> Finishing: StopSimulation
+        Finishing --> [*]: SimulationFinished
+    }
+
+    Running --> Finished: EndReached
+
+    Finished --> [*]
+
+    %% Domain-side events flowing during Ticking
+    note right of Ticking
+      Events per tick:
+      - TrainStart / TrainStop
+      - UpdateTrainPower(trainId, P_req, pos_m)
+      - EnsureTrainDevice(trainId, anchorNode)
+      - SolveTick(time, step)
+      Post-process:
+      - Clamp, islands, power balances
+      - Append CSV, long table row(s)
+    end note
+```
+
+# Change Log
+
+- 2025-09-22: Reorganized into stories, added calculation process, result handling, long table description.
