@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Smoke (kritiska tester)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+        java: [ '17' ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Fail on forbidden reflection in tests
+        shell: bash
+        run: |
+          set -e
+          echo "Scanning test sources for forbidden reflection patterns..."
+          if grep -R --line-number --include='*.java' -E 'Class\.forName|getDeclared(Field|Method|Constructor)|setAccessible|Method\.invoke' src/test || true; then
+            echo "ERROR: Forbidden reflection pattern found in test sources."
+            exit 1
+          fi
+          echo "OK: No forbidden reflection patterns detected."
+
+      - name: Smoke tests (fast)
+        shell: bash
+        run: |
+          ./gradlew test             --tests org.dcsim.unit.MiniMiniSolverTests             --tests org.dcsim.unit.StampMiniTests             --tests org.dcsim.unit.SolverMiniTests             --tests org.dcsim.unit.IslandSeparationMiniTests             -Ddcsim.verbose=false
+
+  build:
+    name: Full suite + Coverage
+    needs: [ smoke ]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+        java: [ '17', '21' ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Compile (ensure -Xlint clean for tests)
+        shell: bash
+        run: ./gradlew testClasses -Ddcsim.verbose=false
+
+      - name: Run tests
+        shell: bash
+        run: ./gradlew test -Ddcsim.verbose=false
+
+      - name: Coverage (JaCoCo)
+        if: startsWith(matrix.os, 'ubuntu') && matrix.java == '17'
+        shell: bash
+        run: ./gradlew jacocoTestReport -Ddcsim.verbose=false
+
+      - name: Publish test reports (artifact)
+        if: always() && startsWith(matrix.os, 'ubuntu') && matrix.java == '17'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            **/build/test-results/test/*
+            **/build/reports/tests/test/*
+            **/build/reports/jacoco/test/html/**
+
+  release:
+    name: Create GitHub Release
+    needs: [ build ]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate changelog (from CHANGELOG.md)
+        id: changelog
+        shell: bash
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          awk 'BEGIN{p=0}/^## /{if(p)exit} /'"$tag"'/{p=1} p' CHANGELOG.md > RELEASE_NOTES.md || true
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "Notes not found in CHANGELOG.md; using placeholder." > RELEASE_NOTES.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: RELEASE_NOTES.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

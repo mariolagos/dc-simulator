@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.dcsim.unit.DiodeSubstationStampTests" tests="2" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.003">
+  <properties/>
+  <testcase name="diode_blocks_absorption_when_bus_above_E" classname="org.dcsim.unit.DiodeSubstationStampTests" time="0.003"/>
+  <testcase name="diode_leads_forward_when_bus_below_E" classname="org.dcsim.unit.DiodeSubstationStampTests" time="0.0"/>
+  <system-out><![CDATA[[SS a=0 b=1] BLOCKED dV=950.000V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-09
+[SS a=0 b=1] ACTIVE  dV=850.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ76500000.0W
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

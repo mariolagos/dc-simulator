@@ -1,6 +1,7 @@
 package org.dcsim.solver.impl;
 
 import org.apache.commons.math3.linear.*;
+import org.dcsim.electric.ElectricSolver;
 import org.dcsim.solver.api.DcNet;
 import org.dcsim.solver.api.SubstationData;
 import org.dcsim.solver.api.TrainData;
@@ -14,7 +15,7 @@ import static org.dcsim.solver.impl.DcDebug.line;
 
 public final class DcIterativeSolver {
 
-    private DcIterativeSolver() {}
+    public DcIterativeSolver() {}
 
     // numerics
     private static final double EPS     = 1e-6;

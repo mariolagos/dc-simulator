@@ -61,7 +61,7 @@ public final class DcSimApp {
 
         public static Behavior<Command> create(
                 GridModel<Real> model,
-                DcElectricSolver solver,
+                ElectricSolver solver,
                 String csvOut,
                 double tickSec,
                 int startSec,
@@ -80,10 +80,29 @@ public final class DcSimApp {
             );
         }
 
+        // Back-compat överlagring så gammal kod fortfarande kompilerar
+        public static Behavior<Command> create(
+                GridModel<Real> model,
+                DcElectricSolver legacySolver,      // konkret klass
+                String outPath,
+                double tickSec,
+                int startSec,
+                int endSec,
+                List<TrainSpawn> spawns,
+                SimulationSpeed speed,
+                int stopAfterSteps,
+                int anchorNodeId,
+                List<EdgeRef> path,
+                double vMS, double pW, double Rmin, double epsFrac
+        ) {
+            return create(model, (ElectricSolver) legacySolver, outPath, tickSec, startSec, endSec,
+                    spawns, speed, stopAfterSteps, anchorNodeId, path, vMS, pW, Rmin, epsFrac);
+        }
+
         private Root(
                 ActorContext<Command> ctx,
                 GridModel<Real> model,
-                DcElectricSolver solver,
+                ElectricSolver solver,
                 String csvOut,
                 double tickSec,
                 int startSec,
@@ -238,7 +257,19 @@ public final class DcSimApp {
                 .withFallback(ConfigFactory.load())      // classpath fallback
                 .resolve(resolveOpts);
 
-        // ---- 3) Säkerställ att 'dcsim' finns och plocka ut den delkonfigurationen ----
+        boolean verboseAll = false;
+        try {
+            if (scenario.hasPath("dcsim.verbose.all")) {
+                verboseAll = scenario.getBoolean("dcsim.verbose.all");
+            } else if (scenario.hasPath("dcsim.verbose") && scenario.getConfig("dcsim.verbose").hasPath("all")) {
+                verboseAll = scenario.getConfig("dcsim.verbose").getBoolean("all");
+            }
+        } catch (Exception ignore) {}
+
+        if (verboseAll) {
+            System.setProperty("dcsim.verbose.all", "true");
+            System.out.println("[CONF] Verbose mode enabled (dcsim.verbose.all=true)");
+        }        // ---- 3) Säkerställ att 'dcsim' finns och plocka ut den delkonfigurationen ----
         if (!scenario.hasPath("dcsim")) {
             System.err.println("[ERROR] Top-level 'dcsim' section is missing in: " + confFile.getAbsolutePath());
             System.exit(3);
@@ -338,7 +369,9 @@ public final class DcSimApp {
         }
 
         // ---- 10) Solver + CSV path ----
-        DcElectricSolver solver = new DcElectricSolver();
+//        DcElectricSolver solver = new DcElectricSolver();
+        ElectricSolver solver = new DcIterativeAdapterSolver();
+        System.out.println("[CONF] Using ElectricSolver: " + solver.getClass().getName());
 
         // robust filbaserat namn (Windows/Unix)
         String baseName = new File(confFile.getName()).getName();
@@ -352,7 +385,8 @@ public final class DcSimApp {
 
         // ---- 11) Bygg path från modellen (linjer) ----
         List<EdgeRef> raw = new ArrayList<>();
-        for (Device<Real> d : model.getDevices()) {
+        for (Object o : (java.util.Collection<?>) model.getDevices()) {
+            Device<?> d = (Device<?>) o;
             if (d instanceof Line ln) {
                 int from  = ln.getFromNode();
                 int to    = ln.getToNode();

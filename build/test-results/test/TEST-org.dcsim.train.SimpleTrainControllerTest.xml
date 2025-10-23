@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.dcsim.train.SimpleTrainControllerTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.001">
+  <properties/>
+  <testcase name="traction_partial_within_band" classname="org.dcsim.train.SimpleTrainControllerTest" time="0.0"/>
+  <testcase name="traction_full_above_band" classname="org.dcsim.train.SimpleTrainControllerTest" time="0.0"/>
+  <testcase name="regen_blocked_at_vmax" classname="org.dcsim.train.SimpleTrainControllerTest" time="0.0"/>
+  <testcase name="regen_allowed_below_vmax" classname="org.dcsim.train.SimpleTrainControllerTest" time="0.0"/>
+  <testcase name="traction_zero_at_vmin" classname="org.dcsim.train.SimpleTrainControllerTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

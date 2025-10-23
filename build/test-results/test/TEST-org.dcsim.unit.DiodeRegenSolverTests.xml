@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.dcsim.unit.DiodeRegenSolverTests" tests="2" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.004">
+  <properties/>
+  <testcase name="threeSubs_twoTrains_balanced_diode" classname="org.dcsim.unit.DiodeRegenSolverTests" time="0.002"/>
+  <testcase name="threeSubs_oneRegen_unmatched_diode" classname="org.dcsim.unit.DiodeRegenSolverTests" time="0.002"/>
+  <system-out><![CDATA[----------------------------------------------------------------
+[it=0] start
+[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ0.0W
+[isl] components=1
+[isl] compHasActiveSubstation=[true]
+[isl] compBackfeedAllowed   =[false]
+[train Tregen] comp=0 motorEnabled=true
+[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
+[train Tmotor] comp=0 motorEnabled=true
+[TRAIN Tmotor] req=100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
+[clamp] node 0 <= 0V (GROUND)
+=== G ===
+  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
+  0.000000e+00   2.000000e+02  -1.000000e+02   0.000000e+00 
+  0.000000e+00  -1.000000e+02   2.000000e+02  -1.000000e+02 
+  0.000000e+00   0.000000e+00  -1.000000e+02   1.000000e+02 
+=== J ===
+  0.000000e+00   9.000000e+04   0.000000e+00   0.000000e+00 
+[it=0] kclInf=1.455e-11  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
+----------------------------------------------------------------
+[it=1] start
+[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ81000000.0W
+[isl] components=1
+[isl] compHasActiveSubstation=[true]
+[isl] compBackfeedAllowed   =[false]
+[train Tregen] comp=0 motorEnabled=true
+[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
+[train Tmotor] comp=0 motorEnabled=true
+[TRAIN Tmotor] req=100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
+[clamp] node 0 <= 0V (GROUND)
+=== G ===
+  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
+  0.000000e+00   2.000000e+02  -1.000000e+02   0.000000e+00 
+  0.000000e+00  -1.000000e+02   2.000000e+02  -1.000000e+02 
+  0.000000e+00   0.000000e+00  -1.000000e+02   1.000000e+02 
+=== J ===
+  0.000000e+00   9.000000e+04   0.000000e+00   0.000000e+00 
+[it=1] kclInf=1.455e-11  dvInf=0.000e+00  Vmin=0.000  Vmax=900.000
+[it=1] converged
+[final V] V = {0.000; 900.000; 900.000; 900.000}
+----------------------------------------------------------------
+[it=0] start
+[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ0.0W
+[SS a=2 b=0] ACTIVE  dV=0.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ0.0W
+[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ0.0W
+[isl] components=1
+[isl] compHasActiveSubstation=[true]
+[isl] compBackfeedAllowed   =[false]
+[train Tregen] comp=0 motorEnabled=true
+[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
+[clamp] node 0 <= 0V (GROUND)
+=== G ===
+  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
+  0.000000e+00   2.000000e+02  -1.000000e+02   0.000000e+00 
+  0.000000e+00  -1.000000e+02   3.000000e+02  -1.000000e+02 
+  0.000000e+00   0.000000e+00  -1.000000e+02   2.000000e+02 
+=== J ===
+  0.000000e+00   9.000000e+04   9.000000e+04   9.000000e+04 
+[it=0] kclInf=0.000e+00  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
+----------------------------------------------------------------
+[it=1] start
+[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ81000000.0W
+[SS a=2 b=0] ACTIVE  dV=900.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ81000000.0W
+[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ81000000.0W
+[isl] components=1
+[isl] compHasActiveSubstation=[true]
+[isl] compBackfeedAllowed   =[false]
+[train Tregen] comp=0 motorEnabled=true
+[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
+[clamp] node 0 <= 0V (GROUND)
+=== G ===
+  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
+  0.000000e+00   2.000000e+02  -1.000000e+02   0.000000e+00 
+  0.000000e+00  -1.000000e+02   3.000000e+02  -1.000000e+02 
+  0.000000e+00   0.000000e+00  -1.000000e+02   2.000000e+02 
+=== J ===
+  0.000000e+00   9.000000e+04   9.000000e+04   9.000000e+04 
+[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=900.000
+[it=1] converged
+[final V] V = {0.000; 900.000; 900.000; 900.000}
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

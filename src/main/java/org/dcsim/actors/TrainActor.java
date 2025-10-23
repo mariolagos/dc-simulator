@@ -92,7 +92,11 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
         final double regenKW  = Math.min(0.0, tractionKW);
         final double brkKW    = regenKW;                 // send NEGATIVE during regen
         final double auxKWout = sameModel ? 0.0 : this.auxKW;
-
+        // === DEBUG TA: after computing mot/brk/aux this tick, before sending it ===
+        System.out.printf(
+                "[TA] id=%s step=%d mot=%.3f kW brk=%.3f kW aux=%.3f kW%n",
+                trainId, dt, motKW, brkKW, auxKW
+        );
         // --- 2) Kinematics from profile (best effort, with safe fallbacks)
         Double xMeters = null, vMS = null;
         if (profile != null && localT >= 0.0) {
@@ -122,6 +126,7 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
         lastTickAbsSec = msg.timeSec;
 
         // --- 3) Single push to grid (no duplicate tell)
+
         grid.tell(new GridModelActor.UpdateTrainPower(
                 trainId,
                 motKW, brkKW, auxKWout,   // NOTE: brkKW <= 0 for regen

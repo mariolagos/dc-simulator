@@ -1,0 +1,12 @@
+graph Grid {
+  rankdir=LR;
+  0 [shape=circle,label="0\n0.0 V"];
+  1 [shape=circle,label="1\n900.0 V"];
+  2 [shape=circle,label="2\n900.0 V"];
+  99 [shape=circle,label="99\n900.0 V"];
+  1 -- 99 [label="L_1_99\nI=0.0 A\nP=0.0 W",color="#888",style="solid",penwidth=1];
+  99 -- 2 [label="L_99_2\nI=-0.0 A\nP=0.0 W",color="#888",style="solid",penwidth=1];
+  1 -- 0 [label="SS0\nI=0.0 A\nP=0.0 W",color="#1f77b4",style="solid",penwidth=2];
+  2 -- 0 [label="SS1\nI=0.0 A\nP=0.0 W",color="#1f77b4",style="solid",penwidth=2];
+  99 -- 0 [label="T1\nI=-0.0 A\nP=-0.0 W",color="#2ca02c",style="dashed",penwidth=1];
+}

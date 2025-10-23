@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.dcsim.utils.PositionUtilsParseTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.006">
+  <properties/>
+  <testcase name="parse_strict_normalizes_over_1000m" classname="org.dcsim.utils.PositionUtilsParseTest" time="0.004"/>
+  <testcase name="trackposition_parse_and_format_truncates_and_zero_pads" classname="org.dcsim.utils.PositionUtilsParseTest" time="0.002"/>
+  <testcase name="parse_flexible_accepts_decimal_km_truncates_meters" classname="org.dcsim.utils.PositionUtilsParseTest" time="0.0"/>
+  <testcase name="normalize_rolls_1000m_into_km" classname="org.dcsim.utils.PositionUtilsParseTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

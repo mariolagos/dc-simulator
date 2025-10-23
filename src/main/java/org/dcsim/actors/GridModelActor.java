@@ -11,6 +11,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.dcsim.electric.DcElectricSolver;
 import org.dcsim.electric.Device;
+import org.dcsim.electric.ElectricSolver;
 import org.dcsim.electric.GridModel;
 import org.dcsim.electric.GridResult;
 import org.dcsim.electric.Line;
@@ -196,7 +197,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
 
     // ===== state =====
     private final GridModel<Real> model;
-    private final DcElectricSolver solver;
+    private final ElectricSolver solver;
     private final int anchorNodeId;
     private final Map<String, TrainLoad> trainDevices = new HashMap<>();
     private final Map<String, UpdateTrainPower> latest = new HashMap<>();
@@ -212,20 +213,29 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
 
     // ===== factory =====
     public static Behavior<Command> create(GridModel<Real> model,
-                                           DcElectricSolver solver,
+                                           ElectricSolver solver,
                                            String csvOutPath,
                                            int anchorNodeId) {
         return Behaviors.setup(ctx -> new GridModelActor(ctx, model, solver, csvOutPath, anchorNodeId));
     }
 
+
+    public static Behavior<Command> create(GridModel<Real> model,
+                                           DcElectricSolver legacySolver,
+                                           String csvOutPath,
+                                           int anchorNodeId) {
+        return create(model, (ElectricSolver) legacySolver, csvOutPath, anchorNodeId);
+    }
+
     private GridModelActor(ActorContext<Command> ctx,
                            GridModel<Real> model,
-                           DcElectricSolver solver,
+                           ElectricSolver solver,
                            String csvOutPath,
                            int anchorNodeId) throws IOException {
         super(ctx);
         this.model = model;
         this.solver = solver;
+//        this.csvOutPath = csvOutPath;
         this.anchorNodeId = anchorNodeId;
         if (anchorNodeId == model.getGroundNodeId()) {
             throw new IllegalArgumentException("anchorNodeId must not be ground");
@@ -310,7 +320,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                 .onMessage(InstallTrainAnchor.class, msg -> {
                     anchors.put(msg.trainId, msg.comp);
                     this.trainDtSec = msg.dtSec;
-                    this.solver.setTrainAnchors(anchors.values(), msg.dtSec);
+                    this.solver.setTrainAnchors(anchors.entrySet(), this.trainDtSec);
 
                     // seed för header
                     registerTrainId(msg.trainId);
@@ -387,13 +397,34 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     }
 
     private Behavior<Command> onSolveTick(SolveTick tick) {
-        // 1) applicera senaste begäran till TrainLoad (profilstyrda)
-        for (Map.Entry<String, UpdateTrainPower> e : latest.entrySet()) {
+        // Skicka anchors (behåller id i key via entrySet)
+        this.solver.setTrainAnchors(anchors.entrySet(), this.trainDtSec);
+
+        // 1) Applicera senaste komponentbegäran till TrainLoad (mot/brk/aux från profil)
+        for (java.util.Map.Entry<String, UpdateTrainPower> e : latest.entrySet()) {
             TrainLoad tl = ensureTrainDeviceInternal(e.getKey());
             UpdateTrainPower u = e.getValue();
             tl.setRequestedComponents(u.motoringKW, u.brakingKW, u.auxiliaryKW);
         }
 
+        // 2) Bygg och skicka direkta begärda effekter (W) per tåg till solvern
+        java.util.Map<String, Double> reqW_direct = new java.util.LinkedHashMap<>();
+        for (java.util.Map.Entry<String, UpdateTrainPower> e2 : latest.entrySet()) {
+            String id2 = e2.getKey();
+            UpdateTrainPower u2 = e2.getValue();
+            double pTotW = (u2.motoringKW + u2.brakingKW + u2.auxiliaryKW) * 1000.0;
+            reqW_direct.put(id2, pTotW);
+
+            // === DEBUG GMA A: before first push to solver ===
+            System.out.printf(
+                    "[GMA-A] id=%s mot=%.3f kW brk=%.3f kW aux=%.3f kW -> push %.1f W%n",
+                    id2, u2.motoringKW, u2.brakingKW, u2.auxiliaryKW, pTotW
+            );
+        }
+        // Sammanfattning + push
+        System.out.printf("[GMA-A] pushing requestedPowerW: %s%n", reqW_direct);
+        this.solver.setTrainRequestedPower(reqW_direct, this.trainDtSec);
+        // === /DEBUG GMA A ===
         // per-tåg bromsmappar (W)
         final Map<String, Double> pBrakeReqW = new HashMap<>();
         final Map<String, Double> pBrakeNetW = new HashMap<>();
@@ -411,25 +442,25 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
             return this;
         }
 
-// resultatet från tvåstegaren
+        // resultatet från tvåstegaren
         final GridResult res = sb.res;
 
-// uppdatera writer med faktisk bromsdelning (W)
+        // uppdatera writer med faktisk bromsdelning (W)
         writer.setLatestBrakeMaps(sb.brakeReqW, sb.brakeNetW, sb.brakeResW);
 
-// (frivilligt) cachea nodspänningar om du gjorde det tidigare
+        // (frivilligt) cachea nodspänningar om du gjorde det tidigare
         for (Object node : model.getNodeIds()) {
             int nid = (node instanceof Integer) ? (Integer) node : Integer.parseInt(node.toString());
             var vv = res.getLatestNodeVoltage(nid);
             if (vv != null) lastNodeV.put(nid, vv.asDouble());
         }
 
-// uppdatera tick-tid (om du använder den senare i metoden)
+        // uppdatera tick-tid (om du använder den senare i metoden)
         lastTickTime = tick.timeSec;
 
-// ====== VIKTIGT ======
-// Låt resten av din onSolveTick(...) (totals/sanity, writer.append/flush, replyTo.tell(...))
-// ligga kvar precis som tidigare, efter detta block.
+        // ====== VIKTIGT ======
+        // Låt resten av din onSolveTick(...) (totals/sanity, writer.append/flush, replyTo.tell(...))
+        // ligga kvar precis som tidigare, efter detta block.
 
         // totals + sanity
         try {
@@ -737,17 +768,40 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         double factor = (receptivity <= EPS || sumExport <= EPS)
                 ? 0.0 : Math.min(1.0, receptivity / sumExport);
 
-        // Skala ner varje tågs nät-export (regen) proportionellt
+// Skala ner varje tågs nät-export (regen) proportionellt
         for (var e : latest.entrySet()) {
             String id = e.getKey();
             UpdateTrainPower u = e.getValue();
             TrainLoad tl = trainDevices.get(id);
             if (tl == null || u == null) continue;
 
-            double allowedNetW = netW0.getOrDefault(id, 0.0) * factor;  // W till nät
-            double regenKW = -allowedNetW / 1000.0;               // <0 = regen-komponent
-            // behåll motoring/aux som i begäran
+            double allowedNetW = netW0.getOrDefault(id, 0.0) * factor; // W till nät (kan vara negativt)
+            double regenKW     = -allowedNetW / 1000.0;                 // <0 = regen-komponent
+
+            // behåll motoring/aux som i begäran, ersätt bara brake med justerad regen
             tl.setRequestedComponents(u.motoringKW, regenKW, u.auxiliaryKW);
+        }
+
+// Bygg och pusha den **justerade** totala effekten (W) per tåg till solvern
+        java.util.Map<String, Double> reqW_direct2 = new java.util.LinkedHashMap<>();
+        for (var e : latest.entrySet()) {
+            String id2 = e.getKey();
+            UpdateTrainPower u2 = e.getValue();
+
+            double allowedNetW2 = netW0.getOrDefault(id2, 0.0) * factor;
+            double regenKW2     = -allowedNetW2 / 1000.0;
+
+            double pTotW2 = (u2.motoringKW + regenKW2 + u2.auxiliaryKW) * 1000.0;
+            reqW_direct2.put(id2, pTotW2);
+
+            // === DEBUG GMA B: before second push to solver (after regen limiting) ===
+            System.out.printf(
+                    "[GMA-B] id=%s mot=%.3f kW brkAdj=%.3f kW aux=%.3f kW -> push %.1f W (factor=%.6f)%n",
+                    id2, u2.motoringKW, regenKW2, u2.auxiliaryKW, pTotW2, factor
+            );
+        }
+        System.out.printf("[GMA-B] pushing requestedPowerW2: %s%n", reqW_direct2);
+        this.solver.setTrainRequestedPower(reqW_direct2, this.trainDtSec);
         }
 
         GridResult r1 = solver.solve(model, timeSec, step);

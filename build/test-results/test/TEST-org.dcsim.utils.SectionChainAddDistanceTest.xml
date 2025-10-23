@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.dcsim.utils.SectionChainAddDistanceTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.002">
+  <properties/>
+  <testcase name="addDistance_clamps_at_chain_end" classname="org.dcsim.utils.SectionChainAddDistanceTest" time="0.001"/>
+  <testcase name="addDistance_skips_multiple_sections" classname="org.dcsim.utils.SectionChainAddDistanceTest" time="0.001"/>
+  <testcase name="addDistance_wraps_to_next_section" classname="org.dcsim.utils.SectionChainAddDistanceTest" time="0.0"/>
+  <testcase name="addDistance_stays_within_section" classname="org.dcsim.utils.SectionChainAddDistanceTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
