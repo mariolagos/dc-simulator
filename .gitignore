@@ -38,3 +38,5 @@ output/
 **/~$*.xls*
 **/~$*.doc*
 **/~$*.ppt*
+build/
+.gradle/

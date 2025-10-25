@@ -1,3797 +1,0 @@
-Y[WHERE] Substation loaded from: file:/D:/tools/dc-simulator/build/libs/dc-simulator.jar
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=2 (ground=0)
-/[NetBuilder] substations=1, trains=0, lines=1
-[NetBuilder] nodeIds=[0, 1]
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=2 ground=0
-8[DcLinearSolver] G (before substation fallback) (2x2):
- 1.250000e-01 -1.250000e-01
--1.250000e-01  1.250000e-01
-6[DcLinearSolver] J (before substation fallback) (2):
- 0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 1 substation(s).
-*[DcLinearSolver] G (before clamp) (2x2):
- 6.250000e-01 -6.250000e-01
--6.250000e-01  6.250000e-01
-([DcLinearSolver] J (before clamp) (2):
--4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (2x2):
- 1.000000e+00  0.000000e+00
- 0.000000e+00  6.250000e-01
-'[DcLinearSolver] J (after clamp) (2):
- 0.000000e+00  4.500000e+02
-)[DcLinearSolver] V (node voltages) (2):
- 0.000000e+00  7.200000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=2 (ground=0)
-/[NetBuilder] substations=1, trains=0, lines=1
-[NetBuilder] nodeIds=[0, 1]
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=2 ground=0
-8[DcLinearSolver] G (before substation fallback) (2x2):
- 1.250000e-01 -1.250000e-01
--1.250000e-01  1.250000e-01
-6[DcLinearSolver] J (before substation fallback) (2):
- 0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 1 substation(s).
-*[DcLinearSolver] G (before clamp) (2x2):
- 6.250000e-01 -6.250000e-01
--6.250000e-01  6.250000e-01
-([DcLinearSolver] J (before clamp) (2):
--4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (2x2):
- 1.000000e+00  0.000000e+00
- 0.000000e+00  6.250000e-01
-'[DcLinearSolver] J (after clamp) (2):
- 0.000000e+00  4.500000e+02
-)[DcLinearSolver] V (node voltages) (2):
- 0.000000e+00  7.200000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=2 (ground=0)
-/[NetBuilder] substations=1, trains=0, lines=1
-[NetBuilder] nodeIds=[0, 1]
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=2 ground=0
-8[DcLinearSolver] G (before substation fallback) (2x2):
- 1.250000e-01 -1.250000e-01
--1.250000e-01  1.250000e-01
-6[DcLinearSolver] J (before substation fallback) (2):
- 0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 1 substation(s).
-*[DcLinearSolver] G (before clamp) (2x2):
- 6.250000e-01 -6.250000e-01
--6.250000e-01  6.250000e-01
-([DcLinearSolver] J (before clamp) (2):
--4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (2x2):
- 1.000000e+00  0.000000e+00
- 0.000000e+00  6.250000e-01
-'[DcLinearSolver] J (after clamp) (2):
- 0.000000e+00  4.500000e+02
-)[DcLinearSolver] V (node voltages) (2):
- 0.000000e+00  7.200000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=2 (ground=0)
-/[NetBuilder] substations=1, trains=0, lines=1
-[NetBuilder] nodeIds=[0, 1]
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=2 ground=0
-8[DcLinearSolver] G (before substation fallback) (2x2):
- 1.250000e-01 -1.250000e-01
--1.250000e-01  1.250000e-01
-6[DcLinearSolver] J (before substation fallback) (2):
- 0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 1 substation(s).
-*[DcLinearSolver] G (before clamp) (2x2):
- 6.250000e-01 -6.250000e-01
--6.250000e-01  6.250000e-01
-([DcLinearSolver] J (before clamp) (2):
--4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (2x2):
- 1.000000e+00  0.000000e+00
- 0.000000e+00  6.250000e-01
-'[DcLinearSolver] J (after clamp) (2):
- 0.000000e+00  4.500000e+02
-)[DcLinearSolver] V (node voltages) (2):
- 0.000000e+00  7.200000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=2 (ground=0)
-/[NetBuilder] substations=1, trains=0, lines=1
-[NetBuilder] nodeIds=[0, 1]
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=2 ground=0
-8[DcLinearSolver] G (before substation fallback) (2x2):
- 1.250000e-01 -1.250000e-01
--1.250000e-01  1.250000e-01
-6[DcLinearSolver] J (before substation fallback) (2):
- 0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 1 substation(s).
-*[DcLinearSolver] G (before clamp) (2x2):
- 6.250000e-01 -6.250000e-01
--6.250000e-01  6.250000e-01
-([DcLinearSolver] J (before clamp) (2):
--4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (2x2):
- 1.000000e+00  0.000000e+00
- 0.000000e+00  6.250000e-01
-'[DcLinearSolver] J (after clamp) (2):
- 0.000000e+00  4.500000e+02
-)[DcLinearSolver] V (node voltages) (2):
- 0.000000e+00  7.200000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=3 (ground=0)
-/[NetBuilder] substations=2, trains=0, lines=1
- [NetBuilder] nodeIds=[0, 1, 2]
-B----------------------------------------------------------------
-[it=0] start
-f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-f[SS a=2 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   2.500000e+00  -2.000000e+00 
-.  0.000000e+00  -2.000000e+00   2.500000e+00 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=0] kclInf=4.547e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-B----------------------------------------------------------------
-[it=1] start
-m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-m[SS a=2 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   2.500000e+00  -2.000000e+00 
-.  0.000000e+00  -2.000000e+00   2.500000e+00 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=1] kclInf=4.547e-13  dvInf=0.000e+00  Vmin=0.000  Vmax=900.000
-[it=1] converged
-)[final V] V = {0.000; 900.000; 900.000}
-T[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=3 ground=0
-8[DcLinearSolver] G (before substation fallback) (3x3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  2.000000e+00 -2.000000e+00
-+ 0.000000e+00 -2.000000e+00  2.000000e+00
-6[DcLinearSolver] J (before substation fallback) (3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-e[DcLinearSolver] Fallback stamp: a=2, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 2 substation(s).
-*[DcLinearSolver] G (before clamp) (3x3):
-+ 1.000000e+00 -5.000000e-01 -5.000000e-01
-+-5.000000e-01  2.500000e+00 -2.000000e+00
-+-5.000000e-01 -2.000000e+00  2.500000e+00
-([DcLinearSolver] J (before clamp) (3):
-+-9.000000e+02  4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (3x3):
-+ 1.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  2.500000e+00 -2.000000e+00
-+ 0.000000e+00 -2.000000e+00  2.500000e+00
-'[DcLinearSolver] J (after clamp) (3):
-+ 0.000000e+00  4.500000e+02  4.500000e+02
-)[DcLinearSolver] V (node voltages) (3):
-+ 0.000000e+00  9.000000e+02  9.000000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=3 (ground=0)
-/[NetBuilder] substations=2, trains=0, lines=1
- [NetBuilder] nodeIds=[0, 1, 2]
-B----------------------------------------------------------------
-[it=0] start
-f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-f[SS a=2 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   1.166667e+00  -6.666667e-01 
-.  0.000000e+00  -6.666667e-01   1.166667e+00 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=0] kclInf=0.000e+00  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-B----------------------------------------------------------------
-[it=1] start
-m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-m[SS a=2 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   1.166667e+00  -6.666667e-01 
-.  0.000000e+00  -6.666667e-01   1.166667e+00 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=900.000
-[it=1] converged
-)[final V] V = {0.000; 900.000; 900.000}
-T[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=3 ground=0
-8[DcLinearSolver] G (before substation fallback) (3x3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  6.666667e-01 -6.666667e-01
-+ 0.000000e+00 -6.666667e-01  6.666667e-01
-6[DcLinearSolver] J (before substation fallback) (3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-e[DcLinearSolver] Fallback stamp: a=2, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 2 substation(s).
-*[DcLinearSolver] G (before clamp) (3x3):
-+ 1.000000e+00 -5.000000e-01 -5.000000e-01
-+-5.000000e-01  1.166667e+00 -6.666667e-01
-+-5.000000e-01 -6.666667e-01  1.166667e+00
-([DcLinearSolver] J (before clamp) (3):
-+-9.000000e+02  4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (3x3):
-+ 1.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  1.166667e+00 -6.666667e-01
-+ 0.000000e+00 -6.666667e-01  1.166667e+00
-'[DcLinearSolver] J (after clamp) (3):
-+ 0.000000e+00  4.500000e+02  4.500000e+02
-)[DcLinearSolver] V (node voltages) (3):
-+ 0.000000e+00  9.000000e+02  9.000000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=3 (ground=0)
-/[NetBuilder] substations=2, trains=0, lines=1
- [NetBuilder] nodeIds=[0, 1, 2]
-B----------------------------------------------------------------
-[it=0] start
-f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-f[SS a=2 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   2.500000e+00  -2.000000e+00 
-.  0.000000e+00  -2.000000e+00   2.500000e+00 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=0] kclInf=4.547e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-B----------------------------------------------------------------
-[it=1] start
-m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-m[SS a=2 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   2.500000e+00  -2.000000e+00 
-.  0.000000e+00  -2.000000e+00   2.500000e+00 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=1] kclInf=4.547e-13  dvInf=0.000e+00  Vmin=0.000  Vmax=900.000
-[it=1] converged
-)[final V] V = {0.000; 900.000; 900.000}
-T[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=3 ground=0
-8[DcLinearSolver] G (before substation fallback) (3x3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  2.000000e+00 -2.000000e+00
-+ 0.000000e+00 -2.000000e+00  2.000000e+00
-6[DcLinearSolver] J (before substation fallback) (3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-e[DcLinearSolver] Fallback stamp: a=2, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 2 substation(s).
-*[DcLinearSolver] G (before clamp) (3x3):
-+ 1.000000e+00 -5.000000e-01 -5.000000e-01
-+-5.000000e-01  2.500000e+00 -2.000000e+00
-+-5.000000e-01 -2.000000e+00  2.500000e+00
-([DcLinearSolver] J (before clamp) (3):
-+-9.000000e+02  4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (3x3):
-+ 1.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  2.500000e+00 -2.000000e+00
-+ 0.000000e+00 -2.000000e+00  2.500000e+00
-'[DcLinearSolver] J (after clamp) (3):
-+ 0.000000e+00  4.500000e+02  4.500000e+02
-)[DcLinearSolver] V (node voltages) (3):
-+ 0.000000e+00  9.000000e+02  9.000000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=3 (ground=0)
-/[NetBuilder] substations=2, trains=0, lines=0
- [NetBuilder] nodeIds=[0, 1, 2]
-B----------------------------------------------------------------
-[it=0] start
-f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-f[SS a=2 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   5.000000e-01   0.000000e+00 
-.  0.000000e+00   0.000000e+00   5.000000e-01 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=0] kclInf=0.000e+00  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-B----------------------------------------------------------------
-[it=1] start
-m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-m[SS a=2 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   5.000000e-01   0.000000e+00 
-.  0.000000e+00   0.000000e+00   5.000000e-01 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=900.000
-[it=1] converged
-)[final V] V = {0.000; 900.000; 900.000}
-T[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=3 ground=0
-8[DcLinearSolver] G (before substation fallback) (3x3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-6[DcLinearSolver] J (before substation fallback) (3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-e[DcLinearSolver] Fallback stamp: a=2, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 2 substation(s).
-*[DcLinearSolver] G (before clamp) (3x3):
-+ 1.000000e+00 -5.000000e-01 -5.000000e-01
-+-5.000000e-01  5.000000e-01  0.000000e+00
-+-5.000000e-01  0.000000e+00  5.000000e-01
-([DcLinearSolver] J (before clamp) (3):
-+-9.000000e+02  4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (3x3):
-+ 1.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  5.000000e-01  0.000000e+00
-+ 0.000000e+00  0.000000e+00  5.000000e-01
-'[DcLinearSolver] J (after clamp) (3):
-+ 0.000000e+00  4.500000e+02  4.500000e+02
-)[DcLinearSolver] V (node voltages) (3):
-+ 0.000000e+00  9.000000e+02  9.000000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=3 (ground=0)
-/[NetBuilder] substations=2, trains=0, lines=0
- [NetBuilder] nodeIds=[0, 1, 2]
-B----------------------------------------------------------------
-[it=0] start
-f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-f[SS a=2 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   5.000000e-01   0.000000e+00 
-.  0.000000e+00   0.000000e+00   5.000000e-01 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=0] kclInf=0.000e+00  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-B----------------------------------------------------------------
-[it=1] start
-m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-m[SS a=2 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   5.000000e-01   0.000000e+00 
-.  0.000000e+00   0.000000e+00   5.000000e-01 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=900.000
-[it=1] converged
-)[final V] V = {0.000; 900.000; 900.000}
-T[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=3 ground=0
-8[DcLinearSolver] G (before substation fallback) (3x3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-6[DcLinearSolver] J (before substation fallback) (3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-e[DcLinearSolver] Fallback stamp: a=2, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 2 substation(s).
-*[DcLinearSolver] G (before clamp) (3x3):
-+ 1.000000e+00 -5.000000e-01 -5.000000e-01
-+-5.000000e-01  5.000000e-01  0.000000e+00
-+-5.000000e-01  0.000000e+00  5.000000e-01
-([DcLinearSolver] J (before clamp) (3):
-+-9.000000e+02  4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (3x3):
-+ 1.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  5.000000e-01  0.000000e+00
-+ 0.000000e+00  0.000000e+00  5.000000e-01
-'[DcLinearSolver] J (after clamp) (3):
-+ 0.000000e+00  4.500000e+02  4.500000e+02
-)[DcLinearSolver] V (node voltages) (3):
-+ 0.000000e+00  9.000000e+02  9.000000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=3 (ground=0)
-/[NetBuilder] substations=2, trains=0, lines=1
- [NetBuilder] nodeIds=[0, 1, 2]
-B----------------------------------------------------------------
-[it=0] start
-f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-f[SS a=2 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   2.500000e+00  -2.000000e+00 
-.  0.000000e+00  -2.000000e+00   2.500000e+00 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=0] kclInf=4.547e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-B----------------------------------------------------------------
-[it=1] start
-m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-m[SS a=2 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   2.500000e+00  -2.000000e+00 
-.  0.000000e+00  -2.000000e+00   2.500000e+00 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=1] kclInf=4.547e-13  dvInf=0.000e+00  Vmin=0.000  Vmax=900.000
-[it=1] converged
-)[final V] V = {0.000; 900.000; 900.000}
-T[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=3 ground=0
-8[DcLinearSolver] G (before substation fallback) (3x3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  2.000000e+00 -2.000000e+00
-+ 0.000000e+00 -2.000000e+00  2.000000e+00
-6[DcLinearSolver] J (before substation fallback) (3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-e[DcLinearSolver] Fallback stamp: a=2, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 2 substation(s).
-*[DcLinearSolver] G (before clamp) (3x3):
-+ 1.000000e+00 -5.000000e-01 -5.000000e-01
-+-5.000000e-01  2.500000e+00 -2.000000e+00
-+-5.000000e-01 -2.000000e+00  2.500000e+00
-([DcLinearSolver] J (before clamp) (3):
-+-9.000000e+02  4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (3x3):
-+ 1.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  2.500000e+00 -2.000000e+00
-+ 0.000000e+00 -2.000000e+00  2.500000e+00
-'[DcLinearSolver] J (after clamp) (3):
-+ 0.000000e+00  4.500000e+02  4.500000e+02
-)[DcLinearSolver] V (node voltages) (3):
-+ 0.000000e+00  9.000000e+02  9.000000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=3 (ground=0)
-/[NetBuilder] substations=2, trains=0, lines=1
- [NetBuilder] nodeIds=[0, 1, 2]
-B----------------------------------------------------------------
-[it=0] start
-f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-f[SS a=2 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   1.166667e+00  -6.666667e-01 
-.  0.000000e+00  -6.666667e-01   1.166667e+00 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=0] kclInf=0.000e+00  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-B----------------------------------------------------------------
-[it=1] start
-m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-m[SS a=2 b=0] ACTIVE  dV=900.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ405000.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-.  1.000000e+00   0.000000e+00   0.000000e+00 
-.  0.000000e+00   1.166667e+00  -6.666667e-01 
-.  0.000000e+00  -6.666667e-01   1.166667e+00 
-
-=== J ===
-/  0.000000e+00   4.500000e+02   4.500000e+02 
-D[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=900.000
-[it=1] converged
-)[final V] V = {0.000; 900.000; 900.000}
-T[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=3 ground=0
-8[DcLinearSolver] G (before substation fallback) (3x3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  6.666667e-01 -6.666667e-01
-+ 0.000000e+00 -6.666667e-01  6.666667e-01
-6[DcLinearSolver] J (before substation fallback) (3):
-+ 0.000000e+00  0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-e[DcLinearSolver] Fallback stamp: a=2, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 2 substation(s).
-*[DcLinearSolver] G (before clamp) (3x3):
-+ 1.000000e+00 -5.000000e-01 -5.000000e-01
-+-5.000000e-01  1.166667e+00 -6.666667e-01
-+-5.000000e-01 -6.666667e-01  1.166667e+00
-([DcLinearSolver] J (before clamp) (3):
-+-9.000000e+02  4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (3x3):
-+ 1.000000e+00  0.000000e+00  0.000000e+00
-+ 0.000000e+00  1.166667e+00 -6.666667e-01
-+ 0.000000e+00 -6.666667e-01  1.166667e+00
-'[DcLinearSolver] J (after clamp) (3):
-+ 0.000000e+00  4.500000e+02  4.500000e+02
-)[DcLinearSolver] V (node voltages) (3):
-+ 0.000000e+00  9.000000e+02  9.000000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=2 (ground=0)
-/[NetBuilder] substations=1, trains=0, lines=1
-[NetBuilder] nodeIds=[0, 1]
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=2 ground=0
-8[DcLinearSolver] G (before substation fallback) (2x2):
- 1.250000e-01 -1.250000e-01
--1.250000e-01  1.250000e-01
-6[DcLinearSolver] J (before substation fallback) (2):
- 0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 1 substation(s).
-*[DcLinearSolver] G (before clamp) (2x2):
- 6.250000e-01 -6.250000e-01
--6.250000e-01  6.250000e-01
-([DcLinearSolver] J (before clamp) (2):
--4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (2x2):
- 1.000000e+00  0.000000e+00
- 0.000000e+00  6.250000e-01
-'[DcLinearSolver] J (after clamp) (2):
- 0.000000e+00  4.500000e+02
-)[DcLinearSolver] V (node voltages) (2):
- 0.000000e+00  7.200000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=2 (ground=0)
-/[NetBuilder] substations=1, trains=0, lines=1
-[NetBuilder] nodeIds=[0, 1]
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=2 ground=0
-8[DcLinearSolver] G (before substation fallback) (2x2):
- 1.250000e-01 -1.250000e-01
--1.250000e-01  1.250000e-01
-6[DcLinearSolver] J (before substation fallback) (2):
- 0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 1 substation(s).
-*[DcLinearSolver] G (before clamp) (2x2):
- 6.250000e-01 -6.250000e-01
--6.250000e-01  6.250000e-01
-([DcLinearSolver] J (before clamp) (2):
--4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (2x2):
- 1.000000e+00  0.000000e+00
- 0.000000e+00  6.250000e-01
-'[DcLinearSolver] J (after clamp) (2):
- 0.000000e+00  4.500000e+02
-)[DcLinearSolver] V (node voltages) (2):
- 0.000000e+00  7.200000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
-+[NetBuilder] Network built from GridModel
-![NetBuilder] nodes=2 (ground=0)
-/[NetBuilder] substations=1, trains=0, lines=1
-[NetBuilder] nodeIds=[0, 1]
-B----------------------------------------------------------------
-[it=0] start
-f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-  1.000000e+00   0.000000e+00 
-  0.000000e+00   6.250000e-01 
-
-=== J ===
-   0.000000e+00   4.500000e+02 
-D[it=0] kclInf=0.000e+00  dvInf=7.200e+02  Vmin=0.000  Vmax=720.000
-B----------------------------------------------------------------
-[it=1] start
-m[SS a=1 b=0] ACTIVE  dV=720.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ324000.0W
-[isl] components=1
-&[isl] compHasActiveSubstation=[true]
-&[isl] compBackfeedAllowed   =[false]
-[clamp] node 0 <= 0V (GROUND)
-
-=== G ===
-  1.000000e+00   0.000000e+00 
-  0.000000e+00   6.250000e-01 
-
-=== J ===
-   0.000000e+00   4.500000e+02 
-D[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=720.000
-[it=1] converged
- [final V] V = {0.000; 720.000}
-T[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
-B----------------------------------------------------------------
-([DcLinearSolver] Start linear solve...
-#[DcLinearSolver] nodes=2 ground=0
-8[DcLinearSolver] G (before substation fallback) (2x2):
- 1.250000e-01 -1.250000e-01
--1.250000e-01  1.250000e-01
-6[DcLinearSolver] J (before substation fallback) (2):
- 0.000000e+00  0.000000e+00
-e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-4[DcLinearSolver] Fallback stamped 1 substation(s).
-*[DcLinearSolver] G (before clamp) (2x2):
- 6.250000e-01 -6.250000e-01
--6.250000e-01  6.250000e-01
-([DcLinearSolver] J (before clamp) (2):
--4.500000e+02  4.500000e+02
-)[DcLinearSolver] G (after clamp) (2x2):
- 1.000000e+00  0.000000e+00
- 0.000000e+00  6.250000e-01
-'[DcLinearSolver] J (after clamp) (2):
- 0.000000e+00  4.500000e+02
-)[DcLinearSolver] V (node voltages) (2):
- 0.000000e+00  7.200000e+02
-"[DcLinearSolver] Solve complete.
-B----------------------------------------------------------------
- +[NetBuilder] Network built from GridModel
- ![NetBuilder] nodes=2 (ground=0)
- /[NetBuilder] substations=1, trains=0, lines=0
- [NetBuilder] nodeIds=[0, 1]
- B----------------------------------------------------------------
- ([DcLinearSolver] Start linear solve...
- #[DcLinearSolver] nodes=2 ground=0
- 8[DcLinearSolver] G (before substation fallback) (2x2):
-  0.000000e+00  0.000000e+00
-  0.000000e+00  0.000000e+00
- 6[DcLinearSolver] J (before substation fallback) (2):
-  0.000000e+00  0.000000e+00
- e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
- 4[DcLinearSolver] Fallback stamped 1 substation(s).
- *[DcLinearSolver] G (before clamp) (2x2):
-  5.000000e-01 -5.000000e-01
- -5.000000e-01  5.000000e-01
- ([DcLinearSolver] J (before clamp) (2):
- -4.500000e+02  4.500000e+02
- )[DcLinearSolver] G (after clamp) (2x2):
-  1.000000e+00  0.000000e+00
-  0.000000e+00  5.000000e-01
- '[DcLinearSolver] J (after clamp) (2):
-  0.000000e+00  4.500000e+02
- )[DcLinearSolver] V (node voltages) (2):
-  0.000000e+00  9.000000e+02
- "[DcLinearSolver] Solve complete.
- B----------------------------------------------------------------
-!+[NetBuilder] Network built from GridModel
-!![NetBuilder] nodes=2 (ground=0)
-!/[NetBuilder] substations=1, trains=0, lines=1
-![NetBuilder] nodeIds=[0, 1]
-!B----------------------------------------------------------------
-![it=0] start
-!f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-![isl] components=1
-!&[isl] compHasActiveSubstation=[true]
-!&[isl] compBackfeedAllowed   =[false]
-![clamp] node 0 <= 0V (GROUND)
-!
-=== G ===
-!  1.000000e+00   0.000000e+00 
-!  0.000000e+00   6.250000e-01 
-!
-=== J ===
-!   0.000000e+00   4.500000e+02 
-!D[it=0] kclInf=0.000e+00  dvInf=7.200e+02  Vmin=0.000  Vmax=720.000
-!B----------------------------------------------------------------
-![it=1] start
-!m[SS a=1 b=0] ACTIVE  dV=720.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ324000.0W
-![isl] components=1
-!&[isl] compHasActiveSubstation=[true]
-!&[isl] compBackfeedAllowed   =[false]
-![clamp] node 0 <= 0V (GROUND)
-!
-=== G ===
-!  1.000000e+00   0.000000e+00 
-!  0.000000e+00   6.250000e-01 
-!
-=== J ===
-!   0.000000e+00   4.500000e+02 
-!D[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=720.000
-![it=1] converged
-! [final V] V = {0.000; 720.000}
-!T[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
-!B----------------------------------------------------------------
-!([DcLinearSolver] Start linear solve...
-!#[DcLinearSolver] nodes=2 ground=0
-!8[DcLinearSolver] G (before substation fallback) (2x2):
-! 1.250000e-01 -1.250000e-01
-!-1.250000e-01  1.250000e-01
-!6[DcLinearSolver] J (before substation fallback) (2):
-! 0.000000e+00  0.000000e+00
-!e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-!4[DcLinearSolver] Fallback stamped 1 substation(s).
-!*[DcLinearSolver] G (before clamp) (2x2):
-! 6.250000e-01 -6.250000e-01
-!-6.250000e-01  6.250000e-01
-!([DcLinearSolver] J (before clamp) (2):
-!-4.500000e+02  4.500000e+02
-!)[DcLinearSolver] G (after clamp) (2x2):
-! 1.000000e+00  0.000000e+00
-! 0.000000e+00  6.250000e-01
-!'[DcLinearSolver] J (after clamp) (2):
-! 0.000000e+00  4.500000e+02
-!)[DcLinearSolver] V (node voltages) (2):
-! 0.000000e+00  7.200000e+02
-!"[DcLinearSolver] Solve complete.
-!B----------------------------------------------------------------
-65B----------------------------------------------------------------
-65[it=0] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65h[TRAIN Tregen] req=-90000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65g[TRAIN Tmotor] req=40000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-65D[it=0] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-65B----------------------------------------------------------------
-65[it=1] start
-65m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65r[TRAIN Tregen] req=-90000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-100.000A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65n[TRAIN Tmotor] req=40000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=44.444A P=40000.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   1.000000e+02   8.555556e+02 
-65D[it=1] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-65B----------------------------------------------------------------
-65[it=2] start
-65Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65Z[SS a=3 b=0] BLOCKED dV=916.667V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65r[TRAIN Tregen] req=-90000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-92.045A P=-90000.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65j[TRAIN Tmotor] req=40000.0W vabs=916.667V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   9.204545e+01   0.000000e+00 
-65C[it=2] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=92.045
-65B----------------------------------------------------------------
-65[it=3] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65k[SS a=3 b=0] ACTIVE  dV=92.045V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ82840.9W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65q[TRAIN Tregen] req=-90000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65l[TRAIN Tmotor] req=40000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=6136.4W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   9.777778e+02   8.333333e+02 
-65E[it=3] kclInf=3.411e-13  dvInf=1.752e+03  Vmin=0.000  Vmax=1844.444
-65B----------------------------------------------------------------
-65[it=4] start
-65[[SS a=1 b=0] BLOCKED dV=1372.222V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[[SS a=3 b=0] BLOCKED dV=1338.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65l[TRAIN Tregen] req=-90000.0W vabs=1844.444V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65k[TRAIN Tmotor] req=40000.0W vabs=1338.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65B[it=4] kclInf=0.000e+00  dvInf=1.844e+03  Vmin=0.000  Vmax=0.000
-65B----------------------------------------------------------------
-65[it=5] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65h[TRAIN Tregen] req=-90000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65g[TRAIN Tmotor] req=40000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-65D[it=5] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-65B----------------------------------------------------------------
-65[it=6] start
-65m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65r[TRAIN Tregen] req=-90000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-100.000A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65n[TRAIN Tmotor] req=40000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=44.444A P=40000.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   1.000000e+02   8.555556e+02 
-65D[it=6] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-65B----------------------------------------------------------------
-65[it=7] start
-65Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65Z[SS a=3 b=0] BLOCKED dV=916.667V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65r[TRAIN Tregen] req=-90000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-92.045A P=-90000.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65j[TRAIN Tmotor] req=40000.0W vabs=916.667V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   9.204545e+01   0.000000e+00 
-65C[it=7] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=92.045
-65B----------------------------------------------------------------
-65[it=8] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65k[SS a=3 b=0] ACTIVE  dV=92.045V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ82840.9W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65q[TRAIN Tregen] req=-90000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65l[TRAIN Tmotor] req=40000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=6136.4W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   9.777778e+02   8.333333e+02 
-65E[it=8] kclInf=3.411e-13  dvInf=1.752e+03  Vmin=0.000  Vmax=1844.444
-65B----------------------------------------------------------------
-65[it=9] start
-65[[SS a=1 b=0] BLOCKED dV=1372.222V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[[SS a=3 b=0] BLOCKED dV=1338.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65l[TRAIN Tregen] req=-90000.0W vabs=1844.444V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65k[TRAIN Tmotor] req=40000.0W vabs=1338.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65B[it=9] kclInf=0.000e+00  dvInf=1.844e+03  Vmin=0.000  Vmax=0.000
-65B----------------------------------------------------------------
-65[it=10] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65h[TRAIN Tregen] req=-90000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65g[TRAIN Tmotor] req=40000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-65E[it=10] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-65B----------------------------------------------------------------
-65[it=11] start
-65m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65r[TRAIN Tregen] req=-90000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-100.000A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65n[TRAIN Tmotor] req=40000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=44.444A P=40000.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   1.000000e+02   8.555556e+02 
-65E[it=11] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-65B----------------------------------------------------------------
-65[it=12] start
-65Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65Z[SS a=3 b=0] BLOCKED dV=916.667V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65r[TRAIN Tregen] req=-90000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-92.045A P=-90000.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65j[TRAIN Tmotor] req=40000.0W vabs=916.667V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   9.204545e+01   0.000000e+00 
-65D[it=12] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=92.045
-65B----------------------------------------------------------------
-65[it=13] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65k[SS a=3 b=0] ACTIVE  dV=92.045V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ82840.9W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65q[TRAIN Tregen] req=-90000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65l[TRAIN Tmotor] req=40000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=6136.4W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   9.777778e+02   8.333333e+02 
-65F[it=13] kclInf=3.411e-13  dvInf=1.752e+03  Vmin=0.000  Vmax=1844.444
-65B----------------------------------------------------------------
-65[it=14] start
-65[[SS a=1 b=0] BLOCKED dV=1372.222V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[[SS a=3 b=0] BLOCKED dV=1338.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65l[TRAIN Tregen] req=-90000.0W vabs=1844.444V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65k[TRAIN Tmotor] req=40000.0W vabs=1338.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65C[it=14] kclInf=0.000e+00  dvInf=1.844e+03  Vmin=0.000  Vmax=0.000
-65B----------------------------------------------------------------
-65[it=15] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65h[TRAIN Tregen] req=-90000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65g[TRAIN Tmotor] req=40000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-65E[it=15] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-65B----------------------------------------------------------------
-65[it=16] start
-65m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65r[TRAIN Tregen] req=-90000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-100.000A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65n[TRAIN Tmotor] req=40000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=44.444A P=40000.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   1.000000e+02   8.555556e+02 
-65E[it=16] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-65B----------------------------------------------------------------
-65[it=17] start
-65Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65Z[SS a=3 b=0] BLOCKED dV=916.667V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65r[TRAIN Tregen] req=-90000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-92.045A P=-90000.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65j[TRAIN Tmotor] req=40000.0W vabs=916.667V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   9.204545e+01   0.000000e+00 
-65D[it=17] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=92.045
-65B----------------------------------------------------------------
-65[it=18] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65k[SS a=3 b=0] ACTIVE  dV=92.045V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ82840.9W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65q[TRAIN Tregen] req=-90000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65l[TRAIN Tmotor] req=40000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=6136.4W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   9.777778e+02   8.333333e+02 
-65F[it=18] kclInf=3.411e-13  dvInf=1.752e+03  Vmin=0.000  Vmax=1844.444
-65B----------------------------------------------------------------
-65[it=19] start
-65[[SS a=1 b=0] BLOCKED dV=1372.222V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[[SS a=3 b=0] BLOCKED dV=1338.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65l[TRAIN Tregen] req=-90000.0W vabs=1844.444V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65k[TRAIN Tmotor] req=40000.0W vabs=1338.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65C[it=19] kclInf=0.000e+00  dvInf=1.844e+03  Vmin=0.000  Vmax=0.000
-65B----------------------------------------------------------------
-65[it=20] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65h[TRAIN Tregen] req=-90000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65g[TRAIN Tmotor] req=40000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-65E[it=20] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-65B----------------------------------------------------------------
-65[it=21] start
-65m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65r[TRAIN Tregen] req=-90000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-100.000A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65n[TRAIN Tmotor] req=40000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=44.444A P=40000.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   1.000000e+02   8.555556e+02 
-65E[it=21] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-65B----------------------------------------------------------------
-65[it=22] start
-65Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65Z[SS a=3 b=0] BLOCKED dV=916.667V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65r[TRAIN Tregen] req=-90000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-92.045A P=-90000.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65j[TRAIN Tmotor] req=40000.0W vabs=916.667V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   9.204545e+01   0.000000e+00 
-65D[it=22] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=92.045
-65B----------------------------------------------------------------
-65[it=23] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65k[SS a=3 b=0] ACTIVE  dV=92.045V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ82840.9W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65q[TRAIN Tregen] req=-90000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65l[TRAIN Tmotor] req=40000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=6136.4W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   9.777778e+02   8.333333e+02 
-65F[it=23] kclInf=3.411e-13  dvInf=1.752e+03  Vmin=0.000  Vmax=1844.444
-65B----------------------------------------------------------------
-65[it=24] start
-65[[SS a=1 b=0] BLOCKED dV=1372.222V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[[SS a=3 b=0] BLOCKED dV=1338.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65l[TRAIN Tregen] req=-90000.0W vabs=1844.444V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65k[TRAIN Tmotor] req=40000.0W vabs=1338.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65C[it=24] kclInf=0.000e+00  dvInf=1.844e+03  Vmin=0.000  Vmax=0.000
-65B----------------------------------------------------------------
-65[it=25] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65h[TRAIN Tregen] req=-90000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65g[TRAIN Tmotor] req=40000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-65E[it=25] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-65B----------------------------------------------------------------
-65[it=26] start
-65m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65r[TRAIN Tregen] req=-90000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-100.000A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65n[TRAIN Tmotor] req=40000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=44.444A P=40000.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   1.000000e+02   8.555556e+02 
-65E[it=26] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-65B----------------------------------------------------------------
-65[it=27] start
-65Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65Z[SS a=3 b=0] BLOCKED dV=916.667V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65r[TRAIN Tregen] req=-90000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-92.045A P=-90000.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65j[TRAIN Tmotor] req=40000.0W vabs=916.667V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   9.204545e+01   0.000000e+00 
-65D[it=27] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=92.045
-65B----------------------------------------------------------------
-65[it=28] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65k[SS a=3 b=0] ACTIVE  dV=92.045V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ82840.9W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65q[TRAIN Tregen] req=-90000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65l[TRAIN Tmotor] req=40000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=6136.4W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   9.777778e+02   8.333333e+02 
-65F[it=28] kclInf=3.411e-13  dvInf=1.752e+03  Vmin=0.000  Vmax=1844.444
-65B----------------------------------------------------------------
-65[it=29] start
-65[[SS a=1 b=0] BLOCKED dV=1372.222V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[[SS a=3 b=0] BLOCKED dV=1338.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65l[TRAIN Tregen] req=-90000.0W vabs=1844.444V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65k[TRAIN Tmotor] req=40000.0W vabs=1338.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65C[it=29] kclInf=0.000e+00  dvInf=1.844e+03  Vmin=0.000  Vmax=0.000
-65B----------------------------------------------------------------
-65[it=30] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65h[TRAIN Tregen] req=-90000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65g[TRAIN Tmotor] req=40000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-65E[it=30] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-65B----------------------------------------------------------------
-65[it=31] start
-65m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65r[TRAIN Tregen] req=-90000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-100.000A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65n[TRAIN Tmotor] req=40000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=44.444A P=40000.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   1.000000e+02   8.555556e+02 
-65E[it=31] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-65B----------------------------------------------------------------
-65[it=32] start
-65Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65Z[SS a=3 b=0] BLOCKED dV=916.667V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65r[TRAIN Tregen] req=-90000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-92.045A P=-90000.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65j[TRAIN Tmotor] req=40000.0W vabs=916.667V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   9.204545e+01   0.000000e+00 
-65D[it=32] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=92.045
-65B----------------------------------------------------------------
-65[it=33] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65k[SS a=3 b=0] ACTIVE  dV=92.045V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ82840.9W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65q[TRAIN Tregen] req=-90000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65l[TRAIN Tmotor] req=40000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=6136.4W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   9.777778e+02   8.333333e+02 
-65F[it=33] kclInf=3.411e-13  dvInf=1.752e+03  Vmin=0.000  Vmax=1844.444
-65B----------------------------------------------------------------
-65[it=34] start
-65[[SS a=1 b=0] BLOCKED dV=1372.222V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[[SS a=3 b=0] BLOCKED dV=1338.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65l[TRAIN Tregen] req=-90000.0W vabs=1844.444V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65k[TRAIN Tmotor] req=40000.0W vabs=1338.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65C[it=34] kclInf=0.000e+00  dvInf=1.844e+03  Vmin=0.000  Vmax=0.000
-65B----------------------------------------------------------------
-65[it=35] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65h[TRAIN Tregen] req=-90000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65g[TRAIN Tmotor] req=40000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-65E[it=35] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-65B----------------------------------------------------------------
-65[it=36] start
-65m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65r[TRAIN Tregen] req=-90000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-100.000A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65n[TRAIN Tmotor] req=40000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=44.444A P=40000.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   1.000000e+02   8.555556e+02 
-65E[it=36] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-65B----------------------------------------------------------------
-65[it=37] start
-65Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65Z[SS a=3 b=0] BLOCKED dV=916.667V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65r[TRAIN Tregen] req=-90000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-92.045A P=-90000.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65j[TRAIN Tmotor] req=40000.0W vabs=916.667V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   9.204545e+01   0.000000e+00 
-65D[it=37] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=92.045
-65B----------------------------------------------------------------
-65[it=38] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65k[SS a=3 b=0] ACTIVE  dV=92.045V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ82840.9W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65q[TRAIN Tregen] req=-90000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65l[TRAIN Tmotor] req=40000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=6136.4W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   9.777778e+02   8.333333e+02 
-65F[it=38] kclInf=3.411e-13  dvInf=1.752e+03  Vmin=0.000  Vmax=1844.444
-65B----------------------------------------------------------------
-65[it=39] start
-65[[SS a=1 b=0] BLOCKED dV=1372.222V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[[SS a=3 b=0] BLOCKED dV=1338.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65l[TRAIN Tregen] req=-90000.0W vabs=1844.444V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65k[TRAIN Tmotor] req=40000.0W vabs=1338.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65C[it=39] kclInf=0.000e+00  dvInf=1.844e+03  Vmin=0.000  Vmax=0.000
-65B----------------------------------------------------------------
-65[it=40] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65h[TRAIN Tregen] req=-90000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65g[TRAIN Tmotor] req=40000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-65E[it=40] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-65B----------------------------------------------------------------
-65[it=41] start
-65m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65r[TRAIN Tregen] req=-90000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-100.000A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65n[TRAIN Tmotor] req=40000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=44.444A P=40000.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   1.000000e+02   8.555556e+02 
-65E[it=41] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-65B----------------------------------------------------------------
-65[it=42] start
-65Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65Z[SS a=3 b=0] BLOCKED dV=916.667V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65r[TRAIN Tregen] req=-90000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-92.045A P=-90000.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65j[TRAIN Tmotor] req=40000.0W vabs=916.667V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   9.204545e+01   0.000000e+00 
-65D[it=42] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=92.045
-65B----------------------------------------------------------------
-65[it=43] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65k[SS a=3 b=0] ACTIVE  dV=92.045V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ82840.9W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65q[TRAIN Tregen] req=-90000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65l[TRAIN Tmotor] req=40000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=6136.4W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   9.777778e+02   8.333333e+02 
-65F[it=43] kclInf=3.411e-13  dvInf=1.752e+03  Vmin=0.000  Vmax=1844.444
-65B----------------------------------------------------------------
-65[it=44] start
-65[[SS a=1 b=0] BLOCKED dV=1372.222V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[[SS a=3 b=0] BLOCKED dV=1338.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65l[TRAIN Tregen] req=-90000.0W vabs=1844.444V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65k[TRAIN Tmotor] req=40000.0W vabs=1338.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65C[it=44] kclInf=0.000e+00  dvInf=1.844e+03  Vmin=0.000  Vmax=0.000
-65B----------------------------------------------------------------
-65[it=45] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65h[TRAIN Tregen] req=-90000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65g[TRAIN Tmotor] req=40000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-65E[it=45] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-65B----------------------------------------------------------------
-65[it=46] start
-65m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65r[TRAIN Tregen] req=-90000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-100.000A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65n[TRAIN Tmotor] req=40000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=44.444A P=40000.0W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   1.000000e+02   8.555556e+02 
-65E[it=46] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-65B----------------------------------------------------------------
-65[it=47] start
-65Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65Z[SS a=3 b=0] BLOCKED dV=916.667V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65r[TRAIN Tregen] req=-90000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-92.045A P=-90000.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65j[TRAIN Tmotor] req=40000.0W vabs=916.667V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   9.204545e+01   0.000000e+00 
-65D[it=47] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=92.045
-65B----------------------------------------------------------------
-65[it=48] start
-65f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-65k[SS a=3 b=0] ACTIVE  dV=92.045V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ82840.9W
-65[isl] components=1
-65&[isl] compHasActiveSubstation=[true]
-65&[isl] compBackfeedAllowed   =[false]
-65)[train Tregen] comp=0 motorEnabled=true
-65q[TRAIN Tregen] req=-90000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-90000.0W
-65)[train Tmotor] comp=0 motorEnabled=true
-65l[TRAIN Tmotor] req=40000.0W vabs=92.045V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=6136.4W
-65[clamp] node 0 <= 0V (GROUND)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-65=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   9.000000e+02   9.777778e+02   8.333333e+02 
-65F[it=48] kclInf=3.411e-13  dvInf=1.752e+03  Vmin=0.000  Vmax=1844.444
-65B----------------------------------------------------------------
-65[it=49] start
-65[[SS a=1 b=0] BLOCKED dV=1372.222V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[[SS a=3 b=0] BLOCKED dV=1338.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-65[isl] components=2
-65.[isl] compHasActiveSubstation=[false, false]
-65-[isl] compBackfeedAllowed   =[false, false]
-65*[train Tregen] comp=1 motorEnabled=false
-65l[TRAIN Tregen] req=-90000.0W vabs=1844.444V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65*[train Tmotor] comp=1 motorEnabled=false
-65k[TRAIN Tmotor] req=40000.0W vabs=1338.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-65[clamp] node 0 <= 0V (GROUND)
-65([clamp-pick] comp=1 -> fallback node=1
-65![clamp] node 1 <= 0V (ISLAND#1)
-65
-=== G ===
-65=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-65=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-65=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-65
-=== J ===
-65>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-65C[it=49] kclInf=0.000e+00  dvInf=1.844e+03  Vmin=0.000  Vmax=0.000
-65,[final V] V = {0.000; 0.000; 0.000; 0.000}
-67B----------------------------------------------------------------
-67[it=0] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67i[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67g[TRAIN Tmotor] req=60000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-67D[it=0] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-67B----------------------------------------------------------------
-67[it=1] start
-67m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-111.111A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67n[TRAIN Tmotor] req=60000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=60000.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   1.111111e+02   8.333333e+02 
-67D[it=1] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-67B----------------------------------------------------------------
-67[it=2] start
-67Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67Z[SS a=3 b=0] BLOCKED dV=905.556V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67u[TRAIN Tregen] req=-100000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-102.273A P=-100000.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67j[TRAIN Tmotor] req=60000.0W vabs=905.556V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   1.022727e+02   0.000000e+00 
-67D[it=2] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=102.273
-67B----------------------------------------------------------------
-67[it=3] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67l[SS a=3 b=0] ACTIVE  dV=102.273V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ92045.5W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67o[TRAIN Tmotor] req=60000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=100.000A P=10227.3W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   9.777778e+02   8.000000e+02 
-67E[it=3] kclInf=2.274e-13  dvInf=1.726e+03  Vmin=0.000  Vmax=1827.778
-67B----------------------------------------------------------------
-67[it=4] start
-67[[SS a=1 b=0] BLOCKED dV=1363.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[[SS a=3 b=0] BLOCKED dV=1313.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67m[TRAIN Tregen] req=-100000.0W vabs=1827.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67k[TRAIN Tmotor] req=60000.0W vabs=1313.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67B[it=4] kclInf=0.000e+00  dvInf=1.828e+03  Vmin=0.000  Vmax=0.000
-67B----------------------------------------------------------------
-67[it=5] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67i[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67g[TRAIN Tmotor] req=60000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-67D[it=5] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-67B----------------------------------------------------------------
-67[it=6] start
-67m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-111.111A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67n[TRAIN Tmotor] req=60000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=60000.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   1.111111e+02   8.333333e+02 
-67D[it=6] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-67B----------------------------------------------------------------
-67[it=7] start
-67Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67Z[SS a=3 b=0] BLOCKED dV=905.556V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67u[TRAIN Tregen] req=-100000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-102.273A P=-100000.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67j[TRAIN Tmotor] req=60000.0W vabs=905.556V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   1.022727e+02   0.000000e+00 
-67D[it=7] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=102.273
-67B----------------------------------------------------------------
-67[it=8] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67l[SS a=3 b=0] ACTIVE  dV=102.273V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ92045.5W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67o[TRAIN Tmotor] req=60000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=100.000A P=10227.3W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   9.777778e+02   8.000000e+02 
-67E[it=8] kclInf=2.274e-13  dvInf=1.726e+03  Vmin=0.000  Vmax=1827.778
-67B----------------------------------------------------------------
-67[it=9] start
-67[[SS a=1 b=0] BLOCKED dV=1363.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[[SS a=3 b=0] BLOCKED dV=1313.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67m[TRAIN Tregen] req=-100000.0W vabs=1827.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67k[TRAIN Tmotor] req=60000.0W vabs=1313.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67B[it=9] kclInf=0.000e+00  dvInf=1.828e+03  Vmin=0.000  Vmax=0.000
-67B----------------------------------------------------------------
-67[it=10] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67i[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67g[TRAIN Tmotor] req=60000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-67E[it=10] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-67B----------------------------------------------------------------
-67[it=11] start
-67m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-111.111A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67n[TRAIN Tmotor] req=60000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=60000.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   1.111111e+02   8.333333e+02 
-67E[it=11] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-67B----------------------------------------------------------------
-67[it=12] start
-67Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67Z[SS a=3 b=0] BLOCKED dV=905.556V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67u[TRAIN Tregen] req=-100000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-102.273A P=-100000.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67j[TRAIN Tmotor] req=60000.0W vabs=905.556V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   1.022727e+02   0.000000e+00 
-67E[it=12] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=102.273
-67B----------------------------------------------------------------
-67[it=13] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67l[SS a=3 b=0] ACTIVE  dV=102.273V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ92045.5W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67o[TRAIN Tmotor] req=60000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=100.000A P=10227.3W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   9.777778e+02   8.000000e+02 
-67F[it=13] kclInf=2.274e-13  dvInf=1.726e+03  Vmin=0.000  Vmax=1827.778
-67B----------------------------------------------------------------
-67[it=14] start
-67[[SS a=1 b=0] BLOCKED dV=1363.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[[SS a=3 b=0] BLOCKED dV=1313.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67m[TRAIN Tregen] req=-100000.0W vabs=1827.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67k[TRAIN Tmotor] req=60000.0W vabs=1313.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67C[it=14] kclInf=0.000e+00  dvInf=1.828e+03  Vmin=0.000  Vmax=0.000
-67B----------------------------------------------------------------
-67[it=15] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67i[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67g[TRAIN Tmotor] req=60000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-67E[it=15] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-67B----------------------------------------------------------------
-67[it=16] start
-67m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-111.111A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67n[TRAIN Tmotor] req=60000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=60000.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   1.111111e+02   8.333333e+02 
-67E[it=16] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-67B----------------------------------------------------------------
-67[it=17] start
-67Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67Z[SS a=3 b=0] BLOCKED dV=905.556V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67u[TRAIN Tregen] req=-100000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-102.273A P=-100000.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67j[TRAIN Tmotor] req=60000.0W vabs=905.556V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   1.022727e+02   0.000000e+00 
-67E[it=17] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=102.273
-67B----------------------------------------------------------------
-67[it=18] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67l[SS a=3 b=0] ACTIVE  dV=102.273V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ92045.5W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67o[TRAIN Tmotor] req=60000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=100.000A P=10227.3W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   9.777778e+02   8.000000e+02 
-67F[it=18] kclInf=2.274e-13  dvInf=1.726e+03  Vmin=0.000  Vmax=1827.778
-67B----------------------------------------------------------------
-67[it=19] start
-67[[SS a=1 b=0] BLOCKED dV=1363.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[[SS a=3 b=0] BLOCKED dV=1313.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67m[TRAIN Tregen] req=-100000.0W vabs=1827.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67k[TRAIN Tmotor] req=60000.0W vabs=1313.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67C[it=19] kclInf=0.000e+00  dvInf=1.828e+03  Vmin=0.000  Vmax=0.000
-67B----------------------------------------------------------------
-67[it=20] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67i[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67g[TRAIN Tmotor] req=60000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-67E[it=20] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-67B----------------------------------------------------------------
-67[it=21] start
-67m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-111.111A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67n[TRAIN Tmotor] req=60000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=60000.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   1.111111e+02   8.333333e+02 
-67E[it=21] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-67B----------------------------------------------------------------
-67[it=22] start
-67Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67Z[SS a=3 b=0] BLOCKED dV=905.556V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67u[TRAIN Tregen] req=-100000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-102.273A P=-100000.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67j[TRAIN Tmotor] req=60000.0W vabs=905.556V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   1.022727e+02   0.000000e+00 
-67E[it=22] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=102.273
-67B----------------------------------------------------------------
-67[it=23] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67l[SS a=3 b=0] ACTIVE  dV=102.273V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ92045.5W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67o[TRAIN Tmotor] req=60000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=100.000A P=10227.3W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   9.777778e+02   8.000000e+02 
-67F[it=23] kclInf=2.274e-13  dvInf=1.726e+03  Vmin=0.000  Vmax=1827.778
-67B----------------------------------------------------------------
-67[it=24] start
-67[[SS a=1 b=0] BLOCKED dV=1363.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[[SS a=3 b=0] BLOCKED dV=1313.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67m[TRAIN Tregen] req=-100000.0W vabs=1827.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67k[TRAIN Tmotor] req=60000.0W vabs=1313.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67C[it=24] kclInf=0.000e+00  dvInf=1.828e+03  Vmin=0.000  Vmax=0.000
-67B----------------------------------------------------------------
-67[it=25] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67i[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67g[TRAIN Tmotor] req=60000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-67E[it=25] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-67B----------------------------------------------------------------
-67[it=26] start
-67m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-111.111A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67n[TRAIN Tmotor] req=60000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=60000.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   1.111111e+02   8.333333e+02 
-67E[it=26] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-67B----------------------------------------------------------------
-67[it=27] start
-67Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67Z[SS a=3 b=0] BLOCKED dV=905.556V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67u[TRAIN Tregen] req=-100000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-102.273A P=-100000.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67j[TRAIN Tmotor] req=60000.0W vabs=905.556V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   1.022727e+02   0.000000e+00 
-67E[it=27] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=102.273
-67B----------------------------------------------------------------
-67[it=28] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67l[SS a=3 b=0] ACTIVE  dV=102.273V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ92045.5W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67o[TRAIN Tmotor] req=60000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=100.000A P=10227.3W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   9.777778e+02   8.000000e+02 
-67F[it=28] kclInf=2.274e-13  dvInf=1.726e+03  Vmin=0.000  Vmax=1827.778
-67B----------------------------------------------------------------
-67[it=29] start
-67[[SS a=1 b=0] BLOCKED dV=1363.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[[SS a=3 b=0] BLOCKED dV=1313.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67m[TRAIN Tregen] req=-100000.0W vabs=1827.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67k[TRAIN Tmotor] req=60000.0W vabs=1313.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67C[it=29] kclInf=0.000e+00  dvInf=1.828e+03  Vmin=0.000  Vmax=0.000
-67B----------------------------------------------------------------
-67[it=30] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67i[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67g[TRAIN Tmotor] req=60000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-67E[it=30] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-67B----------------------------------------------------------------
-67[it=31] start
-67m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-111.111A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67n[TRAIN Tmotor] req=60000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=60000.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   1.111111e+02   8.333333e+02 
-67E[it=31] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-67B----------------------------------------------------------------
-67[it=32] start
-67Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67Z[SS a=3 b=0] BLOCKED dV=905.556V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67u[TRAIN Tregen] req=-100000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-102.273A P=-100000.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67j[TRAIN Tmotor] req=60000.0W vabs=905.556V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   1.022727e+02   0.000000e+00 
-67E[it=32] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=102.273
-67B----------------------------------------------------------------
-67[it=33] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67l[SS a=3 b=0] ACTIVE  dV=102.273V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ92045.5W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67o[TRAIN Tmotor] req=60000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=100.000A P=10227.3W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   9.777778e+02   8.000000e+02 
-67F[it=33] kclInf=2.274e-13  dvInf=1.726e+03  Vmin=0.000  Vmax=1827.778
-67B----------------------------------------------------------------
-67[it=34] start
-67[[SS a=1 b=0] BLOCKED dV=1363.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[[SS a=3 b=0] BLOCKED dV=1313.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67m[TRAIN Tregen] req=-100000.0W vabs=1827.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67k[TRAIN Tmotor] req=60000.0W vabs=1313.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67C[it=34] kclInf=0.000e+00  dvInf=1.828e+03  Vmin=0.000  Vmax=0.000
-67B----------------------------------------------------------------
-67[it=35] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67i[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67g[TRAIN Tmotor] req=60000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-67E[it=35] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-67B----------------------------------------------------------------
-67[it=36] start
-67m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-111.111A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67n[TRAIN Tmotor] req=60000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=60000.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   1.111111e+02   8.333333e+02 
-67E[it=36] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-67B----------------------------------------------------------------
-67[it=37] start
-67Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67Z[SS a=3 b=0] BLOCKED dV=905.556V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67u[TRAIN Tregen] req=-100000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-102.273A P=-100000.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67j[TRAIN Tmotor] req=60000.0W vabs=905.556V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   1.022727e+02   0.000000e+00 
-67E[it=37] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=102.273
-67B----------------------------------------------------------------
-67[it=38] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67l[SS a=3 b=0] ACTIVE  dV=102.273V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ92045.5W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67o[TRAIN Tmotor] req=60000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=100.000A P=10227.3W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   9.777778e+02   8.000000e+02 
-67F[it=38] kclInf=2.274e-13  dvInf=1.726e+03  Vmin=0.000  Vmax=1827.778
-67B----------------------------------------------------------------
-67[it=39] start
-67[[SS a=1 b=0] BLOCKED dV=1363.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[[SS a=3 b=0] BLOCKED dV=1313.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67m[TRAIN Tregen] req=-100000.0W vabs=1827.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67k[TRAIN Tmotor] req=60000.0W vabs=1313.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67C[it=39] kclInf=0.000e+00  dvInf=1.828e+03  Vmin=0.000  Vmax=0.000
-67B----------------------------------------------------------------
-67[it=40] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67i[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67g[TRAIN Tmotor] req=60000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-67E[it=40] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-67B----------------------------------------------------------------
-67[it=41] start
-67m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-111.111A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67n[TRAIN Tmotor] req=60000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=60000.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   1.111111e+02   8.333333e+02 
-67E[it=41] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-67B----------------------------------------------------------------
-67[it=42] start
-67Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67Z[SS a=3 b=0] BLOCKED dV=905.556V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67u[TRAIN Tregen] req=-100000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-102.273A P=-100000.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67j[TRAIN Tmotor] req=60000.0W vabs=905.556V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   1.022727e+02   0.000000e+00 
-67E[it=42] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=102.273
-67B----------------------------------------------------------------
-67[it=43] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67l[SS a=3 b=0] ACTIVE  dV=102.273V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ92045.5W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67o[TRAIN Tmotor] req=60000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=100.000A P=10227.3W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   9.777778e+02   8.000000e+02 
-67F[it=43] kclInf=2.274e-13  dvInf=1.726e+03  Vmin=0.000  Vmax=1827.778
-67B----------------------------------------------------------------
-67[it=44] start
-67[[SS a=1 b=0] BLOCKED dV=1363.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[[SS a=3 b=0] BLOCKED dV=1313.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67m[TRAIN Tregen] req=-100000.0W vabs=1827.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67k[TRAIN Tmotor] req=60000.0W vabs=1313.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67C[it=44] kclInf=0.000e+00  dvInf=1.828e+03  Vmin=0.000  Vmax=0.000
-67B----------------------------------------------------------------
-67[it=45] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67f[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67i[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67g[TRAIN Tmotor] req=60000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   0.000000e+00   9.000000e+02 
-67E[it=45] kclInf=2.274e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-67B----------------------------------------------------------------
-67[it=46] start
-67m[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67m[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ810000.0W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-111.111A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67n[TRAIN Tmotor] req=60000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=66.667A P=60000.0W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   1.111111e+02   8.333333e+02 
-67E[it=46] kclInf=2.274e-13  dvInf=7.778e+01  Vmin=0.000  Vmax=977.778
-67B----------------------------------------------------------------
-67[it=47] start
-67Z[SS a=1 b=0] BLOCKED dV=938.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67Z[SS a=3 b=0] BLOCKED dV=905.556V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67u[TRAIN Tregen] req=-100000.0W vabs=977.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=-102.273A P=-100000.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67j[TRAIN Tmotor] req=60000.0W vabs=905.556V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   1.022727e+02   0.000000e+00 
-67E[it=47] kclInf=1.421e-14  dvInf=9.389e+02  Vmin=0.000  Vmax=102.273
-67B----------------------------------------------------------------
-67[it=48] start
-67f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ0.0W
-67l[SS a=3 b=0] ACTIVE  dV=102.273V  E=900.000V  R=1.000000Î©  g=1.000e+00  Isrc=900.000A  Pâ‰ˆ92045.5W
-67[isl] components=1
-67&[isl] compHasActiveSubstation=[true]
-67&[isl] compBackfeedAllowed   =[false]
-67)[train Tregen] comp=0 motorEnabled=true
-67t[TRAIN Tregen] req=-100000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=-977.778A P=-100000.0W
-67)[train Tmotor] comp=0 motorEnabled=true
-67o[TRAIN Tmotor] req=60000.0W vabs=102.273V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=100.000A P=10227.3W
-67[clamp] node 0 <= 0V (GROUND)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   2.000000e+00  -1.000000e+00   0.000000e+00 
-67=  0.000000e+00  -1.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   2.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   9.000000e+02   9.777778e+02   8.000000e+02 
-67F[it=48] kclInf=2.274e-13  dvInf=1.726e+03  Vmin=0.000  Vmax=1827.778
-67B----------------------------------------------------------------
-67[it=49] start
-67[[SS a=1 b=0] BLOCKED dV=1363.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[[SS a=3 b=0] BLOCKED dV=1313.889V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-12
-67[isl] components=2
-67.[isl] compHasActiveSubstation=[false, false]
-67-[isl] compBackfeedAllowed   =[false, false]
-67*[train Tregen] comp=1 motorEnabled=false
-67m[TRAIN Tregen] req=-100000.0W vabs=1827.778V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67*[train Tmotor] comp=1 motorEnabled=false
-67k[TRAIN Tmotor] req=60000.0W vabs=1313.889V vmin=600.0 vmax=1000.0 motorEnabled=false -> Iab=0.000A P=0.0W
-67[clamp] node 0 <= 0V (GROUND)
-67([clamp-pick] comp=1 -> fallback node=1
-67![clamp] node 1 <= 0V (ISLAND#1)
-67
-=== G ===
-67=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   1.000000e+00   0.000000e+00   0.000000e+00 
-67=  0.000000e+00   0.000000e+00   2.000000e+00  -1.000000e+00 
-67=  0.000000e+00   0.000000e+00  -1.000000e+00   1.000000e+00 
-67
-=== J ===
-67>  0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-67C[it=49] kclInf=0.000e+00  dvInf=1.828e+03  Vmin=0.000  Vmax=0.000
-67,[final V] V = {0.000; 0.000; 0.000; 0.000}
-98B----------------------------------------------------------------
-98[it=0] start
-98h[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ0.0W
-98[isl] components=1
-98&[isl] compHasActiveSubstation=[true]
-98&[isl] compBackfeedAllowed   =[false]
-98)[train Tregen] comp=0 motorEnabled=true
-98h[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-98)[train Tmotor] comp=0 motorEnabled=true
-98g[TRAIN Tmotor] req=100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-98[clamp] node 0 <= 0V (GROUND)
-98
-=== G ===
-98=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-98=  0.000000e+00   2.000000e+02  -1.000000e+02   0.000000e+00 
-98=  0.000000e+00  -1.000000e+02   2.000000e+02  -1.000000e+02 
-98=  0.000000e+00   0.000000e+00  -1.000000e+02   1.000000e+02 
-98
-=== J ===
-98>  0.000000e+00   9.000000e+04   0.000000e+00   0.000000e+00 
-98D[it=0] kclInf=1.455e-11  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-98B----------------------------------------------------------------
-98[it=1] start
-98q[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ81000000.0W
-98[isl] components=1
-98&[isl] compHasActiveSubstation=[true]
-98&[isl] compBackfeedAllowed   =[false]
-98)[train Tregen] comp=0 motorEnabled=true
-98h[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-98)[train Tmotor] comp=0 motorEnabled=true
-98g[TRAIN Tmotor] req=100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-98[clamp] node 0 <= 0V (GROUND)
-98
-=== G ===
-98=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-98=  0.000000e+00   2.000000e+02  -1.000000e+02   0.000000e+00 
-98=  0.000000e+00  -1.000000e+02   2.000000e+02  -1.000000e+02 
-98=  0.000000e+00   0.000000e+00  -1.000000e+02   1.000000e+02 
-98
-=== J ===
-98>  0.000000e+00   9.000000e+04   0.000000e+00   0.000000e+00 
-98D[it=1] kclInf=1.455e-11  dvInf=0.000e+00  Vmin=0.000  Vmax=900.000
-98[it=1] converged
-982[final V] V = {0.000; 900.000; 900.000; 900.000}
-9:B----------------------------------------------------------------
-9:[it=0] start
-9:h[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ0.0W
-9:h[SS a=2 b=0] ACTIVE  dV=0.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ0.0W
-9:h[SS a=3 b=0] ACTIVE  dV=0.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ0.0W
-9:[isl] components=1
-9:&[isl] compHasActiveSubstation=[true]
-9:&[isl] compBackfeedAllowed   =[false]
-9:)[train Tregen] comp=0 motorEnabled=true
-9:h[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-9:[clamp] node 0 <= 0V (GROUND)
-9:
-=== G ===
-9:=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-9:=  0.000000e+00   2.000000e+02  -1.000000e+02   0.000000e+00 
-9:=  0.000000e+00  -1.000000e+02   3.000000e+02  -1.000000e+02 
-9:=  0.000000e+00   0.000000e+00  -1.000000e+02   2.000000e+02 
-9:
-=== J ===
-9:>  0.000000e+00   9.000000e+04   9.000000e+04   9.000000e+04 
-9:D[it=0] kclInf=0.000e+00  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-9:B----------------------------------------------------------------
-9:[it=1] start
-9:q[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ81000000.0W
-9:q[SS a=2 b=0] ACTIVE  dV=900.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ81000000.0W
-9:q[SS a=3 b=0] ACTIVE  dV=900.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ81000000.0W
-9:[isl] components=1
-9:&[isl] compHasActiveSubstation=[true]
-9:&[isl] compBackfeedAllowed   =[false]
-9:)[train Tregen] comp=0 motorEnabled=true
-9:h[TRAIN Tregen] req=-100000.0W vabs=0.000V vmin=0.0 vmax=10000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-9:[clamp] node 0 <= 0V (GROUND)
-9:
-=== G ===
-9:=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-9:=  0.000000e+00   2.000000e+02  -1.000000e+02   0.000000e+00 
-9:=  0.000000e+00  -1.000000e+02   3.000000e+02  -1.000000e+02 
-9:=  0.000000e+00   0.000000e+00  -1.000000e+02   2.000000e+02 
-9:
-=== J ===
-9:>  0.000000e+00   9.000000e+04   9.000000e+04   9.000000e+04 
-9:D[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=900.000
-9:[it=1] converged
-9:2[final V] V = {0.000; 900.000; 900.000; 900.000}
-<;Z[SS a=0 b=1] BLOCKED dV=950.000V  E=900.000V  (backfeed=DISABLED) -> leak diag=1.000e-09
-<=q[SS a=0 b=1] ACTIVE  dV=850.000V  E=900.000V  R=0.010000Î©  g=1.000e+02  Isrc=90000.000A  Pâ‰ˆ76500000.0W
-?>+[NetBuilder] Network built from GridModel
-?>![NetBuilder] nodes=3 (ground=0)
-?>/[NetBuilder] substations=2, trains=0, lines=2
-?> [NetBuilder] nodeIds=[0, 1, 2]
-?>B----------------------------------------------------------------
-?>([DcLinearSolver] Start linear solve...
-?>#[DcLinearSolver] nodes=3 ground=0
-?>8[DcLinearSolver] G (before substation fallback) (3x3):
-?>+ 2.500000e-01 -1.250000e-01 -1.250000e-01
-?>+-1.250000e-01  1.250000e-01  0.000000e+00
-?>+-1.250000e-01  0.000000e+00  1.250000e-01
-?>6[DcLinearSolver] J (before substation fallback) (3):
-?>+ 0.000000e+00  0.000000e+00  0.000000e+00
-?>e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-?>e[DcLinearSolver] Fallback stamp: a=2, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-?>4[DcLinearSolver] Fallback stamped 2 substation(s).
-?>*[DcLinearSolver] G (before clamp) (3x3):
-?>+ 1.250000e+00 -6.250000e-01 -6.250000e-01
-?>+-6.250000e-01  6.250000e-01  0.000000e+00
-?>+-6.250000e-01  0.000000e+00  6.250000e-01
-?>([DcLinearSolver] J (before clamp) (3):
-?>+-9.000000e+02  4.500000e+02  4.500000e+02
-?>)[DcLinearSolver] G (after clamp) (3x3):
-?>+ 1.000000e+00  0.000000e+00  0.000000e+00
-?>+ 0.000000e+00  6.250000e-01  0.000000e+00
-?>+ 0.000000e+00  0.000000e+00  6.250000e-01
-?>'[DcLinearSolver] J (after clamp) (3):
-?>+ 0.000000e+00  4.500000e+02  4.500000e+02
-?>)[DcLinearSolver] V (node voltages) (3):
-?>+ 0.000000e+00  7.200000e+02  7.200000e+02
-?>"[DcLinearSolver] Solve complete.
-?>B----------------------------------------------------------------
-?@+[NetBuilder] Network built from GridModel
-?@![NetBuilder] nodes=3 (ground=0)
-?@/[NetBuilder] substations=2, trains=0, lines=3
-?@ [NetBuilder] nodeIds=[0, 1, 2]
-?@B----------------------------------------------------------------
-?@([DcLinearSolver] Start linear solve...
-?@#[DcLinearSolver] nodes=3 ground=0
-?@8[DcLinearSolver] G (before substation fallback) (3x3):
-?@+ 2.500000e-01 -1.250000e-01 -1.250000e-01
-?@+-1.250000e-01  2.125000e+00 -2.000000e+00
-?@+-1.250000e-01 -2.000000e+00  2.125000e+00
-?@6[DcLinearSolver] J (before substation fallback) (3):
-?@+ 0.000000e+00  0.000000e+00  0.000000e+00
-?@e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-?@e[DcLinearSolver] Fallback stamp: a=2, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-?@4[DcLinearSolver] Fallback stamped 2 substation(s).
-?@*[DcLinearSolver] G (before clamp) (3x3):
-?@+ 1.250000e+00 -6.250000e-01 -6.250000e-01
-?@+-6.250000e-01  2.625000e+00 -2.000000e+00
-?@+-6.250000e-01 -2.000000e+00  2.625000e+00
-?@([DcLinearSolver] J (before clamp) (3):
-?@+-9.000000e+02  4.500000e+02  4.500000e+02
-?@)[DcLinearSolver] G (after clamp) (3x3):
-?@+ 1.000000e+00  0.000000e+00  0.000000e+00
-?@+ 0.000000e+00  2.625000e+00 -2.000000e+00
-?@+ 0.000000e+00 -2.000000e+00  2.625000e+00
-?@'[DcLinearSolver] J (after clamp) (3):
-?@+ 0.000000e+00  4.500000e+02  4.500000e+02
-?@)[DcLinearSolver] V (node voltages) (3):
-?@+ 0.000000e+00  7.200000e+02  7.200000e+02
-?@"[DcLinearSolver] Solve complete.
-?@B----------------------------------------------------------------
-IH+[NetBuilder] Network built from GridModel
-IH![NetBuilder] nodes=2 (ground=0)
-IH/[NetBuilder] substations=1, trains=0, lines=1
-IH[NetBuilder] nodeIds=[0, 1]
-IHB----------------------------------------------------------------
-IH([DcLinearSolver] Start linear solve...
-IH#[DcLinearSolver] nodes=2 ground=0
-IH8[DcLinearSolver] G (before substation fallback) (2x2):
-IH 1.250000e-01 -1.250000e-01
-IH-1.250000e-01  1.250000e-01
-IH6[DcLinearSolver] J (before substation fallback) (2):
-IH 0.000000e+00  0.000000e+00
-IHe[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-IH4[DcLinearSolver] Fallback stamped 1 substation(s).
-IH*[DcLinearSolver] G (before clamp) (2x2):
-IH 6.250000e-01 -6.250000e-01
-IH-6.250000e-01  6.250000e-01
-IH([DcLinearSolver] J (before clamp) (2):
-IH-4.500000e+02  4.500000e+02
-IH)[DcLinearSolver] G (after clamp) (2x2):
-IH 1.000000e+00  0.000000e+00
-IH 0.000000e+00  6.250000e-01
-IH'[DcLinearSolver] J (after clamp) (2):
-IH 0.000000e+00  4.500000e+02
-IH)[DcLinearSolver] V (node voltages) (2):
-IH 0.000000e+00  7.200000e+02
-IH"[DcLinearSolver] Solve complete.
-IHB----------------------------------------------------------------
-IJ+[NetBuilder] Network built from GridModel
-IJ![NetBuilder] nodes=2 (ground=0)
-IJ/[NetBuilder] substations=1, trains=0, lines=2
-IJ[NetBuilder] nodeIds=[0, 1]
-IJB----------------------------------------------------------------
-IJ([DcLinearSolver] Start linear solve...
-IJ#[DcLinearSolver] nodes=2 ground=0
-IJ8[DcLinearSolver] G (before substation fallback) (2x2):
-IJ 2.500000e-01 -2.500000e-01
-IJ-2.500000e-01  2.500000e-01
-IJ6[DcLinearSolver] J (before substation fallback) (2):
-IJ 0.000000e+00  0.000000e+00
-IJe[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-IJ4[DcLinearSolver] Fallback stamped 1 substation(s).
-IJ*[DcLinearSolver] G (before clamp) (2x2):
-IJ 7.500000e-01 -7.500000e-01
-IJ-7.500000e-01  7.500000e-01
-IJ([DcLinearSolver] J (before clamp) (2):
-IJ-4.500000e+02  4.500000e+02
-IJ)[DcLinearSolver] G (after clamp) (2x2):
-IJ 1.000000e+00  0.000000e+00
-IJ 0.000000e+00  7.500000e-01
-IJ'[DcLinearSolver] J (after clamp) (2):
-IJ 0.000000e+00  4.500000e+02
-IJ)[DcLinearSolver] V (node voltages) (2):
-IJ 0.000000e+00  6.000000e+02
-IJ"[DcLinearSolver] Solve complete.
-IJB----------------------------------------------------------------
-LK+[NetBuilder] Network built from GridModel
-LK![NetBuilder] nodes=2 (ground=0)
-LK/[NetBuilder] substations=1, trains=0, lines=1
-LK[NetBuilder] nodeIds=[0, 1]
-LKB----------------------------------------------------------------
-LK([DcLinearSolver] Start linear solve...
-LK#[DcLinearSolver] nodes=2 ground=0
-LK8[DcLinearSolver] G (before substation fallback) (2x2):
-LK 1.250000e-01 -1.250000e-01
-LK-1.250000e-01  1.250000e-01
-LK6[DcLinearSolver] J (before substation fallback) (2):
-LK 0.000000e+00  0.000000e+00
-LKe[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-LK4[DcLinearSolver] Fallback stamped 1 substation(s).
-LK*[DcLinearSolver] G (before clamp) (2x2):
-LK 6.250000e-01 -6.250000e-01
-LK-6.250000e-01  6.250000e-01
-LK([DcLinearSolver] J (before clamp) (2):
-LK-4.500000e+02  4.500000e+02
-LK)[DcLinearSolver] G (after clamp) (2x2):
-LK 1.000000e+00  0.000000e+00
-LK 0.000000e+00  6.250000e-01
-LK'[DcLinearSolver] J (after clamp) (2):
-LK 0.000000e+00  4.500000e+02
-LK)[DcLinearSolver] V (node voltages) (2):
-LK 0.000000e+00  7.200000e+02
-LK"[DcLinearSolver] Solve complete.
-LKB----------------------------------------------------------------
-SRB----------------------------------------------------------------
-SR[it=0] start
-SRg[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=0.200000Î©  g=5.000e+00  Isrc=4500.000A  Pâ‰ˆ0.0W
-SR[isl] components=1
-SR&[isl] compHasActiveSubstation=[true]
-SR&[isl] compBackfeedAllowed   =[false]
-SR)[train Tmotor] comp=0 motorEnabled=true
-SRe[TRAIN Tmotor] req=850.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-SR)[train Tregen] comp=0 motorEnabled=true
-SRf[TRAIN Tregen] req=1000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-SR[clamp] node 0 <= 0V (GROUND)
-SR
-=== G ===
-SR=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-SR=  0.000000e+00   7.000000e+00  -2.000000e+00   0.000000e+00 
-SR=  0.000000e+00  -2.000000e+00   4.000000e+00  -2.000000e+00 
-SR=  0.000000e+00   0.000000e+00  -2.000000e+00   2.000000e+00 
-SR
-=== J ===
-SR>  0.000000e+00   4.500000e+03   0.000000e+00   0.000000e+00 
-SRD[it=0] kclInf=6.821e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-SRB----------------------------------------------------------------
-SR[it=1] start
-SRo[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=0.200000Î©  g=5.000e+00  Isrc=4500.000A  Pâ‰ˆ4050000.0W
-SR[isl] components=1
-SR&[isl] compHasActiveSubstation=[true]
-SR&[isl] compBackfeedAllowed   =[false]
-SR)[train Tmotor] comp=0 motorEnabled=true
-SRi[TRAIN Tmotor] req=850.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.944A P=850.0W
-SR)[train Tregen] comp=0 motorEnabled=true
-SRk[TRAIN Tregen] req=1000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=1.111A P=1000.0W
-SR[clamp] node 0 <= 0V (GROUND)
-SR
-=== G ===
-SR=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-SR=  0.000000e+00   7.000000e+00  -2.000000e+00   0.000000e+00 
-SR=  0.000000e+00  -2.000000e+00   4.000000e+00  -2.000000e+00 
-SR=  0.000000e+00   0.000000e+00  -2.000000e+00   2.000000e+00 
-SR
-=== J ===
-SR>  0.000000e+00   4.500000e+03  -9.444444e-01  -1.111111e+00 
-SRD[it=1] kclInf=2.016e-13  dvInf=1.994e+00  Vmin=0.000  Vmax=899.589
-SRB----------------------------------------------------------------
-SR[it=2] start
-SRo[SS a=1 b=0] ACTIVE  dV=899.589V  E=900.000V  R=0.200000Î©  g=5.000e+00  Isrc=4500.000A  Pâ‰ˆ4048150.0W
-SR[isl] components=1
-SR&[isl] compHasActiveSubstation=[true]
-SR&[isl] compBackfeedAllowed   =[false]
-SR)[train Tmotor] comp=0 motorEnabled=true
-SRi[TRAIN Tmotor] req=850.0W vabs=898.561V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.946A P=850.0W
-SR)[train Tregen] comp=0 motorEnabled=true
-SRk[TRAIN Tregen] req=1000.0W vabs=898.006V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=1.114A P=1000.0W
-SR[clamp] node 0 <= 0V (GROUND)
-SR
-=== G ===
-SR=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-SR=  0.000000e+00   7.000000e+00  -2.000000e+00   0.000000e+00 
-SR=  0.000000e+00  -2.000000e+00   4.000000e+00  -2.000000e+00 
-SR=  0.000000e+00   0.000000e+00  -2.000000e+00   2.000000e+00 
-SR
-=== J ===
-SR>  0.000000e+00   4.500000e+03  -9.459568e-01  -1.113579e+00 
-SRD[it=2] kclInf=2.609e-13  dvInf=4.020e-03  Vmin=0.000  Vmax=899.588
-SRB----------------------------------------------------------------
-SR[it=3] start
-SRo[SS a=1 b=0] ACTIVE  dV=899.588V  E=900.000V  R=0.200000Î©  g=5.000e+00  Isrc=4500.000A  Pâ‰ˆ4048146.4W
-SR[isl] components=1
-SR&[isl] compHasActiveSubstation=[true]
-SR&[isl] compBackfeedAllowed   =[false]
-SR)[train Tmotor] comp=0 motorEnabled=true
-SRi[TRAIN Tmotor] req=850.0W vabs=898.558V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.946A P=850.0W
-SR)[train Tregen] comp=0 motorEnabled=true
-SRk[TRAIN Tregen] req=1000.0W vabs=898.002V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=1.114A P=1000.0W
-SR[clamp] node 0 <= 0V (GROUND)
-SR
-=== G ===
-SR=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-SR=  0.000000e+00   7.000000e+00  -2.000000e+00   0.000000e+00 
-SR=  0.000000e+00  -2.000000e+00   4.000000e+00  -2.000000e+00 
-SR=  0.000000e+00   0.000000e+00  -2.000000e+00   2.000000e+00 
-SR
-=== J ===
-SR>  0.000000e+00   4.500000e+03  -9.459597e-01  -1.113584e+00 
-SRD[it=3] kclInf=6.350e-13  dvInf=8.035e-06  Vmin=0.000  Vmax=899.588
-SRB----------------------------------------------------------------
-SR[it=4] start
-SRo[SS a=1 b=0] ACTIVE  dV=899.588V  E=900.000V  R=0.200000Î©  g=5.000e+00  Isrc=4500.000A  Pâ‰ˆ4048146.4W
-SR[isl] components=1
-SR&[isl] compHasActiveSubstation=[true]
-SR&[isl] compBackfeedAllowed   =[false]
-SR)[train Tmotor] comp=0 motorEnabled=true
-SRi[TRAIN Tmotor] req=850.0W vabs=898.558V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.946A P=850.0W
-SR)[train Tregen] comp=0 motorEnabled=true
-SRk[TRAIN Tregen] req=1000.0W vabs=898.002V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=1.114A P=1000.0W
-SR[clamp] node 0 <= 0V (GROUND)
-SR
-=== G ===
-SR=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-SR=  0.000000e+00   7.000000e+00  -2.000000e+00   0.000000e+00 
-SR=  0.000000e+00  -2.000000e+00   4.000000e+00  -2.000000e+00 
-SR=  0.000000e+00   0.000000e+00  -2.000000e+00   2.000000e+00 
-SR
-=== J ===
-SR>  0.000000e+00   4.500000e+03  -9.459597e-01  -1.113584e+00 
-SRD[it=4] kclInf=4.873e-13  dvInf=1.604e-08  Vmin=0.000  Vmax=899.588
-SR[it=4] converged
-SR2[final V] V = {0.000; 899.588; 898.558; 898.002}
-STB----------------------------------------------------------------
-ST[it=0] start
-STg[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=0.200000Î©  g=5.000e+00  Isrc=4500.000A  Pâ‰ˆ0.0W
-ST[isl] components=1
-ST&[isl] compHasActiveSubstation=[true]
-ST&[isl] compBackfeedAllowed   =[false]
-ST)[train Tmotor] comp=0 motorEnabled=true
-STe[TRAIN Tmotor] req=850.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-ST)[train Tregen] comp=0 motorEnabled=true
-STf[TRAIN Tregen] req=1000.0W vabs=0.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.000A P=0.0W
-ST[clamp] node 0 <= 0V (GROUND)
-ST
-=== G ===
-ST=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-ST=  0.000000e+00   7.000000e+00  -2.000000e+00   0.000000e+00 
-ST=  0.000000e+00  -2.000000e+00   4.000000e+00  -2.000000e+00 
-ST=  0.000000e+00   0.000000e+00  -2.000000e+00   2.000000e+00 
-ST
-=== J ===
-ST>  0.000000e+00   4.500000e+03   0.000000e+00   0.000000e+00 
-STD[it=0] kclInf=6.821e-13  dvInf=9.000e+02  Vmin=0.000  Vmax=900.000
-STB----------------------------------------------------------------
-ST[it=1] start
-STo[SS a=1 b=0] ACTIVE  dV=900.000V  E=900.000V  R=0.200000Î©  g=5.000e+00  Isrc=4500.000A  Pâ‰ˆ4050000.0W
-ST[isl] components=1
-ST&[isl] compHasActiveSubstation=[true]
-ST&[isl] compBackfeedAllowed   =[false]
-ST)[train Tmotor] comp=0 motorEnabled=true
-STi[TRAIN Tmotor] req=850.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.944A P=850.0W
-ST)[train Tregen] comp=0 motorEnabled=true
-STk[TRAIN Tregen] req=1000.0W vabs=900.000V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=1.111A P=1000.0W
-ST[clamp] node 0 <= 0V (GROUND)
-ST
-=== G ===
-ST=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-ST=  0.000000e+00   7.000000e+00  -2.000000e+00   0.000000e+00 
-ST=  0.000000e+00  -2.000000e+00   4.000000e+00  -2.000000e+00 
-ST=  0.000000e+00   0.000000e+00  -2.000000e+00   2.000000e+00 
-ST
-=== J ===
-ST>  0.000000e+00   4.500000e+03  -9.444444e-01  -1.111111e+00 
-STD[it=1] kclInf=2.016e-13  dvInf=1.994e+00  Vmin=0.000  Vmax=899.589
-STB----------------------------------------------------------------
-ST[it=2] start
-STo[SS a=1 b=0] ACTIVE  dV=899.589V  E=900.000V  R=0.200000Î©  g=5.000e+00  Isrc=4500.000A  Pâ‰ˆ4048150.0W
-ST[isl] components=1
-ST&[isl] compHasActiveSubstation=[true]
-ST&[isl] compBackfeedAllowed   =[false]
-ST)[train Tmotor] comp=0 motorEnabled=true
-STi[TRAIN Tmotor] req=850.0W vabs=898.561V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.946A P=850.0W
-ST)[train Tregen] comp=0 motorEnabled=true
-STk[TRAIN Tregen] req=1000.0W vabs=898.006V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=1.114A P=1000.0W
-ST[clamp] node 0 <= 0V (GROUND)
-ST
-=== G ===
-ST=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-ST=  0.000000e+00   7.000000e+00  -2.000000e+00   0.000000e+00 
-ST=  0.000000e+00  -2.000000e+00   4.000000e+00  -2.000000e+00 
-ST=  0.000000e+00   0.000000e+00  -2.000000e+00   2.000000e+00 
-ST
-=== J ===
-ST>  0.000000e+00   4.500000e+03  -9.459568e-01  -1.113579e+00 
-STD[it=2] kclInf=2.609e-13  dvInf=4.020e-03  Vmin=0.000  Vmax=899.588
-STB----------------------------------------------------------------
-ST[it=3] start
-STo[SS a=1 b=0] ACTIVE  dV=899.588V  E=900.000V  R=0.200000Î©  g=5.000e+00  Isrc=4500.000A  Pâ‰ˆ4048146.4W
-ST[isl] components=1
-ST&[isl] compHasActiveSubstation=[true]
-ST&[isl] compBackfeedAllowed   =[false]
-ST)[train Tmotor] comp=0 motorEnabled=true
-STi[TRAIN Tmotor] req=850.0W vabs=898.558V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.946A P=850.0W
-ST)[train Tregen] comp=0 motorEnabled=true
-STk[TRAIN Tregen] req=1000.0W vabs=898.002V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=1.114A P=1000.0W
-ST[clamp] node 0 <= 0V (GROUND)
-ST
-=== G ===
-ST=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-ST=  0.000000e+00   7.000000e+00  -2.000000e+00   0.000000e+00 
-ST=  0.000000e+00  -2.000000e+00   4.000000e+00  -2.000000e+00 
-ST=  0.000000e+00   0.000000e+00  -2.000000e+00   2.000000e+00 
-ST
-=== J ===
-ST>  0.000000e+00   4.500000e+03  -9.459597e-01  -1.113584e+00 
-STD[it=3] kclInf=6.350e-13  dvInf=8.035e-06  Vmin=0.000  Vmax=899.588
-STB----------------------------------------------------------------
-ST[it=4] start
-STo[SS a=1 b=0] ACTIVE  dV=899.588V  E=900.000V  R=0.200000Î©  g=5.000e+00  Isrc=4500.000A  Pâ‰ˆ4048146.4W
-ST[isl] components=1
-ST&[isl] compHasActiveSubstation=[true]
-ST&[isl] compBackfeedAllowed   =[false]
-ST)[train Tmotor] comp=0 motorEnabled=true
-STi[TRAIN Tmotor] req=850.0W vabs=898.558V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=0.946A P=850.0W
-ST)[train Tregen] comp=0 motorEnabled=true
-STk[TRAIN Tregen] req=1000.0W vabs=898.002V vmin=600.0 vmax=1000.0 motorEnabled=true -> Iab=1.114A P=1000.0W
-ST[clamp] node 0 <= 0V (GROUND)
-ST
-=== G ===
-ST=  1.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00 
-ST=  0.000000e+00   7.000000e+00  -2.000000e+00   0.000000e+00 
-ST=  0.000000e+00  -2.000000e+00   4.000000e+00  -2.000000e+00 
-ST=  0.000000e+00   0.000000e+00  -2.000000e+00   2.000000e+00 
-ST
-=== J ===
-ST>  0.000000e+00   4.500000e+03  -9.459597e-01  -1.113584e+00 
-STD[it=4] kclInf=4.873e-13  dvInf=1.604e-08  Vmin=0.000  Vmax=899.588
-ST[it=4] converged
-ST2[final V] V = {0.000; 899.588; 898.558; 898.002}
-VUB----------------------------------------------------------------
-VU([DcLinearSolver] Start linear solve...
-VU#[DcLinearSolver] nodes=2 ground=0
-VU8[DcLinearSolver] G (before substation fallback) (2x2):
-VU 1.250000e-01 -1.250000e-01
-VU-1.250000e-01  1.250000e-01
-VU6[DcLinearSolver] J (before substation fallback) (2):
-VU 0.000000e+00  0.000000e+00
-VUe[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-VU4[DcLinearSolver] Fallback stamped 1 substation(s).
-VU*[DcLinearSolver] G (before clamp) (2x2):
-VU 6.250000e-01 -6.250000e-01
-VU-6.250000e-01  6.250000e-01
-VU([DcLinearSolver] J (before clamp) (2):
-VU-4.500000e+02  4.500000e+02
-VU)[DcLinearSolver] G (after clamp) (2x2):
-VU 1.000000e+00  0.000000e+00
-VU 0.000000e+00  6.250000e-01
-VU'[DcLinearSolver] J (after clamp) (2):
-VU 0.000000e+00  4.500000e+02
-VU)[DcLinearSolver] V (node voltages) (2):
-VU 0.000000e+00  7.200000e+02
-VU"[DcLinearSolver] Solve complete.
-VUB----------------------------------------------------------------
-XW+[NetBuilder] Network built from GridModel
-XW![NetBuilder] nodes=2 (ground=0)
-XW/[NetBuilder] substations=1, trains=0, lines=1
-XW[NetBuilder] nodeIds=[0, 1]
-XWB----------------------------------------------------------------
-XW([DcLinearSolver] Start linear solve...
-XW#[DcLinearSolver] nodes=2 ground=0
-XW8[DcLinearSolver] G (before substation fallback) (2x2):
-XW 1.250000e-01 -1.250000e-01
-XW-1.250000e-01  1.250000e-01
-XW6[DcLinearSolver] J (before substation fallback) (2):
-XW 0.000000e+00  0.000000e+00
-XWe[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-XW4[DcLinearSolver] Fallback stamped 1 substation(s).
-XW*[DcLinearSolver] G (before clamp) (2x2):
-XW 6.250000e-01 -6.250000e-01
-XW-6.250000e-01  6.250000e-01
-XW([DcLinearSolver] J (before clamp) (2):
-XW-4.500000e+02  4.500000e+02
-XW)[DcLinearSolver] G (after clamp) (2x2):
-XW 1.000000e+00  0.000000e+00
-XW 0.000000e+00  6.250000e-01
-XW'[DcLinearSolver] J (after clamp) (2):
-XW 0.000000e+00  4.500000e+02
-XW)[DcLinearSolver] V (node voltages) (2):
-XW 0.000000e+00  7.200000e+02
-XW"[DcLinearSolver] Solve complete.
-XWB----------------------------------------------------------------
-ZY+[NetBuilder] Network built from GridModel
-ZY![NetBuilder] nodes=3 (ground=0)
-ZY/[NetBuilder] substations=1, trains=0, lines=2
-ZY [NetBuilder] nodeIds=[0, 1, 2]
-ZYB----------------------------------------------------------------
-ZY([DcLinearSolver] Start linear solve...
-ZY#[DcLinearSolver] nodes=3 ground=0
-ZY8[DcLinearSolver] G (before substation fallback) (3x3):
-ZY+ 2.000000e-01  0.000000e+00 -2.000000e-01
-ZY+ 0.000000e+00  3.333333e-01 -3.333333e-01
-ZY+-2.000000e-01 -3.333333e-01  5.333333e-01
-ZY6[DcLinearSolver] J (before substation fallback) (3):
-ZY+ 0.000000e+00  0.000000e+00  0.000000e+00
-ZYe[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-ZY4[DcLinearSolver] Fallback stamped 1 substation(s).
-ZY*[DcLinearSolver] G (before clamp) (3x3):
-ZY+ 7.000000e-01 -5.000000e-01 -2.000000e-01
-ZY+-5.000000e-01  8.333333e-01 -3.333333e-01
-ZY+-2.000000e-01 -3.333333e-01  5.333333e-01
-ZY([DcLinearSolver] J (before clamp) (3):
-ZY+-4.500000e+02  4.500000e+02  0.000000e+00
-ZY)[DcLinearSolver] G (after clamp) (3x3):
-ZY+ 1.000000e+00  0.000000e+00  0.000000e+00
-ZY+ 0.000000e+00  8.333333e-01 -3.333333e-01
-ZY+ 0.000000e+00 -3.333333e-01  5.333333e-01
-ZY'[DcLinearSolver] J (after clamp) (3):
-ZY+ 0.000000e+00  4.500000e+02  0.000000e+00
-ZY)[DcLinearSolver] V (node voltages) (3):
-ZY+ 0.000000e+00  7.200000e+02  4.500000e+02
-ZY"[DcLinearSolver] Solve complete.
-ZYB----------------------------------------------------------------
-Z[+[NetBuilder] Network built from GridModel
-Z[![NetBuilder] nodes=2 (ground=0)
-Z[/[NetBuilder] substations=1, trains=0, lines=0
-Z[[NetBuilder] nodeIds=[0, 1]
-Z[B----------------------------------------------------------------
-Z[([DcLinearSolver] Start linear solve...
-Z[#[DcLinearSolver] nodes=2 ground=0
-Z[8[DcLinearSolver] G (before substation fallback) (2x2):
-Z[ 0.000000e+00  0.000000e+00
-Z[ 0.000000e+00  0.000000e+00
-Z[6[DcLinearSolver] J (before substation fallback) (2):
-Z[ 0.000000e+00  0.000000e+00
-Z[e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-Z[4[DcLinearSolver] Fallback stamped 1 substation(s).
-Z[*[DcLinearSolver] G (before clamp) (2x2):
-Z[ 5.000000e-01 -5.000000e-01
-Z[-5.000000e-01  5.000000e-01
-Z[([DcLinearSolver] J (before clamp) (2):
-Z[-4.500000e+02  4.500000e+02
-Z[)[DcLinearSolver] G (after clamp) (2x2):
-Z[ 1.000000e+00  0.000000e+00
-Z[ 0.000000e+00  5.000000e-01
-Z['[DcLinearSolver] J (after clamp) (2):
-Z[ 0.000000e+00  4.500000e+02
-Z[)[DcLinearSolver] V (node voltages) (2):
-Z[ 0.000000e+00  9.000000e+02
-Z["[DcLinearSolver] Solve complete.
-Z[B----------------------------------------------------------------
-_^+[NetBuilder] Network built from GridModel
-_^![NetBuilder] nodes=2 (ground=0)
-_^/[NetBuilder] substations=1, trains=0, lines=1
-_^[NetBuilder] nodeIds=[0, 1]
-_^B----------------------------------------------------------------
-_^[it=0] start
-_^f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-_^[isl] components=1
-_^&[isl] compHasActiveSubstation=[true]
-_^&[isl] compBackfeedAllowed   =[false]
-_^[clamp] node 0 <= 0V (GROUND)
-_^
-=== G ===
-_^  1.000000e+00   0.000000e+00 
-_^  0.000000e+00   6.250000e-01 
-_^
-=== J ===
-_^   0.000000e+00   4.500000e+02 
-_^D[it=0] kclInf=0.000e+00  dvInf=7.200e+02  Vmin=0.000  Vmax=720.000
-_^B----------------------------------------------------------------
-_^[it=1] start
-_^m[SS a=1 b=0] ACTIVE  dV=720.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ324000.0W
-_^[isl] components=1
-_^&[isl] compHasActiveSubstation=[true]
-_^&[isl] compBackfeedAllowed   =[false]
-_^[clamp] node 0 <= 0V (GROUND)
-_^
-=== G ===
-_^  1.000000e+00   0.000000e+00 
-_^  0.000000e+00   6.250000e-01 
-_^
-=== J ===
-_^   0.000000e+00   4.500000e+02 
-_^D[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=720.000
-_^[it=1] converged
-_^ [final V] V = {0.000; 720.000}
-_^T[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
-_^B----------------------------------------------------------------
-_^([DcLinearSolver] Start linear solve...
-_^#[DcLinearSolver] nodes=2 ground=0
-_^8[DcLinearSolver] G (before substation fallback) (2x2):
-_^ 1.250000e-01 -1.250000e-01
-_^-1.250000e-01  1.250000e-01
-_^6[DcLinearSolver] J (before substation fallback) (2):
-_^ 0.000000e+00  0.000000e+00
-_^e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-_^4[DcLinearSolver] Fallback stamped 1 substation(s).
-_^*[DcLinearSolver] G (before clamp) (2x2):
-_^ 6.250000e-01 -6.250000e-01
-_^-6.250000e-01  6.250000e-01
-_^([DcLinearSolver] J (before clamp) (2):
-_^-4.500000e+02  4.500000e+02
-_^)[DcLinearSolver] G (after clamp) (2x2):
-_^ 1.000000e+00  0.000000e+00
-_^ 0.000000e+00  6.250000e-01
-_^'[DcLinearSolver] J (after clamp) (2):
-_^ 0.000000e+00  4.500000e+02
-_^)[DcLinearSolver] V (node voltages) (2):
-_^ 0.000000e+00  7.200000e+02
-_^"[DcLinearSolver] Solve complete.
-_^B----------------------------------------------------------------
-_`+[NetBuilder] Network built from GridModel
-_`![NetBuilder] nodes=2 (ground=0)
-_`/[NetBuilder] substations=1, trains=0, lines=1
-_`[NetBuilder] nodeIds=[0, 1]
-_`B----------------------------------------------------------------
-_`[it=0] start
-_`f[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
-_`[isl] components=1
-_`&[isl] compHasActiveSubstation=[true]
-_`&[isl] compBackfeedAllowed   =[false]
-_`[clamp] node 0 <= 0V (GROUND)
-_`
-=== G ===
-_`  1.000000e+00   0.000000e+00 
-_`  0.000000e+00   6.250000e-01 
-_`
-=== J ===
-_`   0.000000e+00   4.500000e+02 
-_`D[it=0] kclInf=0.000e+00  dvInf=7.200e+02  Vmin=0.000  Vmax=720.000
-_`B----------------------------------------------------------------
-_`[it=1] start
-_`m[SS a=1 b=0] ACTIVE  dV=720.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ324000.0W
-_`[isl] components=1
-_`&[isl] compHasActiveSubstation=[true]
-_`&[isl] compBackfeedAllowed   =[false]
-_`[clamp] node 0 <= 0V (GROUND)
-_`
-=== G ===
-_`  1.000000e+00   0.000000e+00 
-_`  0.000000e+00   6.250000e-01 
-_`
-=== J ===
-_`   0.000000e+00   4.500000e+02 
-_`D[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=720.000
-_`[it=1] converged
-_` [final V] V = {0.000; 720.000}
-_`T[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
-_`B----------------------------------------------------------------
-_`([DcLinearSolver] Start linear solve...
-_`#[DcLinearSolver] nodes=2 ground=0
-_`8[DcLinearSolver] G (before substation fallback) (2x2):
-_` 1.250000e-01 -1.250000e-01
-_`-1.250000e-01  1.250000e-01
-_`6[DcLinearSolver] J (before substation fallback) (2):
-_` 0.000000e+00  0.000000e+00
-_`e[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
-_`4[DcLinearSolver] Fallback stamped 1 substation(s).
-_`*[DcLinearSolver] G (before clamp) (2x2):
-_` 6.250000e-01 -6.250000e-01
-_`-6.250000e-01  6.250000e-01
-_`([DcLinearSolver] J (before clamp) (2):
-_`-4.500000e+02  4.500000e+02
-_`)[DcLinearSolver] G (after clamp) (2x2):
-_` 1.000000e+00  0.000000e+00
-_` 0.000000e+00  6.250000e-01
-_`'[DcLinearSolver] J (after clamp) (2):
-_` 0.000000e+00  4.500000e+02
-_`)[DcLinearSolver] V (node voltages) (2):
-_` 0.000000e+00  7.200000e+02
-_`"[DcLinearSolver] Solve complete.
-_`B----------------------------------------------------------------
