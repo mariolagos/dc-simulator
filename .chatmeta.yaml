@@ -10,23 +10,6 @@ defaults:
   commit_closure_policy: "Each chat/branch pair must end with a commit summarizing the work completed."
 
 entries:
-  - chat_name: "feat/consolidation-a-mode"
-    chat_desc: "Continuation of 'Klasskonsolidering definition'. Focused on DcIterativeAdapterSolver, GridModelActor, and TrainLoad consolidation."
-    branch: "feat/consolidation-a-mode"
-    base_hash: "8110f7deeaa232a8602fcccbd55f512cebdfc7af"
-    started: "2025-10-24"
-    status: "active"
-    goals:
-      - "Integrate DcIterativeAdapterSolver as a stable fallback solver"
-      - "Fix the zero-power issue in the TrainLoad/Solver pipeline"
-      - "Implement throttled verbosity and smoke-test (T1=200kW → CSV ≠ 0)"
-    notes:
-      - "All shell examples use Windows CMD"
-      - "GridModelActor repaired (removed extra parenthesis)"
-    closure_criteria:
-      - "Simulation produces non-zero train power in CSV output"
-      - "Regression tests pass without exceptions"
-
   - chat_name: "documentation"
     chat_desc: "Continuation of 'Dokumentation dcSimulator'. Maintains README_dev*, USER_GUIDE, software specifications, and planning documents."
     branch: "docs/structure-and-guides"
@@ -43,3 +26,42 @@ entries:
     closure_criteria:
       - "Updated README files committed to repository"
       - "At least one simple Quick Start for both users and developers"
+
+  - chat_name: "feat/consolidation-a-mode"
+    chat_desc: "Consolidation of solver/actors (DcIterativeAdapterSolver, GridModelActor, TrainLoad)"
+    branch: "feat/consolidation-a-mode"
+    base_hash: "92e6f0d596576ccc655bb4ed5e9185c36a53456b"
+    based_on: "master"
+    started: "2025-10-26"
+    status: "active"
+    goals:
+      - "Integrate DcIterativeAdapterSolver as stable fallback"
+      - "Fix zero-power issue in TrainLoad/Solver pipeline"
+      - "Throttled verbosity + smoke test path"
+    closure_criteria:
+      - "CSV shows non-zero train power; no solver exceptions"
+
+  - chat_name: "feat/smoke-test"
+    chat_desc: "Smoke hook + throttled verbosity (forces T1=200kW when req≈0)"
+    branch: "feat/smoke-test"
+    base_hash: "8110f7deeaa232a8602fcccbd55f512cebdfc7af"
+    based_on: "feat/consolidation-a-mode"
+    started: "2025-10-26"
+    status: "active"
+    goals:
+      - "Inject SMOKE T1=200kW when req≈0"
+      - "Confirm propagation: actor → solver → TrainLoad → CSV"
+    closure_criteria:
+      - "Smoke power visible in CSV; detail logs throttled"
+
+  - chat_name: "drop-legacy-tests"
+    chat_desc: "Remove obsolete Scala-based tests"
+    branch: "drop-legacy-tests"
+    base_hash: "92e6f0d596576ccc655bb4ed5e9185c36a53456b"
+    based_on: "master"
+    started: "2025-10-26"
+    status: "active"
+    goals:
+      - "Delete legacy Scala tests and references"
+    closure_criteria:
+      - "Build/CI green; no references to removed tests"
