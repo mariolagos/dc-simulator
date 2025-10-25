@@ -1,0 +1,45 @@
+# Project chat/branch catalog for dc-simulator
+# Update this file whenever a new chat/branch is started or completed.
+
+version: 1
+project: dc-simulator
+
+defaults:
+  shell: "Windows CMD"
+  base_hash_policy: "All patches and discussions are anchored to a shared base hash per chat/branch."
+  commit_closure_policy: "Each chat/branch pair must end with a commit summarizing the work completed."
+
+entries:
+  - chat_name: "feat/consolidation-a-mode"
+    chat_desc: "Continuation of 'Klasskonsolidering definition'. Focused on DcIterativeAdapterSolver, GridModelActor, and TrainLoad consolidation."
+    branch: "feat/consolidation-a-mode"
+    base_hash: "8110f7deeaa232a8602fcccbd55f512cebdfc7af"
+    started: "2025-10-24"
+    status: "active"
+    goals:
+      - "Integrate DcIterativeAdapterSolver as a stable fallback solver"
+      - "Fix the zero-power issue in the TrainLoad/Solver pipeline"
+      - "Implement throttled verbosity and smoke-test (T1=200kW → CSV ≠ 0)"
+    notes:
+      - "All shell examples use Windows CMD"
+      - "GridModelActor repaired (removed extra parenthesis)"
+    closure_criteria:
+      - "Simulation produces non-zero train power in CSV output"
+      - "Regression tests pass without exceptions"
+
+  - chat_name: "documentation"
+    chat_desc: "Continuation of 'Dokumentation dcSimulator'. Maintains README_dev*, USER_GUIDE, software specifications, and planning documents."
+    branch: "docs/structure-and-guides"
+    base_hash: "8110f7deeaa232a8602fcccbd55f512cebdfc7af"
+    started: "2025-10-24"
+    status: "active"
+    goals:
+      - "Promote README_dev_additions → README_project (workflow, base hash, patch handling)"
+      - "Add Graphviz export and usage documentation"
+      - "Split Change Requests and NiceToHave features into dedicated files"
+    notes:
+      - "Documentation examples use Windows CMD"
+      - "Base hash recorded in each chat’s opening text"
+    closure_criteria:
+      - "Updated README files committed to repository"
+      - "At least one simple Quick Start for both users and developers"
