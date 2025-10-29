@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="org.dcsim.unit.ThreeSubsProfilesTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.005">
-  <properties/>
-  <testcase name="threeSubs_oneRegenTrain_profiles" classname="org.dcsim.unit.ThreeSubsProfilesTest" time="0.005"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

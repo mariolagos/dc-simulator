@@ -35,3 +35,10 @@ Thumbs.db
 
 # === Output ===
 output/
+**/~$*.xls*
+**/~$*.doc*
+**/~$*.ppt*
+build/
+.gradle/
+*.patch
+**/~$*.xls*

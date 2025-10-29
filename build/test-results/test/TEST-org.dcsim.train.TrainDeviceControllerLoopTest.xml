@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="org.dcsim.train.TrainDeviceControllerLoopTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.003">
-  <properties/>
-  <testcase name="step_throttles_traction_near_vmin_and_pushes_to_port" classname="org.dcsim.train.TrainDeviceControllerLoopTest" time="0.002"/>
-  <testcase name="step_clamps_regen_at_or_above_vmax" classname="org.dcsim.train.TrainDeviceControllerLoopTest" time="0.0"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

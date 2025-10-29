@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="org.dcsim.unit.IslandsPureTopologyTests" tests="2" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.0">
-  <properties/>
-  <testcase name="diodeAboveE_splitsIntoTwoIslands" classname="org.dcsim.unit.IslandsPureTopologyTests" time="0.0"/>
-  <testcase name="forwardBiased_mergesToSingleIsland" classname="org.dcsim.unit.IslandsPureTopologyTests" time="0.0"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

@@ -94,7 +94,7 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
         final double auxKWout = sameModel ? 0.0 : this.auxKW;
         // === DEBUG TA: after computing mot/brk/aux this tick, before sending it ===
         System.out.printf(
-                "[TA] id=%s step=%d mot=%.3f kW brk=%.3f kW aux=%.3f kW%n",
+                "[TA] id=%s step=%.0f mot=%.3f kW brk=%.3f kW aux=%.3f kW%n",
                 trainId, dt, motKW, brkKW, auxKW
         );
         // --- 2) Kinematics from profile (best effort, with safe fallbacks)

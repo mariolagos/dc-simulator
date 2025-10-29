@@ -802,21 +802,22 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         }
         System.out.printf("[GMA-B] pushing requestedPowerW2: %s%n", reqW_direct2);
         this.solver.setTrainRequestedPower(reqW_direct2, this.trainDtSec);
-        }
 
-        GridResult r1 = solver.solve(model, timeSec, step);
 
-        // Slutlig delning: net = netW0*factor, res = req − net
-        java.util.Map<String, Double> netW = new java.util.LinkedHashMap<>();
-        java.util.Map<String, Double> resW = new java.util.LinkedHashMap<>();
+
+    GridResult r1 = solver.solve(model, timeSec, step);
+
+    // Slutlig delning: net = netW0*factor, res = req − net
+    java.util.Map<String, Double> netW = new java.util.LinkedHashMap<>();
+    java.util.Map<String, Double> resW = new java.util.LinkedHashMap<>();
         for (String id : reqW.keySet()) {
-            double net = netW0.getOrDefault(id, 0.0) * factor;
-            double res = Math.max(0.0, reqW.get(id) - net);
-            netW.put(id, net);
-            resW.put(id, res);
-        }
+        double net = netW0.getOrDefault(id, 0.0) * factor;
+        double res = Math.max(0.0, reqW.get(id) - net);
+        netW.put(id, net);
+        resW.put(id, res);
+    }
 
         return new SolveBundle(r1, reqW, netW, resW);
-    }
+}
 
 }
