@@ -8,11 +8,12 @@ import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import org.dcsim.power.PowerProfile;
 
+import java.util.OptionalDouble;
+
 public class TrainActor extends AbstractBehavior<TrainActor.Command> {
 
     // ===== Protocol =====
     public interface Command {}
-
     public static final class Tick implements Command {
         public final double timeSec;
         public Tick(double timeSec) { this.timeSec = timeSec; }
@@ -39,7 +40,11 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
     private final int departureSec;
     private final boolean sameModel;
     private final double auxKW;
-    private double positionMeters = 0.0;
+    // kept for compatibility with logs; DcSimApp may not pass this, default to true
+    private final boolean allowRegen = true;
+
+    private double lastPosM = 0.0;
+    private Double lastTickAbsSec = null;
 
     private TrainActor(
             ActorContext<Command> ctx,
@@ -57,8 +62,9 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
         this.departureSec = departureSec;
         this.sameModel = motoringAndAuxInSameModel;
         this.auxKW = auxiliaryKW;
-        ctx.getLog().info("TrainActor [{}] ready (dep={}, sameModel={}, auxKW={})",
-                trainId, departureSec, sameModel, auxKW);
+
+        ctx.getLog().info("TrainActor [{}] ready (dep={}, sameModel={}, auxKW={}, allowRegen={})",
+                trainId, departureSec, sameModel, auxKW, allowRegen);
     }
 
     @Override
@@ -69,26 +75,63 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
     }
 
     private Behavior<Command> onTick(Tick msg) {
-        positionMeters += 10.0;
+        final double localT = msg.timeSec - departureSec;
+        final double dt = (lastTickAbsSec == null) ? 0.0 : (msg.timeSec - lastTickAbsSec);
 
-        double localT = msg.timeSec - departureSec;
+        // --- 1) Power from profile (W; +motoring, −regen)
         double netW = 0.0;
         if (profile != null && localT >= 0.0) {
-            netW = profile.getPowerAtTime(localT).asDouble(); // W (±)
+            netW = profile.getPowerAtTime(localT).asDouble();
         }
+        final double tractionKW = netW / 1000.0;
 
-        // Traction/braking split in kW: braking as POSITIVE magnitude
-        double tractionKW = netW / 1000.0;
-        double motKW = (tractionKW > 0) ? tractionKW : 0.0;
-        double brkKW = (tractionKW < 0) ? tractionKW : 0.0;
-        double auxKWout = sameModel ? 0.0 : auxKW;
-
-        grid.tell(new GridModelActor.UpdateTrainPower(trainId, motKW, brkKW, auxKWout, positionMeters));
-
-        getContext().getLog().info(
-                "Train [{}] t={}s localT={} mot={} kW brk={} kW aux={} kW",
-                trainId, msg.timeSec, localT, motKW, brkKW, auxKWout
+        // TrainLoad contract:
+        //   motoringKW >= 0
+        //   brakingKW  <= 0  (NEGATIVE for regen back to the network)
+        final double motKW    = Math.max(0.0, tractionKW);
+        final double regenKW  = Math.min(0.0, tractionKW);
+        final double brkKW    = regenKW;                 // send NEGATIVE during regen
+        final double auxKWout = sameModel ? 0.0 : this.auxKW;
+        // === DEBUG TA: after computing mot/brk/aux this tick, before sending it ===
+        System.out.printf(
+                "[TA] id=%s step=%d mot=%.3f kW brk=%.3f kW aux=%.3f kW%n",
+                trainId, dt, motKW, brkKW, auxKW
         );
+        // --- 2) Kinematics from profile (best effort, with safe fallbacks)
+        Double xMeters = null, vMS = null;
+        if (profile != null && localT >= 0.0) {
+            OptionalDouble xOpt = profile.getPositionAtTime(localT);
+            OptionalDouble vOpt = profile.getSpeedAtTime(localT);
+
+            if (xOpt.isPresent() && vOpt.isPresent()) {
+                xMeters = xOpt.getAsDouble();
+                vMS     = vOpt.getAsDouble();
+            } else if (xOpt.isPresent()) {
+                double xNow = xOpt.getAsDouble();
+                double vEst = (dt > 0.0) ? (xNow - lastPosM) / dt : 0.0;
+                xMeters = xNow;
+                vMS     = vEst;
+            } else if (vOpt.isPresent()) {
+                double vNow = vOpt.getAsDouble();
+                double xNow = lastPosM + vNow * dt;
+                xMeters = xNow;
+                vMS     = vNow;
+            }
+        }
+        if (xMeters == null) xMeters = lastPosM;
+        if (vMS == null)     vMS     = 0.0;
+
+        // Update local history
+        lastPosM = xMeters;
+        lastTickAbsSec = msg.timeSec;
+
+        // --- 3) Single push to grid (no duplicate tell)
+
+        grid.tell(new GridModelActor.UpdateTrainPower(
+                trainId,
+                motKW, brkKW, auxKWout,   // NOTE: brkKW <= 0 for regen
+                xMeters, vMS
+        ));
         return this;
     }
 }

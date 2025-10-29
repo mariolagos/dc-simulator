@@ -1,15 +1,54 @@
 package org.dcsim;
 
-public record PowerPoint(
-        double time,
-        String position,
-        double speed,
-        double power,
-        double voltage,
-        double current
-) {
+/**
+ * Immutable sample point for power/kinematics.
+ * power is in W, positionM in meters, speedMS in m/s.
+ */
+public final class PowerPoint {
+    private final double time;     // seconds
+    private final String position; // legacy text position
+    private final double speed;    // legacy speed (unit depends on legacy source)
+    private final double power;    // W
+    private final double voltage;
+    private final double current;
 
-    public PowerPoint shifted(double offsetSeconds) {
-        return new PowerPoint(time + offsetSeconds, position, speed, power, voltage, current);
+    // === NEW numeric kinematics (optional) ===
+    private final Double positionM; // meters (nullable)
+    private final Double speedMS;   // m/s (nullable)
+
+    /** Legacy constructor (kept intact). */
+    public PowerPoint(double time, String position, double speed, double power, double voltage, double current) {
+        this.time = time;
+        this.position = position;
+        this.speed = speed;
+        this.power = power;
+        this.voltage = voltage;
+        this.current = current;
+        this.positionM = null;
+        this.speedMS = null;
     }
+
+    /** New constructor with numeric kinematics. */
+    public PowerPoint(double time, double positionM, double speedMS, double power, double voltage, double current) {
+        this.time = time;
+        this.position = String.valueOf(positionM);
+        this.speed = speedMS;
+        this.power = power;
+        this.voltage = voltage;
+        this.current = current;
+        this.positionM = positionM;
+        this.speedMS = speedMS;
+    }
+
+    // --- getters (keep existing API names) ---
+    public double time() { return time; }
+    public double power() { return power; }
+    public String position() {return position;}
+
+    // new accessors
+    public boolean hasPositionM() { return positionM != null; }
+    public double positionM()     { return (positionM != null) ? positionM : Double.NaN; }
+
+    public boolean hasSpeedMS() { return speedMS != null; }
+    public double speedMS()     { return (speedMS != null) ? speedMS : speed; } // legacy speed as fallback
 }

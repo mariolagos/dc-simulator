@@ -28,7 +28,7 @@ public class SimpleExcelExport {
             row.createCell(0).setCellValue(p.time());
             row.createCell(1).setCellValue(p.position());
             row.createCell(2).setCellValue(PositionUtils.toMeters(PositionUtils.parse(p.position())));
-            row.createCell(3).setCellValue(useSI ? p.speed() : p.speed() * 3.6);
+            row.createCell(3).setCellValue(useSI ? p.speedMS() : p.speedMS() * 3.6);
             row.createCell(4).setCellValue(useSI ? p.power() : p.power() / 1000.0);
         }
 

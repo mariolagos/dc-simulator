@@ -14,27 +14,29 @@ public class Line implements Device<Real> {
     private final Real resistance;
     private final String description;
     private final String category;
+    private final double length;
 
     // --- Enda "riktiga" konstruktorn ---
-    public Line(int fromNode, int toNode, Real resistance, String description, String category) {
+    public Line(int fromNode, int toNode, Real resistance, String description, String category, double length) {
         this.fromNode = fromNode;
         this.toNode = toNode;
         this.resistance = resistance;
         this.description = (description == null || description.isBlank()) ? "line" : description;
         this.category = (category == null || category.isBlank()) ? "catenary1" : category;
+        this.length = length;
     }
 
     // --- Fabriksmetoder för vanliga fall ---
-    public static Line of(int fromNode, int toNode, Real resistance) {
-        return new Line(fromNode, toNode, resistance, "line", "catenary1");
+    public static Line of(int fromNode, int toNode, Real resistance, double length) {
+        return new Line(fromNode, toNode, resistance, "line", "catenary1", length);
     }
 
-    public static Line of(int fromNode, int toNode, Real resistance, String description) {
-        return new Line(fromNode, toNode, resistance, description, "catenary1");
+    public static Line of(int fromNode, int toNode, Real resistance, String description, double length) {
+        return new Line(fromNode, toNode, resistance, description, "catenary1", length);
     }
 
-    public static Line ofCategory(int fromNode, int toNode, Real resistance, String category) {
-        return new Line(fromNode, toNode, resistance, "line", category);
+    public static Line ofCategory(int fromNode, int toNode, Real resistance, String category, double length) {
+        return new Line(fromNode, toNode, resistance, "line", category, length);
     }
 
     // --- Device<Real> impl + getters (oförändrade i övrigt) ---
@@ -80,5 +82,9 @@ public class Line implements Device<Real> {
     public String toString() {
         return String.format("Line(%d->%d, R=%.6f, desc=%s, cat=%s)",
                 fromNode, toNode, resistance.asDouble(), description, category);
+    }
+
+    public double getLength() {
+        return length;
     }
 }

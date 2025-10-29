@@ -146,6 +146,10 @@ public class SimulationControllerActor extends AbstractBehavior<SimulationContro
         grid.tell(new GridModelActor.SolveTick(thisT, thisStep));
     }
 
-    private void advanceOneStep() { tSec += dt; step++; }
-    private boolean shouldStop() { return (stopAfter >= 0 && step >= stopAfter); }
+    private void advanceOneStep() {
+        tSec += dt; step++;
+    }
+    private boolean shouldStop() {
+        return (stopAfter >= 0 && step >= stopAfter);
+    }
 }

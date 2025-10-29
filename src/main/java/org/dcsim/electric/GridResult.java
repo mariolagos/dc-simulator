@@ -72,7 +72,7 @@ public final class GridResult {
     // immutable value carrier for “summa-summarum"
     public static final class Totals {
         public final double pStations;         // Σ substation P_out (to network)
-        public final double pTrains;           // Σ train line-side power (signed)
+        public double pTrains;           // Σ train line-side power (signed)
         public final double pLineLoss;         // Σ I^2R ≥ 0
         public final double pBrake;            // Σ brake resistor ≥ 0
         public final double pReqTrains;        // Σ requested train power (signed)

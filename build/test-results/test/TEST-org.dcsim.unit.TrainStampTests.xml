@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.dcsim.unit.TrainStampTests" tests="2" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.004">
+  <properties/>
+  <testcase name="regen_blocked_above_vmax" classname="org.dcsim.unit.TrainStampTests" time="0.002"/>
+  <testcase name="motor_throttled_near_zero_by_vmin" classname="org.dcsim.unit.TrainStampTests" time="0.002"/>
+  <system-out><![CDATA[[NetBuilder] Network built from GridModel
+[NetBuilder] nodes=2 (ground=0)
+[NetBuilder] substations=1, trains=0, lines=1
+[NetBuilder] nodeIds=[0, 1]
+----------------------------------------------------------------
+[it=0] start
+[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
+[isl] components=1
+[isl] compHasActiveSubstation=[true]
+[isl] compBackfeedAllowed   =[false]
+[clamp] node 0 <= 0V (GROUND)
+=== G ===
+  1.000000e+00   0.000000e+00 
+  0.000000e+00   6.250000e-01 
+=== J ===
+  0.000000e+00   4.500000e+02 
+[it=0] kclInf=0.000e+00  dvInf=7.200e+02  Vmin=0.000  Vmax=720.000
+----------------------------------------------------------------
+[it=1] start
+[SS a=1 b=0] ACTIVE  dV=720.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ324000.0W
+[isl] components=1
+[isl] compHasActiveSubstation=[true]
+[isl] compBackfeedAllowed   =[false]
+[clamp] node 0 <= 0V (GROUND)
+=== G ===
+  1.000000e+00   0.000000e+00 
+  0.000000e+00   6.250000e-01 
+=== J ===
+  0.000000e+00   4.500000e+02 
+[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=720.000
+[it=1] converged
+[final V] V = {0.000; 720.000}
+[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
+----------------------------------------------------------------
+[DcLinearSolver] Start linear solve...
+[DcLinearSolver] nodes=2 ground=0
+[DcLinearSolver] G (before substation fallback) (2x2):
+ 1.250000e-01 -1.250000e-01
+-1.250000e-01  1.250000e-01
+[DcLinearSolver] J (before substation fallback) (2):
+ 0.000000e+00  0.000000e+00
+[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
+[DcLinearSolver] Fallback stamped 1 substation(s).
+[DcLinearSolver] G (before clamp) (2x2):
+ 6.250000e-01 -6.250000e-01
+-6.250000e-01  6.250000e-01
+[DcLinearSolver] J (before clamp) (2):
+-4.500000e+02  4.500000e+02
+[DcLinearSolver] G (after clamp) (2x2):
+ 1.000000e+00  0.000000e+00
+ 0.000000e+00  6.250000e-01
+[DcLinearSolver] J (after clamp) (2):
+ 0.000000e+00  4.500000e+02
+[DcLinearSolver] V (node voltages) (2):
+ 0.000000e+00  7.200000e+02
+[DcLinearSolver] Solve complete.
+----------------------------------------------------------------
+[NetBuilder] Network built from GridModel
+[NetBuilder] nodes=2 (ground=0)
+[NetBuilder] substations=1, trains=0, lines=1
+[NetBuilder] nodeIds=[0, 1]
+----------------------------------------------------------------
+[it=0] start
+[SS a=1 b=0] ACTIVE  dV=0.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ0.0W
+[isl] components=1
+[isl] compHasActiveSubstation=[true]
+[isl] compBackfeedAllowed   =[false]
+[clamp] node 0 <= 0V (GROUND)
+=== G ===
+  1.000000e+00   0.000000e+00 
+  0.000000e+00   6.250000e-01 
+=== J ===
+  0.000000e+00   4.500000e+02 
+[it=0] kclInf=0.000e+00  dvInf=7.200e+02  Vmin=0.000  Vmax=720.000
+----------------------------------------------------------------
+[it=1] start
+[SS a=1 b=0] ACTIVE  dV=720.000V  E=900.000V  R=2.000000Î©  g=5.000e-01  Isrc=450.000A  Pâ‰ˆ324000.0W
+[isl] components=1
+[isl] compHasActiveSubstation=[true]
+[isl] compBackfeedAllowed   =[false]
+[clamp] node 0 <= 0V (GROUND)
+=== G ===
+  1.000000e+00   0.000000e+00 
+  0.000000e+00   6.250000e-01 
+=== J ===
+  0.000000e+00   4.500000e+02 
+[it=1] kclInf=0.000e+00  dvInf=0.000e+00  Vmin=0.000  Vmax=720.000
+[it=1] converged
+[final V] V = {0.000; 720.000}
+[TestHarness] Iterative solve failed (ClassCastException). Falling back to Linear.
+----------------------------------------------------------------
+[DcLinearSolver] Start linear solve...
+[DcLinearSolver] nodes=2 ground=0
+[DcLinearSolver] G (before substation fallback) (2x2):
+ 1.250000e-01 -1.250000e-01
+-1.250000e-01  1.250000e-01
+[DcLinearSolver] J (before substation fallback) (2):
+ 0.000000e+00  0.000000e+00
+[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
+[DcLinearSolver] Fallback stamped 1 substation(s).
+[DcLinearSolver] G (before clamp) (2x2):
+ 6.250000e-01 -6.250000e-01
+-6.250000e-01  6.250000e-01
+[DcLinearSolver] J (before clamp) (2):
+-4.500000e+02  4.500000e+02
+[DcLinearSolver] G (after clamp) (2x2):
+ 1.000000e+00  0.000000e+00
+ 0.000000e+00  6.250000e-01
+[DcLinearSolver] J (after clamp) (2):
+ 0.000000e+00  4.500000e+02
+[DcLinearSolver] V (node voltages) (2):
+ 0.000000e+00  7.200000e+02
+[DcLinearSolver] Solve complete.
+----------------------------------------------------------------
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

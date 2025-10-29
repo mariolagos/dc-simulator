@@ -5,7 +5,7 @@ import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.dcsim.solver.api.SubstationData;
-import org.dcsim.solver.behavior.Behaviors;
+import org.dcsim.solver.impl.Behaviors;
 import org.dcsim.solver.impl.DcStamps;
 import org.junit.Test;
 
@@ -19,7 +19,7 @@ import static org.junit.Assert.*;
  *  2) Ledning (bus under E eller backfeed=true): Thevenin(E,R) -> Norton(g,E)
  *     dvs off-diagonaler ±g och J-injektion ±g*E.
  */
-public class DiodSubstationStampTests {
+public class DiodeSubstationStampTests {
 
     private static final double EPS = 1e-6;
     private static final double G_LEAK_DIAG = 1e-9; // tiny numerical leak when blocked
@@ -37,7 +37,7 @@ public class DiodSubstationStampTests {
         RealMatrix G = new Array2DRowRealMatrix(2, 2);
         RealVector J = new ArrayRealVector(2);
 
-        SubstationData ss = new SubstationData();
+        SubstationData ss = new SubstationData("hej!", a, b, E, R, allowBackfeed);
         Behaviors.forSubstation(ss).stamp(V, G, J, ss, EPS, G_LEAK_DIAG);
 
         // När spärrad: inga off-diagonaler (ingen A-B-gren), ingen källström,

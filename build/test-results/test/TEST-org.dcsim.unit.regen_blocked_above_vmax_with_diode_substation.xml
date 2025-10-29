@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.dcsim.unit.regen_blocked_above_vmax_with_diode_substation" tests="1" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.0">
+  <properties/>
+  <testcase name="regen_is_blocked_and_substation_power_is_zeroish_above_vmax" classname="org.dcsim.unit.regen_blocked_above_vmax_with_diode_substation" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

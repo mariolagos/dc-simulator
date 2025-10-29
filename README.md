@@ -1,4 +1,4 @@
-# README.md – DcSim v0.4
+# README.md – DcSim
 
 ## Purpose and Scope
 DcSim is a simulator for DC-electrified railway systems that evaluates energy consumption, voltage stability, power flows, and losses in relation to train traffic. It supports realistic time-domain simulations, multiple trains, regenerative and resistive braking, and flexible electrical grid modeling.
@@ -15,31 +15,33 @@ Typical use cases:
 - Analyzing effects of adding/removing substations
 - Studying changes in traction or braking performance
 
+> **Testing framework**: Project uses **JUnit 4** with structured unit/integration/scenario tests. See `docs/B_developer/README_dev.md` and `docs/B_developer/testPlan.md`.
+
 ## 1. Main Components
 1. **Electrical network**
-  - Built from nodes, lines, substations, and connection points.
-  - Substations modeled as EMF + internal resistance, connected between `groundNodeId` and a node.
-  - Lines modeled as resistances.
-  - Trains modeled as controllable power injections/absorptions.
+    - Built from nodes, lines, substations, and connection points.
+    - Substations modeled as EMF + internal resistance, connected between `groundNodeId` and a node.
+    - Lines modeled as resistances.
+    - Trains modeled as controllable power injections/absorptions.
 
 2. **Time-domain simulation loop**
-  - Iterates over simulation ticks.
-  - Updates each train’s power request from its profile.
-  - Solves node voltages and computes currents/powers.
+    - Iterates over simulation ticks.
+    - Updates each train’s power request from its profile.
+    - Solves node voltages and computes currents/powers.
 
 3. **Power profiles**
-  - Based on Excel `.xlsx` files.
-  - Columns: `time [s]`, `bisPosition [km,m]`, `speed [m/s]`, `primaryMotoringPower [kW]`, `primaryMotorBrakingPower [kW]`.
-  - Auxiliary power applied during station dwells; additional demand if `motoringAndAuxiliariesInSameModel = false`.
+    - Based on Excel `.xlsx` (and/or CSV) files.
+    - Columns: `time [s]`, `bisPosition [km,m]`, `speed [m/s]`, `primaryMotoringPower [kW]`, `primaryMotorBrakingPower [kW]`.
+    - Auxiliary power applied during station dwells; additional demand if `motoringAndAuxiliariesInSameModel = false`.
 
 4. **Braking logic**
-  - Regenerative braking feeds energy back if voltage is below the regeneration cut-off.
-  - Above max voltage, braking energy is dissipated in resistors.
+    - Regenerative braking feeds energy back if voltage is below the regeneration cut-off.
+    - Above max voltage, braking energy is dissipated in resistors.
 
 5. **Output data**
-  - Voltages per node vs. time
-  - Currents and powers per device vs. time
-  - Train energy balances
+    - Voltages per node vs. time
+    - Currents and powers per device vs. time
+    - Train energy balances
 
 ## DC solver architecture & workflow
 
@@ -69,38 +71,43 @@ RealVector V = DcIterativeSolver.solveVoltages(net);
 ## 2. How to Run
 Make sure you are in the root directory of the project.
 
-### Using sbt
+### Using Maven
 ```bash
-sbt "runMain dcsim.DcSimApp"
+mvn -q clean package
+mvn -q exec:java
+```
+
+### Using Gradle
+```bash
+./gradlew clean build
+./gradlew run
 ```
 
 ### Using IntelliJ IDEA
 1. Open the project.
-2. Locate `DcSimApp`.
+2. Locate the main application (e.g., `DcSimApp`).
 3. Right-click and choose **Run**.
 
 ## 3. System Requirements
-- Java 17 or newer
-- Scala 2.13
-- sbt
-- Excel `.xlsx` files for load profiles
+- **Java 17** or newer
+- **Maven** or **Gradle**
+- Excel `.xlsx` (and/or CSV) files for load profiles
 
 ## 4. Configuration
 `application.conf` defines:
-- **track** – Stations and positions (format: `line km+m`)
+- **track** – Stations and positions (supports chainage `s km+m`; single/double/multi‑track via topology config)
 - **grid** – Nodes, lines, substations (connected to ground), and connection points
 - **traffic** – Timetables and train templates
-- **powerProfiles** – Load profiles linked to train templates
+- **powerProfiles** – Load or **precomputed** profiles linked to train templates
 - **simulationControl** – Start/end times, tick duration
 
 Detailed format and examples: see **USER_GUIDE.md**.
 
 ## 5. References
 - **USER_GUIDE.md** – Detailed configuration instructions
-- **SoftwareSpecification.md** – High-level system design
--  USER GUIDE (dcSimulator)
-
-This guide provides instructions for users of dcSimulator, including setup, configuration, and example case studies.
+- **softwareSpecification_v1_1.md** – High-level system design
+- **testPlan.md** – Strategy, traceability (R‑01
+  R‑08) and execution
 
 ## Case Studies
 
@@ -122,5 +129,4 @@ New cases can be added as the project evolves.
 
 ---
 
-Refer to [terms.md](terms.md) for all terminology used in this guide.
-
+Refer to `docs/A_user/terms.md` for all terminology used in this guide.

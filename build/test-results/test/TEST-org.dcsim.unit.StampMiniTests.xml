@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.dcsim.unit.StampMiniTests" tests="2" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.003">
+  <properties/>
+  <testcase name="series_lines_equivalent_resistance_matches_sum" classname="org.dcsim.unit.StampMiniTests" time="0.002"/>
+  <testcase name="open_circuit_has_no_current_flow" classname="org.dcsim.unit.StampMiniTests" time="0.001"/>
+  <system-out><![CDATA[[NetBuilder] Network built from GridModel
+[NetBuilder] nodes=3 (ground=0)
+[NetBuilder] substations=1, trains=0, lines=2
+[NetBuilder] nodeIds=[0, 1, 2]
+----------------------------------------------------------------
+[DcLinearSolver] Start linear solve...
+[DcLinearSolver] nodes=3 ground=0
+[DcLinearSolver] G (before substation fallback) (3x3):
+ 2.000000e-01  0.000000e+00 -2.000000e-01
+ 0.000000e+00  3.333333e-01 -3.333333e-01
+-2.000000e-01 -3.333333e-01  5.333333e-01
+[DcLinearSolver] J (before substation fallback) (3):
+ 0.000000e+00  0.000000e+00  0.000000e+00
+[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
+[DcLinearSolver] Fallback stamped 1 substation(s).
+[DcLinearSolver] G (before clamp) (3x3):
+ 7.000000e-01 -5.000000e-01 -2.000000e-01
+-5.000000e-01  8.333333e-01 -3.333333e-01
+-2.000000e-01 -3.333333e-01  5.333333e-01
+[DcLinearSolver] J (before clamp) (3):
+-4.500000e+02  4.500000e+02  0.000000e+00
+[DcLinearSolver] G (after clamp) (3x3):
+ 1.000000e+00  0.000000e+00  0.000000e+00
+ 0.000000e+00  8.333333e-01 -3.333333e-01
+ 0.000000e+00 -3.333333e-01  5.333333e-01
+[DcLinearSolver] J (after clamp) (3):
+ 0.000000e+00  4.500000e+02  0.000000e+00
+[DcLinearSolver] V (node voltages) (3):
+ 0.000000e+00  7.200000e+02  4.500000e+02
+[DcLinearSolver] Solve complete.
+----------------------------------------------------------------
+[NetBuilder] Network built from GridModel
+[NetBuilder] nodes=2 (ground=0)
+[NetBuilder] substations=1, trains=0, lines=0
+[NetBuilder] nodeIds=[0, 1]
+----------------------------------------------------------------
+[DcLinearSolver] Start linear solve...
+[DcLinearSolver] nodes=2 ground=0
+[DcLinearSolver] G (before substation fallback) (2x2):
+ 0.000000e+00  0.000000e+00
+ 0.000000e+00  0.000000e+00
+[DcLinearSolver] J (before substation fallback) (2):
+ 0.000000e+00  0.000000e+00
+[DcLinearSolver] Fallback stamp: a=1, b=0, E=900.000 V, R=2.000000 Î© (g=0.500000 S, I=450.000 A)
+[DcLinearSolver] Fallback stamped 1 substation(s).
+[DcLinearSolver] G (before clamp) (2x2):
+ 5.000000e-01 -5.000000e-01
+-5.000000e-01  5.000000e-01
+[DcLinearSolver] J (before clamp) (2):
+-4.500000e+02  4.500000e+02
+[DcLinearSolver] G (after clamp) (2x2):
+ 1.000000e+00  0.000000e+00
+ 0.000000e+00  5.000000e-01
+[DcLinearSolver] J (after clamp) (2):
+ 0.000000e+00  4.500000e+02
+[DcLinearSolver] V (node voltages) (2):
+ 0.000000e+00  9.000000e+02
+[DcLinearSolver] Solve complete.
+----------------------------------------------------------------
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

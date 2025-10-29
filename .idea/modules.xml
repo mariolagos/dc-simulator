@@ -3,6 +3,12 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/dc-simulator.iml" filepath="$PROJECT_DIR$/.idea/modules/dc-simulator.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dc-simulator.main.iml" filepath="$PROJECT_DIR$/.idea/modules/dc-simulator.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dc-simulator.test.iml" filepath="$PROJECT_DIR$/.idea/modules/dc-simulator.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dc-simulator.testFixtures.iml" filepath="$PROJECT_DIR$/.idea/modules/dc-simulator.testFixtures.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/scala.iml" filepath="$PROJECT_DIR$/.idea/modules/scala.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/test/scala/.idea/modules/scala.scala-build.iml" filepath="$PROJECT_DIR$/src/test/scala/.idea/modules/scala.scala-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/test/scala/.idea/modules/scala.scala-build~1.iml" filepath="$PROJECT_DIR$/src/test/scala/.idea/modules/scala.scala-build~1.iml" />
     </modules>
   </component>
 </project>

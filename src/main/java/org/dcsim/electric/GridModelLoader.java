@@ -3,20 +3,21 @@ package org.dcsim.electric;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import com.typesafe.config.ConfigRenderOptions;
 import org.dcsim.math.Real;
 import org.dcsim.utils.PositionUtils;
 
+import java.io.IOException;
+
 public class GridModelLoader {
 
-    public static GridModel load(Config config) {
+    public static GridModel load(Config config) throws IOException {
         // Accept either a root config or a subtree under "dcsim"
         Config root = config.hasPath("dcsim") ? config.getConfig("dcsim") : config;
 
         // Sections (empty if missing → defaults below)
         Config electrics = root.hasPath("electrics") ? root.getConfig("electrics") : ConfigFactory.empty();
-        Config trainsCfg = root.hasPath("trains")    ? root.getConfig("trains")    : ConfigFactory.empty();
-        Config grid      = root.getConfig("grid");   // must exist
+        Config trainsCfg = root.hasPath("trains") ? root.getConfig("trains") : ConfigFactory.empty();
+        Config grid = root.getConfig("grid");   // must exist
 
         // ---- Electrics/Substations config (diode vs. backfeed + optional current limit) ----
         boolean ssDefaultAllowBackfeed =
@@ -90,6 +91,9 @@ public class GridModelLoader {
 
             model.addDevice(ss);
         }
+        for (Object s : model.getSubstations()) ((Substation)s).setAllowBackfeed(true);
+        model.recomputeBackfeedFlag();
+
         model.recomputeBackfeedFlag();
 
         // Lines (description/category optional)
@@ -98,25 +102,25 @@ public class GridModelLoader {
             for (var line : lineList) {
                 int from = line.getInt("from");
                 int to = line.getInt("to");
-                Real resistancePerKm = Real.fromDouble(line.getDouble("resistance"));
-                String positionFrom = model.getNodes().get(from).getPosition();
-                String positionTo = model.getNodes().get(to).getPosition();
-                double lenKm = PositionUtils.distance(positionFrom, positionTo)/1000;
+                Real resistancePerKm = Real.fromDouble(line.getDouble("rPerKm"));
+                String positionFrom = model.nodeOrThrow(from).getPosition();
+                String positionTo = model.nodeOrThrow(to).getPosition();
+                double lenM = PositionUtils.distance(positionFrom, positionTo);
 
                 Line l;
                 boolean hasDesc = line.hasPath("description");
-                boolean hasCat  = line.hasPath("category");
+                boolean hasCat = line.hasPath("category");
 
                 if (hasDesc && hasCat) {
-                    l = new Line(from, to, resistancePerKm.times(lenKm),
+                    l = new Line(from, to, resistancePerKm.times(lenM / 1000),
                             line.getString("description"),
-                            line.getString("category"));
+                            line.getString("category"), lenM);
                 } else if (hasCat) {
-                    l = Line.ofCategory(from, to, resistancePerKm.times(lenKm), line.getString("category"));
+                    l = Line.ofCategory(from, to, resistancePerKm.times(lenM / 1000), line.getString("category"), lenM);
                 } else if (hasDesc) {
-                    l = Line.of(from, to, resistancePerKm.times(lenKm), line.getString("description"));
+                    l = Line.of(from, to, resistancePerKm.times(lenM / 1000), line.getString("description"), lenM);
                 } else {
-                    l = Line.of(from, to, resistancePerKm.times(lenKm));
+                    l = Line.of(from, to, resistancePerKm.times(lenM / 1000), lenM);
                 }
                 model.addDevice(l);
             }
@@ -130,10 +134,10 @@ public class GridModelLoader {
                 String id = tr.getString("id");
                 // Older configs may have fromNode/toNode; newer ones use nodeId→ground
                 int fromNode = tr.hasPath("fromNode") ? tr.getInt("fromNode") : groundNodeId;
-                int toNode   = tr.hasPath("toNode")   ? tr.getInt("toNode")   : groundNodeId;
+                int toNode = tr.hasPath("toNode") ? tr.getInt("toNode") : groundNodeId;
                 if (tr.hasPath("nodeId")) {
                     fromNode = tr.getInt("nodeId");
-                    toNode   = groundNodeId;
+                    toNode = groundNodeId;
                 }
 
                 TrainLoad train = new TrainLoad(id, fromNode, toNode);
@@ -141,18 +145,18 @@ public class GridModelLoader {
                 // Apply per-train overrides from trains.overrides.<ID>.*, else fall back to defaults,
                 // else honor inline values on the device entry if present.
                 double cutoff = tCutoffDefault;
-                double maxV   = tMaxVDefault;
-                double maxA   = tMaxADefault;
+                double maxV = tMaxVDefault;
+                double maxA = tMaxADefault;
 
                 if (trainsCfg.hasPath("overrides." + id)) {
                     var ov = trainsCfg.getConfig("overrides." + id);
                     if (ov.hasPath("cutoffVoltage")) cutoff = ov.getDouble("cutoffVoltage");
-                    if (ov.hasPath("maxVoltage"))    maxV   = ov.getDouble("maxVoltage");
-                    if (ov.hasPath("maxCurrentA"))   maxA   = ov.getDouble("maxCurrentA");
+                    if (ov.hasPath("maxVoltage")) maxV = ov.getDouble("maxVoltage");
+                    if (ov.hasPath("maxCurrentA")) maxA = ov.getDouble("maxCurrentA");
                 } else {
                     if (tr.hasPath("cutoffVoltage")) cutoff = tr.getDouble("cutoffVoltage");
-                    if (tr.hasPath("maxVoltage"))    maxV   = tr.getDouble("maxVoltage");
-                    if (tr.hasPath("maxCurrentA"))   maxA   = tr.getDouble("maxCurrentA");
+                    if (tr.hasPath("maxVoltage")) maxV = tr.getDouble("maxVoltage");
+                    if (tr.hasPath("maxCurrentA")) maxA = tr.getDouble("maxCurrentA");
                 }
 
                 train.setCutoffVoltage(Real.fromDouble(cutoff));

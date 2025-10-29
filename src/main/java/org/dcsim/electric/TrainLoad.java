@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Motoring draws power from the line; regenerative braking can feed the line
  * below a cutoff voltage. At/above the cutoff, braking energy is dumped into
  * an onboard brake resistor (no network current) and is exported as a
- * separate “pseudo-device” power via GridModelActor.
+ * separate “pseudo-device" power via GridModelActor.
  */
 public class TrainLoad implements Device<Real> {
 
@@ -40,6 +40,7 @@ public class TrainLoad implements Device<Real> {
 
     /** Optional caps (used for regen window). */
     private Real maxVoltage = Real.fromDouble(1000.0);
+    private Real minVoltage = Real.fromDouble(500.0);
     private Real maxCurrent = Real.fromDouble(300.0);
 
     /** Brake resistor (train internal); used only for reporting P_brake. */
@@ -151,6 +152,7 @@ public class TrainLoad implements Device<Real> {
 
     public void setCutoffVoltage(Real cutoff)   { this.cutoffVoltage = cutoff; }
     public void setMaxVoltage(Real maxVoltage)  { this.maxVoltage = maxVoltage; }
+    public void setMinVoltage(Real maxVoltage)  { this.minVoltage = minVoltage; }
     public void setMaxCurrent(Real maxCurrent)  { this.maxCurrent = maxCurrent; }
     public Real getCutoffVoltage()              { return cutoffVoltage; }
     public Real getMaxVoltage()                 { return maxVoltage; }
@@ -242,7 +244,7 @@ public class TrainLoad implements Device<Real> {
         linePowers.add(V * I);
         // Brake side (derived)
         double pBrake = getBrakeResistorInstantPower(fromVoltage, toVoltage).asDouble();
-        // Map to an “equivalent” current just for logging
+        // Map to an “equivalent" current just for logging
         double iBrake = (V != 0.0) ? (pBrake / V) : 0.0;
         brakeCurrents.add(iBrake);
         brakePowers.add(pBrake);

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.dcsim.unit.NetBuilderToDcNetTests" tests="4" skipped="0" failures="0" errors="0" timestamp="2025-10-21T04:12:45" hostname="PRESTIGE" time="0.008">
+  <properties/>
+  <testcase name="oneRegenAt2toGround_trainMapping_ok" classname="org.dcsim.unit.NetBuilderToDcNetTests" time="0.001"/>
+  <testcase name="immutability_contract_enforced" classname="org.dcsim.unit.NetBuilderToDcNetTests" time="0.003"/>
+  <testcase name="indices_areCompact_and_consistent" classname="org.dcsim.unit.NetBuilderToDcNetTests" time="0.003"/>
+  <testcase name="threeBusBackbone_basicTopology_ok" classname="org.dcsim.unit.NetBuilderToDcNetTests" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

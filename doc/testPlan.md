@@ -1,24 +1,50 @@
 # Test Plan (dcSimulator)
 
-This document describes the **developer test cases (A1–A5)** used to verify components of dcSimulator.  
-These are **not user-facing** examples (see USER_GUIDE.md for case studies).
+This document tracks **developer test cases** used to verify dcSimulator.  
+User-facing case studies live in **USER_GUIDE.md**.
 
-## Test Case Table
+_Last updated: 2025-09-22 12:08 UTC_
 
-| Test ID | Description | Target module | Input | Expected result |
-|---------|-------------|----------------|-------|-----------------|
-| A1 | Minimal grid with one node | Solver | `application-test-A1.md` | Solver returns stable trivial solution |
-| A2 | Small grid with substation and line | Solver, GridModel | `application-test-A2.md` | Correct Y-matrix stamping and solution |
-| A3 | Train load injection test | TrainActor, Solver | `application-test-A3.md` | Power request correctly injected into J-vector |
-| A4 | Multi-train dynamic topology | Dynamic topology handler | `application-test-A4.md` | Virtual nodes created and removed correctly |
-| A5 | End-to-end integration test | All modules | `application-test-A5.md` | Simulation runs end-to-end with expected CSV outputs |
+## 1. Test Taxonomy
 
----
+| Level | Scope | Typical Target | Notes |
+|------|------|-----------------|-------|
+| Unit | Function/Class | Utils, stamping helpers | Fast, isolated |
+| Component | Module | Solver, GridModel, TrainActor | With fakes/mocks |
+| Integration | Multiple modules | Solver + GridModel + IO | End-to-end within process |
+| System | Full app | CLI, config, actors | Produces CSV/plots |
+| Performance | Throughput/Latency | Solver scaling, I/O | Timed, large configs |
+| Regression | Past bugs | Any | Prevents re-introduction |
 
-## Notes
+## 2. Canonical Developer Tests (A1–A5)
 
-- Test cases A1–A5 are **developer regression tests**.  
-- They ensure solver correctness, integration, and stability.  
-- Results should be reproducible.  
-- Additional tests may be added for new features.  
+| Test ID | Level | Description | Target module | Input | Expected result |
+|---------|-------|-------------|----------------|-------|-----------------|
+| A1 | Unit | Minimal grid with one node | Solver | `application-test-A1.md` | Stable trivial solution |
+| A2 | Component | Substation + line stamping | Solver, GridModel | `application-test-A2.md` | Correct Y-matrix & solution |
+| A3 | Component | Train load injection | TrainActor, Solver | `application-test-A3.md` | P_req injected into J-vector |
+| A4 | Integration | Multi-train dynamic topology | Dynamic topology | `application-test-A4.md` | Virtual nodes updated correctly |
+| A5 | System | End-to-end run | All modules | `application-test-A5.md` | CSV outputs as specified |
 
+## 3. Extended Test Catalog
+
+_Add additional tests here as they are created. Keep rows succinct and reference an input file or doc when possible._
+
+| Test ID | Level | Description | Input | Expected result |
+|---------|-------|-------------|-------|-----------------|
+| TBD | – | – | – | – |
+
+## 4. Discovered Test Artifacts (Auto-collected)
+
+The following files were **discovered** in the documentation bundle and likely correspond to tests.  
+Please map them into Section 3 with proper IDs and expectations.
+
+- (none found)
+
+## 5. How to Add a New Test
+
+1. Create or reference an input file (`application-test-*.md` / `.conf`) in the repo.
+2. Add a row under **Section 3. Extended Test Catalog** with a unique **Test ID**.
+3. State the **Level**, **Description**, **Input**, and **Expected result**.
+4. If the test is canonical and stable, consider promoting it to **Section 2**.
+5. Ensure CI (if any) runs the test or validates produced artifacts.
