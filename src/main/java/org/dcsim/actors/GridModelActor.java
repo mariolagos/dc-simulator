@@ -1,5 +1,8 @@
 package org.dcsim.actors;
 
+
+import org.dcsim.export.LongTableWriter;
+import org.dcsim.solver.impl.DcIterativeSolver;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
@@ -32,13 +35,19 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Äger DC-nätmodellen och kör lösaren varje tick.
- * VIKTIGT: Alla tågsignaler skrivs under det rena id:t (t.ex. "T1") – aldrig "Train:T1" eller "Train1".
- * Tågspänningen V[T] tas alltid som bussspänning vid tågets node.
- * Bromsrapport: P_brake_req / _net / _resistor per tåg och tick skickas till ResultCsvWriter.
- */
 public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
+    // Fast-track logging nodes for trains
+    private final java.util.Map<String, Integer> trainLogNode = new LinkedHashMap<>();
+
+    {
+        trainLogNode.put("T1", 4);
+        // trainLogNode.put("T2", 5); // enable for 3s2t
+    }
+
+    private static boolean finite(double x) {
+        return !Double.isNaN(x) && !Double.isInfinite(x);
+    }
+
 
     // ===== debug/sanity =====
     private static final boolean ENABLE_TOPO_SANITY = true;
@@ -58,6 +67,20 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     private static final double BF_EPS_A = 1e-6;  // tolerans för backfeed (A)
     private static final int MAX_BF_ITERS = 3;
 
+    private org.dcsim.export.LongTableWriter longWriter;
+
+
+    public void setLongWriter(org.dcsim.export.LongTableWriter w) {
+        this.longWriter = w;
+    }
+
+    public static final class SetLongWriter implements Command {
+        public final org.dcsim.export.LongTableWriter w;
+
+        public SetLongWriter(org.dcsim.export.LongTableWriter w) {
+            this.w = w;
+        }
+    }
 
     // ===== protokoll =====
     public interface Command {
@@ -100,6 +123,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                                 double auxiliaryKW, double positionMeters) {
             this(trainId, motoringKW, brakingKW, auxiliaryKW, Double.valueOf(positionMeters), null);
         }
+
     }
 
     public interface SolveReply {
@@ -202,6 +226,10 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     private final Map<String, TrainLoad> trainDevices = new HashMap<>();
     private final Map<String, UpdateTrainPower> latest = new HashMap<>();
     private final ResultCsvWriter writer;
+
+
+    // Carry-forward of last non-zero requested power to avoid transient 0 W when TA update lags
+    private final Map<String, Double> lastRequestedPowerW = new HashMap<>();
 
     private final Map<String, TrainAnchorComponent> anchors = new LinkedHashMap<>();
     private double trainDtSec = 0.0;
@@ -397,6 +425,13 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     }
 
     private Behavior<Command> onSolveTick(SolveTick tick) {
+        DcIterativeSolver.setSimTimeSec(tick.timeSec);
+        // en gång vid init (DcSimApp) eller varje tick (GridModelActor)
+        org.dcsim.solver.impl.DcIterativeSolver.clearProbeBranches();
+        // Justera R till dina riktiga värden
+        org.dcsim.solver.impl.DcIterativeSolver.setProbeBranch("L_1_2", 1, 2, 0.05);
+        org.dcsim.solver.impl.DcIterativeSolver.setProbeBranch("L_2_3", 2, 3, 0.05);
+
         // Skicka anchors (behåller id i key via entrySet)
         this.solver.setTrainAnchors(anchors.entrySet(), this.trainDtSec);
 
@@ -412,7 +447,11 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         for (java.util.Map.Entry<String, UpdateTrainPower> e2 : latest.entrySet()) {
             String id2 = e2.getKey();
             UpdateTrainPower u2 = e2.getValue();
-            double pTotW = (u2.motoringKW + u2.brakingKW + u2.auxiliaryKW) * 1000.0;
+            double pTotW = (u2.motoringKW + u2.auxiliaryKW) * 1000.0; // ignore regen here; resistor handles braking
+            double prev = lastRequestedPowerW.getOrDefault(id2, 0.0);
+            if (pTotW <= 0.0 && prev > 0.0) {
+                pTotW = prev;
+            }
             reqW_direct.put(id2, pTotW);
 
             // === DEBUG GMA A: before first push to solver ===
@@ -420,8 +459,29 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                     "[GMA-A] id=%s mot=%.3f kW brk=%.3f kW aux=%.3f kW -> push %.1f W%n",
                     id2, u2.motoringKW, u2.brakingKW, u2.auxiliaryKW, pTotW
             );
+            // tid till solvern (en gång per tick)
+            org.dcsim.solver.impl.DcIterativeSolver.setSimTimeSec(tick.timeSec);
+
+            // (valfritt men bra för framtiden: uppdatera probelistorna varje tick)
+            org.dcsim.solver.impl.DcIterativeSolver.clearProbeNodes();
+            org.dcsim.solver.impl.DcIterativeSolver.setProbeNode("S1", 1);
+            org.dcsim.solver.impl.DcIterativeSolver.setProbeNode("S2", 2);
+            org.dcsim.solver.impl.DcIterativeSolver.setProbeNode("S3", 3); // stavfel? ska vara Iterative!
+            org.dcsim.solver.impl.DcIterativeSolver.setProbeNode("S3", 3);
+
+            org.dcsim.solver.impl.DcIterativeSolver.clearTrainNodes();
+            org.dcsim.solver.impl.DcIterativeSolver.setTrainNode("T1", 4);
+
+            double pTotW2 = (u2.motoringKW + u2.auxiliaryKW) * 1000.0; // ignorera regen i diodfall
+            if (longWriter != null)
+                longWriter.signalRow(tick.timeSec, "Train", id2, "req_W", pTotW2, "W", "GMA-A", null, null);
+
         }
         // Sammanfattning + push
+        // update carry-forward memory with positive values
+        for (var e3 : reqW_direct.entrySet()) {
+            if (e3.getValue() > 0.0) lastRequestedPowerW.put(e3.getKey(), e3.getValue());
+        }
         System.out.printf("[GMA-A] pushing requestedPowerW: %s%n", reqW_direct);
         this.solver.setTrainRequestedPower(reqW_direct, this.trainDtSec);
         // === /DEBUG GMA A ===
@@ -776,7 +836,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
             if (tl == null || u == null) continue;
 
             double allowedNetW = netW0.getOrDefault(id, 0.0) * factor; // W till nät (kan vara negativt)
-            double regenKW     = -allowedNetW / 1000.0;                 // <0 = regen-komponent
+            double regenKW = -allowedNetW / 1000.0;                 // <0 = regen-komponent
 
             // behåll motoring/aux som i begäran, ersätt bara brake med justerad regen
             tl.setRequestedComponents(u.motoringKW, regenKW, u.auxiliaryKW);
@@ -789,9 +849,13 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
             UpdateTrainPower u2 = e.getValue();
 
             double allowedNetW2 = netW0.getOrDefault(id2, 0.0) * factor;
-            double regenKW2     = -allowedNetW2 / 1000.0;
+            double regenKW2 = -allowedNetW2 / 1000.0;
 
-            double pTotW2 = (u2.motoringKW + regenKW2 + u2.auxiliaryKW) * 1000.0;
+            double pTotW2 = (u2.motoringKW + u2.auxiliaryKW) * 1000.0;
+            double prev2 = lastRequestedPowerW.getOrDefault(id2, 0.0);
+            if (pTotW2 <= 0.0 && prev2 > 0.0) {
+                pTotW2 = prev2;
+            }
             reqW_direct2.put(id2, pTotW2);
 
             // === DEBUG GMA B: before second push to solver (after regen limiting) ===
@@ -799,25 +863,32 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                     "[GMA-B] id=%s mot=%.3f kW brkAdj=%.3f kW aux=%.3f kW -> push %.1f W (factor=%.6f)%n",
                     id2, u2.motoringKW, regenKW2, u2.auxiliaryKW, pTotW2, factor
             );
+            double pTotW3 = (u2.motoringKW + u2.auxiliaryKW) * 1000.0;
+            if (longWriter != null)
+                longWriter.signalRow(timeSec, "Train", id2, "req_W", pTotW3, "W", "GMA-B", null, null);
+
+        }
+        // update carry-forward memory with positive values (post-regen limiting)
+        for (var e3 : reqW_direct2.entrySet()) {
+            if (e3.getValue() > 0.0) lastRequestedPowerW.put(e3.getKey(), e3.getValue());
         }
         System.out.printf("[GMA-B] pushing requestedPowerW2: %s%n", reqW_direct2);
         this.solver.setTrainRequestedPower(reqW_direct2, this.trainDtSec);
 
 
+        GridResult r1 = solver.solve(model, timeSec, step);
 
-    GridResult r1 = solver.solve(model, timeSec, step);
-
-    // Slutlig delning: net = netW0*factor, res = req − net
-    java.util.Map<String, Double> netW = new java.util.LinkedHashMap<>();
-    java.util.Map<String, Double> resW = new java.util.LinkedHashMap<>();
+        // Slutlig delning: net = netW0*factor, res = req − net
+        java.util.Map<String, Double> netW = new java.util.LinkedHashMap<>();
+        java.util.Map<String, Double> resW = new java.util.LinkedHashMap<>();
         for (String id : reqW.keySet()) {
-        double net = netW0.getOrDefault(id, 0.0) * factor;
-        double res = Math.max(0.0, reqW.get(id) - net);
-        netW.put(id, net);
-        resW.put(id, res);
-    }
+            double net = netW0.getOrDefault(id, 0.0) * factor;
+            double res = Math.max(0.0, reqW.get(id) - net);
+            netW.put(id, net);
+            resW.put(id, res);
+        }
 
         return new SolveBundle(r1, reqW, netW, resW);
-}
+    }
 
 }

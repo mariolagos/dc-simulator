@@ -1,236 +1,229 @@
 package org.dcsim.power;
 
+import java.util.*;
+import java.util.regex.*;
 import org.dcsim.PowerPoint;
 import org.dcsim.math.Real;
 
-import java.lang.reflect.Method;
-import java.util.*;
-
 /**
- * Table-backed power profile with linear interpolation (time series).
- *
- * Contract (matches abstract PowerProfile):
- *  - getPowerAtTime(t)    -> Real (W)
- *  - getPositionAtTime(t) -> Real (m)
- *  - getSpeedAtTime(t)    -> Real (m/s)
- *
- * Behavior:
- *  - Power: linear interpolation, clamped to end-points.
- *  - Position: prefers explicit x-series if present; else integrates speed; else 0.
- *  - Speed: prefers explicit v-series; else slope of x; else 0.
+ * Minimal TablePowerProfile
+ * - expects List<PowerPoint> med (helst) följande fält (eller alias):
+ *   time [s]           -> time / timeSec / time_s / seconds / t
+ *   bisPosition [km,m] -> bisPosition / position / positionMeters
+ *   speed [m/s]        -> speed / speed_mps / velocity / v
+ *   primaryMotoringPower [kW]        -> primaryMotoringPower / motoringKW / motoring
+ *   primaryMotorBrakingPower [kW]    -> primaryMotorBrakingPower / brakingKW / braking
+ * - position tolkas i meter; bisPosition km+m accepteras med punkt- eller kommadecimaler
+ * - hastighet härleds från position om den saknas
+ * - power i W (kW*1000): pW = motW - brkW (netto)
  */
-public final class TablePowerProfile implements PowerProfile { // if PowerProfile is an interface, change to "implements PowerProfile"
+public final class TablePowerProfile implements PowerProfile {
+    private final double[] tSec; // s
+    private final double[] xM;   // m
+    private final double[] vMS;  // m/s
+    private final double[] pW;   // W (+mot, -brake)
 
-    private final double[] tSec;   // seconds (sorted)
-    private final double[] pW;     // W
-    private final double[] vMS;    // m/s (NaN if unknown)
-    private final double[] xM;     // m  (explicit or integrated)
-    private final boolean hasV;
-    private final boolean hasX;
+    public TablePowerProfile(List<PowerPoint> src) {
+        Objects.requireNonNull(src, "src");
+        int n = src.size();
+        if (n == 0) {
+            this.tSec = new double[0];
+            this.xM   = new double[0];
+            this.vMS  = new double[0];
+            this.pW   = new double[0];
+            return;
+        }
 
-    private final double t0;
-    private final double tN;
+        double[] T = new double[n];
+        double[] X = new double[n];
+        double[] V = new double[n];
+        double[] P = new double[n];
 
-    public TablePowerProfile(List<PowerPoint> points) {
-        List<PowerPoint> src = (points == null)
-                ? Collections.emptyList()
-                : new ArrayList<>(points);
-        src.sort(Comparator.comparingDouble(TablePowerProfile::safeTime));
+        for (int i = 0; i < n; i++) {
+            PowerPoint pt = src.get(i);
 
-        final int n = Math.max(1, src.size());
+            // --- time [s] ---
+            Double tt = getNum(pt,
+                    "time", "timeSec", "time_s", "seconds", "t", "Time", "Time_s");
+            T[i] = (tt != null) ? tt : ((i == 0) ? 0.0 : T[i-1]);
+
+            // --- power (kW -> W) ---
+            Double motKW = getNum(pt,
+                    "primaryMotoringPower", "primaryMotoringPower_kW", "primaryMotoringPower [kW]",
+                    "motoringKW", "motoring");
+            Double brkKW = getNum(pt,
+                    "primaryMotorBrakingPower", "primaryMotorBrakingPower_kW", "primaryMotorBrakingPower [kW]",
+                    "brakingKW", "braking");
+            double motW = (motKW != null ? motKW*1000.0 : 0.0);
+            double brkW = (brkKW != null ? brkKW*1000.0 : 0.0);
+            P[i] = motW - brkW; // netto
+
+            // --- speed [m/s] ---
+            Double vv = getNum(pt,
+                    "speed", "speed_mps", "speed [m/s]", "velocity", "v");
+            V[i] = (vv != null) ? vv : Double.NaN;
+
+            // --- position [m] ---
+            Double xm = getNum(pt, "position", "positionMeters", "x", "s", "pos");
+            if (xm == null) {
+                String bis = getStr(pt, "bisPosition", "bisPosition [km,m]", "bis", "km,m");
+                xm = parseBisKmM(bis);
+            }
+            X[i] = (xm != null) ? xm : ((i == 0) ? 0.0 : X[i-1]);
+        }
+
+        // Sortera på tid (om rådata inte är strikt växande)
+        int[] order = argsort(T);
         this.tSec = new double[n];
-        this.pW   = new double[n];
+        this.xM   = new double[n];
         this.vMS  = new double[n];
+        this.pW   = new double[n];
+        for (int i = 0; i < n; i++) {
+            int k = order[i];
+            tSec[i] = T[k];
+            xM[i]   = X[k];
+            vMS[i]  = V[k];
+            pW[i]   = P[k];
+        }
 
-        Double[] xRaw = new Double[n];
-        boolean anyV = false, anyX = false;
+        // Härled speed från position om speed saknas
+        deriveSpeedFromPosition();
 
-        if (src.isEmpty()) {
-            tSec[0] = 0.0; pW[0] = 0.0; vMS[0] = Double.NaN; xRaw[0] = null;
-        } else {
-            for (int i = 0; i < n; i++) {
-                PowerPoint pt = src.get(i);
-                tSec[i] = safeTime(pt);
-                pW[i]   = safePower(pt);
-                Double vv = tryGetDouble(pt, "speed", "getSpeed", "v", "getV", "velocity", "getVelocity");
-                vMS[i]  = (vv != null) ? vv : Double.NaN;
-                anyV   |= (vv != null);
+        // Enkla skrubbningar (inga NaN/Inf)
+        scrub(tSec, 0.0);
+        scrub(xM,   (xM.length > 0 ? xM[0] : 0.0));
+        scrub(vMS,  0.0);
+        scrub(pW,   0.0);
+    }
 
-                // Position in meters (numeric). Not the label/string “position".
-                Double xx = tryGetDouble(pt,
-                        "positionMeters", "getPositionMeters", "posM", "getPosM",
-                        "x", "getX", "s", "getS");
-                xRaw[i] = xx;
-                anyX   |= (xx != null);
+    // ----- Public API -----
+    public OptionalDouble getSpeedAtTime(double t)    { return OptionalDouble.of(interp(tSec, vMS, t)); }
+    public OptionalDouble getPositionAtTime(double t) { return OptionalDouble.of(interp(tSec, xM,  t)); }
+    public Real getPowerAtTime(double t)    { return Real.fromDouble(interp(tSec, pW,  t)); }
+
+    public double[] timesSec()    { return tSec.clone(); }
+    public double[] positionsM()  { return xM.clone(); }
+    public double[] speedsMps()   { return vMS.clone(); }
+    public double[] powersW()     { return pW.clone(); }
+
+    // ----- Internals -----
+
+    private void deriveSpeedFromPosition() {
+        final int n = tSec.length;
+        if (n == 0) return;
+        for (int i = 1; i < n; i++) {
+            if (!finite(vMS[i])) {
+                double dt = tSec[i] - tSec[i-1];
+                if (dt > 1e-9) vMS[i] = (xM[i] - xM[i-1]) / dt;
             }
         }
+        if (!finite(vMS[0])) vMS[0] = (n > 1 && finite(vMS[1])) ? vMS[1] : 0.0;
+        for (int i = 1; i < n; i++) if (!finite(vMS[i])) vMS[i] = vMS[i-1];
+    }
 
-        this.hasV = anyV;
-        this.hasX = anyX;
-
-        // Build x[] either from explicit x or by integrating v (trapezoidal).
-        this.xM = new double[n];
-        if (hasX) {
-            for (int i = 0; i < n; i++) {
-                xM[i] = (xRaw[i] != null) ? xRaw[i] : (i > 0 ? xM[i - 1] : 0.0);
-            }
-        } else if (hasV) {
-            xM[0] = 0.0;
-            for (int i = 1; i < n; i++) {
-                double dt = Math.max(0.0, tSec[i] - tSec[i - 1]);
-                double v0 = Double.isNaN(vMS[i - 1]) ? 0.0 : vMS[i - 1];
-                double v1 = Double.isNaN(vMS[i])     ? v0   : vMS[i];
-                xM[i] = xM[i - 1] + 0.5 * (v0 + v1) * dt;
-            }
-        } else {
-            Arrays.fill(xM, 0.0);
+    private static double interp(double[] xs, double[] ys, double t) {
+        int n = xs.length;
+        if (n == 0) return 0.0;
+        if (t <= xs[0])   return ys[0];
+        if (t >= xs[n-1]) return ys[n-1];
+        int lo = 0, hi = n - 1;
+        while (hi - lo > 1) {
+            int mid = (lo + hi) >>> 1;
+            if (xs[mid] <= t) lo = mid; else hi = mid;
         }
-
-        this.t0 = tSec[0];
-        this.tN = tSec[n - 1];
+        double x0 = xs[lo], x1 = xs[hi];
+        double y0 = ys[lo], y1 = ys[hi];
+        if (!finite(y0) && finite(y1)) return y1;
+        if (!finite(y1) && finite(y0)) return y0;
+        if (!finite(y0) && !finite(y1)) return 0.0;
+        double w = (x1 > x0) ? (t - x0) / (x1 - x0) : 0.0;
+        return y0 + w * (y1 - y0);
     }
 
-    // ===== Implement PowerProfile (Real return types) =====
-
-    @Override
-    public Real getPowerAtTime(double sec) {
-        return Real.fromDouble(interpLinearClamped(sec, tSec, pW));
-    }
-
-    @Override
-    public OptionalDouble getPositionAtTime(double sec) {
-        double x = (tSec.length == 1) ? xM[0] : interpX(sec);
-        return OptionalDouble.of(x);
-    }
-
-    @Override
-    public OptionalDouble getSpeedAtTime(double sec) {
-        double v;
-        if (hasV) {
-            v = interpLinearClamped(sec, tSec, withNaNAsPrev(vMS));
-        } else if (tSec.length == 1) {
-            v = 0.0;
-        } else {
-            int i = segIndex(sec);
-            if (i < 0) i = 0;
-            if (i >= tSec.length - 1) i = tSec.length - 2;
-            double dt = Math.max(1e-12, tSec[i + 1] - tSec[i]);
-            v = (xM[i + 1] - xM[i]) / dt;
+    private static void scrub(double[] a, double fallback) {
+        for (int i = 0; i < a.length; i++) {
+            if (!finite(a[i])) a[i] = (i > 0 ? a[i-1] : fallback);
         }
-        return OptionalDouble.of(v);
     }
 
-    // ===== Internals =====
+    private static boolean finite(double x) {
+        return !Double.isNaN(x) && !Double.isInfinite(x);
+    }
 
-    private double interpX(double sec) {
-        int i = segIndex(sec);
-        if (i < 0) return xM[0];
-        if (i >= tSec.length - 1) return xM[xM.length - 1];
-
-        double ti  = tSec[i], ti1 = tSec[i + 1];
-        double xi  = xM[i],   xi1 = xM[i + 1];
-
-        double tau  = clamp(sec, ti, ti1) - ti;
-        double frac = (ti1 > ti) ? tau / (ti1 - ti) : 0.0;
-
-        double out = xi + (xi1 - xi) * frac;
-
-        // If x was derived (no explicit x) but we have speeds, refine inside the segment.
-        if (!hasX && hasV) {
-            double v0 = Double.isNaN(vMS[i])     ? 0.0 : vMS[i];
-            double v1 = Double.isNaN(vMS[i + 1]) ? v0  : vMS[i + 1];
-            double dt = Math.max(1e-12, ti1 - ti);
-            double tau2 = clamp(sec, ti, ti1) - ti;
-            double integral = v0 * tau2 + 0.5 * (v1 - v0) * (tau2 * tau2 / dt);
-            out = xM[i] + integral;
-        }
+    private static int[] argsort(double[] v) {
+        Integer[] idx = new Integer[v.length];
+        for (int i = 0; i < v.length; i++) idx[i] = i;
+        Arrays.sort(idx, Comparator.comparingDouble(i -> v[i]));
+        int[] out = new int[v.length];
+        for (int i = 0; i < v.length; i++) out[i] = idx[i];
         return out;
     }
 
-    private int segIndex(double sec) {
-        if (sec <= t0) return -1;                     // before first
-        if (sec >= tN) return tSec.length - 1;        // at/after last
-        int lo = 0, hi = tSec.length - 1;
-        while (hi - lo > 1) {
-            int mid = (lo + hi) >>> 1;
-            if (tSec[mid] <= sec) lo = mid; else hi = mid;
-        }
-        return lo;
-    }
+    // ----- Very small reflection helpers -----
 
-    private static double interpLinearClamped(double xq, double[] x, double[] y) {
-        if (x.length == 1) return y[0];
-        if (xq <= x[0]) return y[0];
-        if (xq >= x[x.length - 1]) return y[y.length - 1];
-        int lo = 0, hi = x.length - 1;
-        while (hi - lo > 1) {
-            int mid = (lo + hi) >>> 1;
-            if (x[mid] <= xq) lo = mid; else hi = mid;
-        }
-        double dx = x[lo + 1] - x[lo];
-        if (dx <= 0) return y[lo];
-        double frac = (xq - x[lo]) / dx;
-        return y[lo] + (y[lo + 1] - y[lo]) * frac;
-    }
-
-    private static double[] withNaNAsPrev(double[] arr) {
-        double[] out = arr.clone();
-        double last = 0.0;
-        for (int i = 0; i < out.length; i++) {
-            if (Double.isNaN(out[i])) out[i] = last;
-            else last = out[i];
-        }
-        return out;
-    }
-
-    // ---- PowerPoint extractors (robust to differing field/method names) ----
-
-    private static double safeTime(PowerPoint pt) {
-        try { return (double) PowerPoint.class.getMethod("time").invoke(pt); }
-        catch (Throwable ignore) {}
-        return 0.0;
-    }
-
-    private static double safePower(PowerPoint pt) {
-        Double d = tryGetDouble(pt, "power", "getPower", "p", "getP", "value", "getValue");
-        if (d != null) return d;
-        try {
-            Method m = pt.getClass().getMethod("power");
-            Object v = m.invoke(pt);
-            try {
-                Method asDouble = v.getClass().getMethod("asDouble");
-                Object dv = asDouble.invoke(v);
-                if (dv instanceof Number) return ((Number) dv).doubleValue();
-            } catch (Throwable ignore) {}
-        } catch (Throwable ignore) {}
-        return 0.0;
-    }
-
-    private static Double tryGetDouble(Object obj, String... names) {
-        // Methods
+    // Försök läsa numeriskt fält via få rimliga alias (metod eller fältnamn).
+    private static Double getNum(Object obj, String... names) {
         for (String n : names) {
+            // field
             try {
-                Method m = obj.getClass().getMethod(n);
+                var f = obj.getClass().getField(n);
+                Object v = f.get(obj);
+                if (v instanceof Number) return ((Number) v).doubleValue();
+            } catch (NoSuchFieldException ignore) { } catch (Throwable ignore) { }
+            // getter
+            try {
+                String g = "get" + n.substring(0,1).toUpperCase(Locale.ROOT) + n.substring(1);
+                var m = obj.getClass().getMethod(g);
                 Object v = m.invoke(obj);
                 if (v instanceof Number) return ((Number) v).doubleValue();
-                try {
-                    Method asDouble = v.getClass().getMethod("asDouble");
-                    Object dv = asDouble.invoke(v);
-                    if (dv instanceof Number) return ((Number) dv).doubleValue();
-                } catch (Throwable ignoreInner) {}
-            } catch (Throwable ignore) {}
-        }
-        // Fields
-        for (String n : names) {
-            try {
-                Object v = obj.getClass().getField(n).get(obj);
-                if (v instanceof Number) return ((Number) v).doubleValue();
-            } catch (Throwable ignore) {}
+            } catch (NoSuchMethodException ignore) { } catch (Throwable ignore) { }
         }
         return null;
     }
 
-    private static double clamp(double v, double a, double b) {
-        return Math.max(a, Math.min(b, v));
+    // Försök läsa strängfält via några alias.
+    private static String getStr(Object obj, String... names) {
+        for (String n : names) {
+            // field
+            try {
+                var f = obj.getClass().getField(n);
+                Object v = f.get(obj);
+                if (v instanceof String) return (String) v;
+            } catch (NoSuchFieldException ignore) { } catch (Throwable ignore) { }
+            // getter
+            try {
+                String g = "get" + n.substring(0,1).toUpperCase(Locale.ROOT) + n.substring(1);
+                var m = obj.getClass().getMethod(g);
+                Object v = m.invoke(obj);
+                if (v instanceof String) return (String) v;
+            } catch (NoSuchMethodException ignore) { } catch (Throwable ignore) { }
+        }
+        return null;
+    }
+
+    // Tålig tolkning av "bisPosition [km,m]" → meter.
+    // Accepterar "12+345", "12,345", "12 345", "12km+345m", och hanterar decimal-komma/punkt.
+    private static Double parseBisKmM(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        if (t.isEmpty()) return null;
+
+        // Plocka de första två numeriska token, tillåt , eller . som decimaltecken.
+        Matcher m = Pattern.compile("([0-9]+(?:[\\.,][0-9]+)?)").matcher(t);
+        List<String> nums = new ArrayList<>();
+        while (m.find()) {
+            nums.add(m.group(1));
+            if (nums.size() == 2) break;
+        }
+        if (nums.size() >= 2) {
+            try {
+                double km = Double.parseDouble(nums.get(0).replace(',', '.'));
+                double mtr= Double.parseDouble(nums.get(1).replace(',', '.'));
+                // trunkera meter-delen om du vill undvika decimaler:
+                mtr = Math.floor(mtr);
+                return km * 1000.0 + mtr;
+            } catch (NumberFormatException ignore) {}
+        }
+        return null;
     }
 }

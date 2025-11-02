@@ -1,5 +1,7 @@
 package org.dcsim.electric;
 
+
+import org.dcsim.export.LongTableWriter;
 import org.apache.commons.math3.linear.RealVector;
 import org.dcsim.math.Real;
 import org.dcsim.solver.api.DcNet;
@@ -13,12 +15,14 @@ import static org.dcsim.solver.build.NetBuilder.makeNet;
  * DcIterativeAdapterSolver
  * ------------------------
  * Robust, kompilerande adapter som:
- *  - Tar emot TrainAnchors (helst Map.Entry<trainId, TrainAnchorComponent>) via ElectricSolver.setTrainAnchors(...)
- *  - Applicerar begärd effekt till TrainLoad före lösning (med singel/singel-fallback)
- *  - Bygger DcNet via din NetBuilder utan reflection (hanterar båda signaturerna med NoSuchMethodError)
- *  - Anropar DcIterativeSolver.solve(DcNet) och packar resultatet i GridResult(null, V)
+ * - Tar emot TrainAnchors (helst Map.Entry<trainId, TrainAnchorComponent>) via ElectricSolver.setTrainAnchors(...)
+ * - Applicerar begärd effekt till TrainLoad före lösning (med singel/singel-fallback)
+ * - Bygger DcNet via din NetBuilder utan reflection (hanterar båda signaturerna med NoSuchMethodError)
+ * - Anropar DcIterativeSolver.solve(DcNet) och packar resultatet i GridResult(null, V)
  */
 public final class DcIterativeAdapterSolver implements ElectricSolver {
+    private static boolean finite(double x) { return !Double.isNaN(x) && !Double.isInfinite(x); }
+
 
     private static final boolean VERBOSE_ALL = Boolean.getBoolean("dcsim.verbose.all");
 
@@ -34,7 +38,9 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
         final DcNet net = buildNetSafe(model, timeSec, timestep);
 
         // 3) Kör iterativa lösaren (din version tar endast DcNet)
-        RealVector V = new DcIterativeSolver().solve(net);
+        DcIterativeSolver solver = new DcIterativeSolver();
+        solver.setSimTimeSec(timeSec);
+        RealVector V = solver.solve(net);
 
         // 4) Packa tillbaka i GridResult (RealMatrix=null, RealVector=V)
         return new GridResult(null, V);
@@ -90,7 +96,8 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
                 }
                 if (p != null) {
                     tl.setRequestedPower(Real.fromDouble(p));
-                    if (VERBOSE_ALL) System.out.printf("[ADAPT] applied requestedPower to TL %s : %.1f W%n", tl.getId(), p);
+                    if (VERBOSE_ALL)
+                        System.out.printf("[ADAPT] applied requestedPower to TL %s : %.1f W%n", tl.getId(), p);
                 } else {
                     // Sista fallback: hedra ev. redan satt requestedPower från aktorn
                     try {
@@ -100,7 +107,8 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
                             if (VERBOSE_ALL) System.out.printf("[ADAPT] fallback requestedPower from TL %s : %.1f W%n",
                                     tl.getId(), rp.asDouble());
                         }
-                    } catch (Throwable ignore) {}
+                    } catch (Throwable ignore) {
+                    }
                 }
             }
         }
@@ -114,7 +122,9 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
         return makeNet((GridModel<Real>) model);
     }
 
-    /** Läs total requested power om den finns; annars summera mot/brk/aux. */
+    /**
+     * Läs total requested power om den finns; annars summera mot/brk/aux.
+     */
     private static double readRequestedPowerRobust(Object comp) {
         if (comp == null) return 0.0;
 
@@ -163,17 +173,19 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
         try {
             Object v = o.getClass().getMethod(method).invoke(o);
             if (v instanceof Number) return ((Number) v).doubleValue();
-            if (v instanceof Real)   return ((Real) v).asDouble();
+            if (v instanceof Real) return ((Real) v).asDouble();
         } catch (NoSuchMethodException ignored) {
         } catch (Throwable t) { /* ignore */ }
         return null;
     }
 
-    /** Fallback om vi inte fick Map.Entry: försök hitta tåg-id via getters/nested getTrain(). */
+    /**
+     * Fallback om vi inte fick Map.Entry: försök hitta tåg-id via getters/nested getTrain().
+     */
     private static String extractTrainId(Object a) {
         if (a == null) return null;
 
-        String[] simple = { "getTrainId", "trainId", "getId", "id", "getName", "name" };
+        String[] simple = {"getTrainId", "trainId", "getId", "id", "getName", "name"};
         for (String m : simple) {
             try {
                 Object v = a.getClass().getMethod(m).invoke(a);
