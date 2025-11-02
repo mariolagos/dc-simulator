@@ -64,6 +64,26 @@ public final class PositionUtils {
     }
 
     /**
+     * Flexibel parser: "s km+m", "s km+m.dd", "s km + m", etc.
+     * Returnerar den KANONISKA org.dcsim.track.TrackPosition (section, km, m).
+     */
+    public static TrackPosition parseFlexibleTP(String text) {
+        // Antag att ni redan har en flexibel parser idag som ger (line/section, km, m)
+        // T.ex. parseFlexible(...) -> int[]{section, km, metersInt} eller liknande.
+        int[] p = parseFlexible(text); // befintlig metod; annars implementera samma regex som nuvarande
+        // Om parseFlexible bara ger heltals-meter, men ni vill behålla ev. decimaler:
+        // byt parseFlexible till att ge double m (ex. parseFlexibleD) och använd det här.
+        return new TrackPosition(p[0], p[1], p[2]).normalized();
+    }
+
+    /** Hjälp för att få totala meter i sektion (km*1000 + m), med meter TRUNKERADE. */
+    public static double toMetersTruncated(TrackPosition tp) {
+        // trunkera endast m-delen som ni önskat tidigare
+        return tp.km * 1000.0 + Math.floor(tp.m);
+    }
+
+
+    /**
      * Flexible parse supporting:
      *  - "line km+mmm"
      *  - "km+mmm"  (assumes line=1)
@@ -140,6 +160,8 @@ public final class PositionUtils {
     public static double distance(String position, String position1) {
         return Math.abs(toMeters(parseFlexible(position)) - toMeters(parseFlexible(position1)));
     }
+
+
 
     // ─────────────────────────────────────────────────────────────────────────────
     // New: value type + section chain for multi-line/section routes

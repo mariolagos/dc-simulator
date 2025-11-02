@@ -6,17 +6,24 @@ import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
+import org.dcsim.export.LongTableWriter;
 import org.dcsim.power.PowerProfile;
+import org.dcsim.solver.impl.DcIterativeSolver;
 
 import java.util.OptionalDouble;
 
 public class TrainActor extends AbstractBehavior<TrainActor.Command> {
 
     // ===== Protocol =====
-    public interface Command {}
+    public interface Command {
+    }
+
     public static final class Tick implements Command {
         public final double timeSec;
-        public Tick(double timeSec) { this.timeSec = timeSec; }
+
+        public Tick(double timeSec) {
+            this.timeSec = timeSec;
+        }
     }
 
     // ===== Factory =====
@@ -45,6 +52,10 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
 
     private double lastPosM = 0.0;
     private Double lastTickAbsSec = null;
+
+    private static boolean finite(double x) {
+        return !Double.isNaN(x) && !Double.isInfinite(x);
+    }
 
     private TrainActor(
             ActorContext<Command> ctx,
@@ -80,17 +91,21 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
 
         // --- 1) Power from profile (W; +motoring, −regen)
         double netW = 0.0;
+        double xM = 0.;
+        double vMs = 0;
         if (profile != null && localT >= 0.0) {
             netW = profile.getPowerAtTime(localT).asDouble();
+            xM = profile.getPositionAtTime(localT).getAsDouble();
+            vMs = profile.getSpeedAtTime(localT).getAsDouble();
         }
         final double tractionKW = netW / 1000.0;
 
         // TrainLoad contract:
         //   motoringKW >= 0
         //   brakingKW  <= 0  (NEGATIVE for regen back to the network)
-        final double motKW    = Math.max(0.0, tractionKW);
-        final double regenKW  = Math.min(0.0, tractionKW);
-        final double brkKW    = regenKW;                 // send NEGATIVE during regen
+        final double motKW = Math.max(0.0, tractionKW);
+        final double regenKW = Math.min(0.0, tractionKW);
+        final double brkKW = regenKW;                 // send NEGATIVE during regen
         final double auxKWout = sameModel ? 0.0 : this.auxKW;
         // === DEBUG TA: after computing mot/brk/aux this tick, before sending it ===
         System.out.printf(
@@ -105,21 +120,21 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
 
             if (xOpt.isPresent() && vOpt.isPresent()) {
                 xMeters = xOpt.getAsDouble();
-                vMS     = vOpt.getAsDouble();
+                vMS = vOpt.getAsDouble();
             } else if (xOpt.isPresent()) {
                 double xNow = xOpt.getAsDouble();
                 double vEst = (dt > 0.0) ? (xNow - lastPosM) / dt : 0.0;
                 xMeters = xNow;
-                vMS     = vEst;
+                vMS = vEst;
             } else if (vOpt.isPresent()) {
                 double vNow = vOpt.getAsDouble();
                 double xNow = lastPosM + vNow * dt;
                 xMeters = xNow;
-                vMS     = vNow;
+                vMS = vNow;
             }
         }
         if (xMeters == null) xMeters = lastPosM;
-        if (vMS == null)     vMS     = 0.0;
+        if (vMS == null) vMS = 0.0;
 
         // Update local history
         lastPosM = xMeters;
@@ -132,6 +147,22 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
                 motKW, brkKW, auxKWout,   // NOTE: brkKW <= 0 for regen
                 xMeters, vMS
         ));
+
+        try {
+            LongTableWriter lt = DcIterativeSolver.getLongWriter();
+            if (lt != null) {
+                double t = DcIterativeSolver.getSimTimeSec();
+                if (finite(t)) {// getter nedan i fix B{}
+                    if (finite(motKW)) lt.signalRow(t, "Train", trainId, "mot_W", motKW * 1000, "W", "TA", null, null);
+                    if (finite(brkKW)) lt.signalRow(t, "Train", trainId, "brk_W", brkKW * 1000, "W", "TA", null, null);
+                    if (finite(auxKW)) lt.signalRow(t, "Train", trainId, "aux_W", auxKW * 1000, "W", "TA", null, null);
+                    if (finite(xM)) lt.signalRow(t, "Train", trainId, "pos_m", xM, "m", "TA", null, null);
+                    if (finite(vMs)) lt.signalRow(t, "Train", trainId, "speed_mps", vMs, "m/s", "TA", null, null);
+                }
+            }
+        } catch (
+                Throwable ignore) { /* keep run robust */ }
+
         return this;
     }
 }

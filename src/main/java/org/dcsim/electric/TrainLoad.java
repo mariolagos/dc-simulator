@@ -83,8 +83,9 @@ public class TrainLoad implements Device<Real> {
 
     /** Split requested power into line/brake parts from |ΔV| and cutoff window. */
     private double[] splitRequestedPowerForLine(double dvAbs) {
-        final double cut  = cutoffVoltage.asDouble();  // e.g. 850 V
-        final double vmax = maxVoltage.asDouble();     // e.g. 1000 V
+	final double vmin = minVoltage.asDouble();   // t.ex. 500 V
+	final double cut  = cutoffVoltage.asDouble();// t.ex. 850 V
+	final double vmax = maxVoltage.asDouble();   // t.ex. 1000 V
 
         double motW = requestedMotoringPower.asDouble();    // ≥ 0
         double brkW = requestedBrakingPower.asDouble();     // ≤ 0 (regen)
@@ -97,10 +98,10 @@ public class TrainLoad implements Device<Real> {
         pLine += auxW;
 
         // Motoring: only if enough voltage (simple undervoltage guard)
-        if (motW > 0.0) {
-            if (dvAbs >= cut) pLine += motW;
-            // else deliver 0 for now (could soften later)
-        }
+	// Motoring: undervoltage-guard mot minVoltage (inte cutoff)
+	if (motW > 0.0) {
+	    if (dvAbs >= vmin) pLine += motW;
+	}
 
         // Regenerative braking (negative)
         if (brkW < 0.0) {
@@ -152,7 +153,7 @@ public class TrainLoad implements Device<Real> {
 
     public void setCutoffVoltage(Real cutoff)   { this.cutoffVoltage = cutoff; }
     public void setMaxVoltage(Real maxVoltage)  { this.maxVoltage = maxVoltage; }
-    public void setMinVoltage(Real maxVoltage)  { this.minVoltage = minVoltage; }
+    public void setMinVoltage(Real minVoltage)  { this.minVoltage = minVoltage; }
     public void setMaxCurrent(Real maxCurrent)  { this.maxCurrent = maxCurrent; }
     public Real getCutoffVoltage()              { return cutoffVoltage; }
     public Real getMaxVoltage()                 { return maxVoltage; }

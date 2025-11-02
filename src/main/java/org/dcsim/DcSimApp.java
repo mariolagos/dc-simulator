@@ -13,12 +13,16 @@ import org.dcsim.actors.GridModelActor;
 import org.dcsim.actors.SimulationSpeed;
 import org.dcsim.actors.TrainActor;
 import org.dcsim.electric.*;
+import org.dcsim.export.LongTableWriter;
 import org.dcsim.export.ResultCsvWriter;
 import org.dcsim.math.Real;
 import org.dcsim.power.PowerProfile;
 import org.dcsim.power.PowerTemplateParser;
+import org.dcsim.power.TablePowerProfile;
 import org.dcsim.sim.EdgeRef;
 import org.dcsim.sim.TrainAnchorComponent;
+import org.dcsim.solver.impl.DcIterativeSolver;
+import org.dcsim.utils.PositionUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,14 +32,27 @@ import java.util.*;
 
 public final class DcSimApp {
 
+    private static LongTableWriter LONG_WRITER = null;
+    static final String projectName = "dc-simulator";
+    static final String scenarioName = "3subs1train";
+    static final String baseHash = "8110f7deeaa232a8602fcccbd55f512cebdfc7af"; // TODO: replace with dynamic git hash
+    static final String longPath = "output/longtable.csv";
+
+
     // ----- Root actor that wires everything with backpressure -----
     public static final class Root extends AbstractBehavior<Root.Command> {
-        interface Command {}
+        interface Command {
+        }
 
-        private static final class Kick implements Command {}
+        private static final class Kick implements Command {
+        }
+
         private static final class FromGrid implements Command {
             final GridModelActor.SolveReply reply;
-            FromGrid(GridModelActor.SolveReply r) { this.reply = r; }
+
+            FromGrid(GridModelActor.SolveReply r) {
+                this.reply = r;
+            }
         }
 
         private final double tickSec;
@@ -58,6 +75,7 @@ public final class DcSimApp {
         private final int anchorNodeId;
         private final List<EdgeRef> path;
         private final double vMS, pW, Rmin, epsFrac;
+
 
         public static Behavior<Command> create(
                 GridModel<Real> model,
@@ -121,13 +139,13 @@ public final class DcSimApp {
             this.speed = speed;
 
             this.anchorNodeId = anchorNodeId;
-            this.path   = path;
-            this.vMS    = vMS;
-            this.pW     = pW;
-            this.Rmin   = Rmin;
-            this.epsFrac= epsFrac;
+            this.path = path;
+            this.vMS = vMS;
+            this.pW = pW;
+            this.Rmin = Rmin;
+            this.epsFrac = epsFrac;
 
-            double stopByTime  = (endSec <= 0 ? Double.POSITIVE_INFINITY : endSec);
+            double stopByTime = (endSec <= 0 ? Double.POSITIVE_INFINITY : endSec);
             double stopBySteps = (stopAfterSteps > 0) ? (startSec + stopAfterSteps * tickSec)
                     : Double.POSITIVE_INFINITY;
             this.endAtSec = Math.min(stopByTime, stopBySteps);
@@ -181,7 +199,7 @@ public final class DcSimApp {
                         sByTrain.put(ts.trainId, 0.0);
                         grid.tell(new GridModelActor.InstallTrainAnchor(ts.trainId, comp, this.tickSec));
                         getContext().getLog().info("Installed anchor for {} at t={}s (dep={})",
-                                ts.trainId, String.format(java.util.Locale.ROOT,"%.1f", t), ts.departureSec);
+                                ts.trainId, String.format(java.util.Locale.ROOT, "%.1f", t), ts.departureSec);
                         it.remove();
                     }
                 }
@@ -193,8 +211,8 @@ public final class DcSimApp {
             // 2) flytta enbart installerade ankare
             for (var e : trainComps.entrySet()) {
                 String id = e.getKey();
-                var comp  = e.getValue();
-                double v  = comp.getSpeedMS();
+                var comp = e.getValue();
+                double v = comp.getSpeedMS();
                 double sM = sByTrain.getOrDefault(id, 0.0) + v * tickSec;
                 sByTrain.put(id, sM);
                 comp.setAbsoluteProgressM(sM);
@@ -208,7 +226,7 @@ public final class DcSimApp {
         private Behavior<Command> onFromGrid(FromGrid fg) {
             if (fg.reply instanceof GridModelActor.Solved) {
                 nowSec = nowSec + tickSec;
-                step   = step + 1;
+                step = step + 1;
 
                 if (nowSec >= endAtSec - 1e-9) {
                     grid.tell(new GridModelActor.SimulationFinished());
@@ -229,7 +247,8 @@ public final class DcSimApp {
     }
 
     private record TrainSpawn(String trainId, PowerProfile profile, int departureSec,
-                              boolean sameModel, double auxKW) {}
+                              boolean sameModel, double auxKW) {
+    }
 
     public static void main(String[] args) throws IOException {
         System.out.println("[MAIN] DcSimApp starting");
@@ -239,7 +258,7 @@ public final class DcSimApp {
             System.err.println("Usage: DcSimApp <path-to-scenario.conf|dir>");
             System.exit(1);
         }
-        File confArg  = new File(args[0]);
+        File confArg = new File(args[0]);
         File confFile = confArg.isDirectory() ? new File(confArg, "scenario.conf") : confArg;
         if (!confFile.exists()) {
             System.err.println("[ERROR] Config not found: " + confFile.getAbsolutePath());
@@ -264,7 +283,8 @@ public final class DcSimApp {
             } else if (scenario.hasPath("dcsim.verbose") && scenario.getConfig("dcsim.verbose").hasPath("all")) {
                 verboseAll = scenario.getConfig("dcsim.verbose").getBoolean("all");
             }
-        } catch (Exception ignore) {}
+        } catch (Exception ignore) {
+        }
 
         if (verboseAll) {
             System.setProperty("dcsim.verbose.all", "true");
@@ -317,7 +337,7 @@ public final class DcSimApp {
         double tickSec = sim.hasPath("tickDurationSec") ? sim.getDouble("tickDurationSec")
                 : sim.getDouble("tickDuration");
         int startSec = sim.hasPath("simulationStart") ? parseHmsToSeconds(sim.getString("simulationStart")) : 0;
-        int endSec   = sim.hasPath("simulationEnd")   ? parseHmsToSeconds(sim.getString("simulationEnd"))
+        int endSec = sim.hasPath("simulationEnd") ? parseHmsToSeconds(sim.getString("simulationEnd"))
                 : Integer.MAX_VALUE;
         SimulationSpeed speed = sim.hasPath("simulationSpeed")
                 ? SimulationSpeed.valueOf(sim.getString("simulationSpeed").trim().toUpperCase(Locale.ROOT))
@@ -336,8 +356,57 @@ public final class DcSimApp {
                 ? PowerTemplateParser.parse(dcsim.getConfig("powerProfiles"))
                 : Collections.emptyMap();
         Map<String, PowerProfile> profileByTemplate = new HashMap<>();
+
+// --- Normaliseringspass: byTpl -> byTplNormalised ---
+// - positionM sätts via PositionUtils.parseFlexible(bisPosition)
+// - speedMS måste finnas; annars kastas IllegalStateException
+        Map<String, List<PowerPoint>> byTplNormalised = new LinkedHashMap<>();
+
         for (var e : byTpl.entrySet()) {
-            profileByTemplate.put(e.getKey(), new org.dcsim.power.TablePowerProfile(e.getValue()));
+            final String tplId = e.getKey();
+            final List<PowerPoint> src = e.getValue();
+            final List<PowerPoint> dst = new ArrayList<>(src.size());
+
+            for (int i = 0; i < src.size(); i++) {
+                PowerPoint p = src.get(i);
+
+                // 1) positionM via parseFlexible (vi antar att den returnerar int[]{section, km, m})
+                if (p.hasPositionM()) {
+                    final String posStr = p.position();
+                    if (posStr == null || posStr.isBlank()) {
+                        throw new IllegalStateException("Saknar bisPosition (template=" + tplId + ", row=" + i + ")");
+                    }
+                    int[] skm = PositionUtils.parseFlexible(posStr); // befintlig util
+                    if (skm == null || skm.length < 3) {
+                        throw new IllegalStateException("Kunde inte tolka bisPosition \"" + posStr
+                                + "\" (template=" + tplId + ", row=" + i + ")");
+                    }
+                    final int km = skm[1];
+                    final int mInt = skm[2]; // parseFlexible ger meter som heltal
+                    double posM = km * 1000.0 + Math.floor(mInt); // trunkera meter-delen
+                    p.setPositionM(posM);
+                }
+
+                // 2) speedMS måste finnas
+                if (!p.hasSpeedMS()) {
+
+                        p.setSpeedMps(p.speedMS());
+                    }
+//                else {
+//                        String tInfo = (p.time() > 0 ? String.valueOf(p.time()) : "null");
+//                        throw new IllegalStateException(
+//                                "Saknar speedMS (template=" + tplId + ", row=" + i + ", time=" + tInfo + ")"
+//                        )}
+
+                dst.add(p); // vi muterar p på plats; lägg kopia om du vill.
+            }
+
+            byTplNormalised.put(tplId, dst);
+        }
+
+// använd den normaliserade mappen för profiler
+        for (var e : byTplNormalised.entrySet()) {
+            profileByTemplate.put(e.getKey(), new TablePowerProfile(e.getValue()));
         }
         boolean sameModel = dcsim.hasPath("powerProfiles.motoringAndAuxiliariesInSameModel")
                 && dcsim.getBoolean("powerProfiles.motoringAndAuxiliariesInSameModel");
@@ -350,19 +419,19 @@ public final class DcSimApp {
             var timetable = dcsim.getConfig("traffic.timetable");
             var trainsConf = timetable.getConfigList("trains");
             for (Config tr : trainsConf) {
-                String idBase   = tr.getString("id");
-                String tpl      = tr.getString("templateId");
-                int dep0Abs     = parseHmsToSeconds(tr.getString("departure"));
+                String idBase = tr.getString("id");
+                String tpl = tr.getString("templateId");
+                int dep0Abs = parseHmsToSeconds(tr.getString("departure"));
                 Integer headway = optHmsToSeconds(tr, "headway");
-                int count       = tr.hasPath("count") ? tr.getInt("count") : 1;
-                String sig      = tr.hasPath("signature") ? tr.getString("signature") : "";
+                int count = tr.hasPath("count") ? tr.getInt("count") : 1;
+                String sig = tr.hasPath("signature") ? tr.getString("signature") : "";
 
                 PowerProfile prof = profileByTemplate.get(tpl);
 
                 for (int k = 0; k < count; k++) {
                     int depKAbs = dep0Abs + ((headway != null) ? k * headway : 0);
-                    int depRel  = Math.max(0, depKAbs - startSec);
-                    String tid  = (count == 1) ? idBase : uniqId(idBase, sig, k + 1);
+                    int depRel = Math.max(0, depKAbs - startSec);
+                    String tid = (count == 1) ? idBase : uniqId(idBase, sig, k + 1);
                     spawns.add(new TrainSpawn(tid, prof, depRel, sameModel, auxKW));
                 }
             }
@@ -380,27 +449,35 @@ public final class DcSimApp {
 
         String outPath = "output/electrical_" + testName + ".csv";
         new File(outPath).getParentFile().mkdirs();
-        try (ResultCsvWriter ignored = new ResultCsvWriter(model, outPath, true)) { /* truncate */ }
-        catch (IOException e) { System.err.println("[WARN] Could not prepare CSV file: " + e.getMessage()); }
+        try (ResultCsvWriter ignored = new ResultCsvWriter(model, outPath, true)) { /* truncate */ } catch (
+                IOException e) {
+            System.err.println("[WARN] Could not prepare CSV file: " + e.getMessage());
+        }
+
+        LONG_WRITER = new LongTableWriter(longPath, true, projectName, scenarioName, baseHash);
+        System.out.println("[LongCSV] writing to " + longPath);
+
+        // Registrera i solvern (statiskt)
+        DcIterativeSolver.setLongWriter(LONG_WRITER);
 
         // ---- 11) Bygg path från modellen (linjer) ----
         List<EdgeRef> raw = new ArrayList<>();
         for (Object o : (java.util.Collection<?>) model.getDevices()) {
             Device<?> d = (Device<?>) o;
             if (d instanceof Line ln) {
-                int from  = ln.getFromNode();
-                int to    = ln.getToNode();
+                int from = ln.getFromNode();
+                int to = ln.getToNode();
                 double Lm = ln.getLength();
-                double R  = ln.getResistance().asDouble();
+                double R = ln.getResistance().asDouble();
                 raw.add(new EdgeRef(from, to, R, Lm));
             }
         }
         List<EdgeRef> path = linearizePath(raw, findPathStart(raw));
 
         // ---- 12) Ankare-parametrar (från conf) ----
-        double vMS     = readSpeedMS(dcsim);
-        double pW      = dcsim.hasPath("train.pW")      ? dcsim.getDouble("train.pW")      : 150_000.0;
-        double Rmin    = dcsim.hasPath("train.Rmin")    ? dcsim.getDouble("train.Rmin")    : 1e-6;
+        double vMS = readSpeedMS(dcsim);
+        double pW = dcsim.hasPath("train.pW") ? dcsim.getDouble("train.pW") : 150_000.0;
+        double Rmin = dcsim.hasPath("train.Rmin") ? dcsim.getDouble("train.Rmin") : 1e-6;
         double epsFrac = dcsim.hasPath("train.epsFrac") ? dcsim.getDouble("train.epsFrac") : 1e-3;
 
         // ---- 13) Start Akka — INJICERA HELA SCENARIO-KONFIGEN ----
@@ -412,6 +489,7 @@ public final class DcSimApp {
                 "SimulatorSystem",
                 scenario // <— injicera
         );
+
     }
 
     // ---- Utilities ----
@@ -435,7 +513,10 @@ public final class DcSimApp {
 
     private static int findPathStart(List<EdgeRef> edges) {
         Set<Integer> froms = new HashSet<>(), tos = new HashSet<>();
-        for (EdgeRef e : edges) { froms.add(e.i); tos.add(e.j); }
+        for (EdgeRef e : edges) {
+            froms.add(e.i);
+            tos.add(e.j);
+        }
         for (int f : froms) if (!tos.contains(f)) return f;
         return edges.isEmpty() ? 0 : edges.get(0).i;
     }
@@ -445,11 +526,20 @@ public final class DcSimApp {
         List<EdgeRef> out = new ArrayList<>();
         int cur = startNodeId;
         while (!remaining.isEmpty()) {
-            int hit = -1; boolean flip = false;
+            int hit = -1;
+            boolean flip = false;
             for (int k = 0; k < remaining.size(); k++) {
                 EdgeRef e = remaining.get(k);
-                if (e.i == cur) { hit = k; flip = false; break; }
-                if (e.j == cur) { hit = k; flip = true;  break; }
+                if (e.i == cur) {
+                    hit = k;
+                    flip = false;
+                    break;
+                }
+                if (e.j == cur) {
+                    hit = k;
+                    flip = true;
+                    break;
+                }
             }
             if (hit < 0) throw new IllegalStateException("Path not contiguous from node " + cur);
             EdgeRef e = remaining.remove(hit);
@@ -464,7 +554,7 @@ public final class DcSimApp {
         if (dcsim.hasPath("powerProfiles.templates")) {
             var list = dcsim.getConfig("powerProfiles").getConfigList("templates");
             for (Config tpl : list) {
-                if (tpl.hasPath("speedMS"))  return tpl.getDouble("speedMS");
+                if (tpl.hasPath("speedMS")) return tpl.getDouble("speedMS");
                 if (tpl.hasPath("speedKPH")) return tpl.getDouble("speedKPH") / 3.6;
             }
         }

@@ -17,9 +17,13 @@ import java.util.*;
  */
 public final class ResultCsvWriter implements Closeable, Flushable {
 
+    private String project = "";
+    private String scenario = "";
+    private String baseHash = "";
+    private boolean headerWritten = false;
+
     private final GridModel<Real> model;
     private final BufferedWriter bw;
-    private boolean headerWritten = false;
     private boolean writeHeader = true;
     private int everyNthStep = 1;
 
@@ -45,10 +49,49 @@ public final class ResultCsvWriter implements Closeable, Flushable {
             try (FileOutputStream trunc = new FileOutputStream(f, false)) { /* truncate */ }
         }
         this.bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f, true), StandardCharsets.UTF_8));
+        this.headerWritten = f.exists() && f.length() > 0 && !overwrite;
+        if (!this.headerWritten) {
+            writeLine("time_s,project,scenario,base_hash,object_type,object_id,signal,value,unit,stage,iter,note");
+            this.headerWritten = true;
+        }
         indexModel();
     }
+
     public ResultCsvWriter(GridModel<Real> model, String path) throws IOException {
         this(model, path, false);
+    }
+
+    public void signalRow(Double time_s,
+                          String objectType, String objectId,
+                          String signal, Double value, String unit,
+                          String stage, Integer iter, String note) {
+        // tomma => blanks
+        String line = String.format(java.util.Locale.ROOT,
+                "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
+                toCsv(time_s), toCsv(project), toCsv(scenario), toCsv(baseHash),
+                toCsv(objectType), toCsv(objectId), toCsv(signal), toCsv(value),
+                toCsv(unit), toCsv(stage), toCsv(iter), toCsv(note)
+        );
+        writeLine(line);
+    }
+
+    private void writeLine(String s) {
+        try {
+            bw.write(s);
+            bw.newLine();
+            bw.flush(); // säkert för strömmande
+        } catch (IOException e) {
+            System.err.println("[CSV] write failed: " + e.getMessage());
+        }
+    }
+
+    private static String toCsv(Object o) { return o == null ? "" : o.toString(); }
+
+    public ResultCsvWriter setRunIdentity(String project, String scenario, String baseHash) {
+        this.project = project != null ? project : "";
+        this.scenario = scenario != null ? scenario : "";
+        this.baseHash = baseHash != null ? baseHash : "";
+        return this;
     }
 
     // --- knobs ---
