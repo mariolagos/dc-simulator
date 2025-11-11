@@ -91,36 +91,149 @@ public final class PositionUtils {
      *  - "km.m km"
      *  - with/without 'km'/'m' tokens; comma/period decimal
      */
-    public static int[] parseFlexible(String pos) {
-        String s = pos == null ? "" : pos.trim();
-        Matcher m = FLEXIBLE.matcher(s);
-        if (!m.matches()) throw new IllegalArgumentException("Unrecognized position: " + pos);
+    /** Parsed form: {section, km, m}, där m trunkeras [0..999]. */
+    public static int[] parseFlexible(String s) {
+        if (s == null) return null;
+        s = s.trim();
+        if (s.isEmpty()) return null;
+        s = s.replace('\u00A0', ' '); // NBSP -> space
 
-        int line = m.group(1) != null ? Integer.parseInt(m.group(1)) : 1;
-        int km = Integer.parseInt(m.group(2));
-        int metersFromDecimal = 0;
-        if (m.group(3) != null && !m.group(3).isEmpty()) {
-            // e.g. "12.345" -> +345 m (TRUNCATE, not scale)
-            String dec = m.group(3);
-            if (dec.length() > 3) dec = dec.substring(0, 3);
-            metersFromDecimal = Integer.parseInt(dec);
+        // 1) km+m (men kan även vara "section km+m", t.ex. "1 0+000")
+        int plus = s.indexOf('+');
+        if (plus >= 0) {
+            String left = s.substring(0, plus).trim();
+            String right = s.substring(plus + 1).trim();
+            right = compactDigits(right);
+            int m = safeIntFloor(right);
+            if (m < 0) throw new IllegalArgumentException("Bad meters: " + s);
+
+            int section = 1, km;
+            String[] toks = left.split("\\s+");
+            if (toks.length >= 2) {
+                section = safeInt(compactDigits(toks[0]));
+                km      = safeInt(compactDigits(toks[1]));
+            } else {
+                km      = safeInt(compactDigits(left));
+            }
+            if (section < 0 || km < 0) throw new IllegalArgumentException("Bad km+m: " + s);
+            return new int[]{section, km, clampM(m)};
         }
 
-        int metersExplicit = 0;
-        if (m.group(4) != null && !m.group(4).isEmpty()) {
-            // e.g. "+009.99" -> 9 m (TRUNCATE decimals)
-            String mtok = m.group(4).replace(',', '.');
-            double md = Double.parseDouble(mtok);
-            metersExplicit = (int) Math.floor(md);
+        // 2) km,m (även "section km,m")
+        int comma = s.indexOf(',');
+        if (comma >= 0 && !looksLikeDecimalWithSection(s)) {
+            String left = s.substring(0, comma).trim();
+            String right = s.substring(comma + 1).trim();
+            right = compactDigits(right);
+            int m = safeIntFloor(right);
+            if (m < 0) throw new IllegalArgumentException("Bad meters: " + s);
+
+            int section = 1, km;
+            String[] toks = left.split("\\s+");
+            if (toks.length >= 2) {
+                section = safeInt(compactDigits(toks[0]));
+                km      = safeInt(compactDigits(toks[1]));
+            } else {
+                km      = safeInt(compactDigits(left));
+            }
+            if (section < 0 || km < 0) throw new IllegalArgumentException("Bad km,m: " + s);
+            return new int[]{section, km, clampM(m)};
         }
 
-        int meters = (metersExplicit > 0) ? metersExplicit : metersFromDecimal;
-
-        if (meters >= 1000) {
-            km += meters / 1000;
-            meters = meters % 1000;
+        // 3) En eller två tokens utan '+' eller ',':
+        //    - "section km"   → {section, km, 0}
+        //    - "km.dec"       → {1, floor(km), floor(frac*1000)}
+        //    - "5.0E-4"       → {1, 0, 0} (0.5 m → trunkeras till 0 m)
+        String[] toks = s.split("\\s+");
+        if (toks.length >= 2) {
+            int section = safeInt(compactDigits(toks[0]));
+            int km      = safeInt(compactDigits(toks[1]));
+            if (section < 0 || km < 0) throw new IllegalArgumentException("Bad 'section km': " + s);
+            return new int[]{section, km, 0};
+        } else {
+            String t = normDecimal(compactDigits(toks[0]));
+            boolean sciOrDot = t.indexOf('e') >= 0 || t.indexOf('E') >= 0 || t.indexOf('.') >= 0;
+            if (sciOrDot) {
+                double kmD;
+                try { kmD = Double.parseDouble(t); }
+                catch (NumberFormatException e) { throw new IllegalArgumentException("Unrecognized position: " + s, e); }
+                if (kmD < 0) throw new IllegalArgumentException("Negative position not allowed: " + s);
+                int km = (int)Math.floor(kmD);
+                int m  = (int)Math.floor((kmD - km) * 1000.0 + 1e-9); // trunkera
+                return new int[]{1, km, clampM(m)};
+            }
+            // heltal: heuristik meter vs km
+            long val;
+            try { val = Long.parseLong(t); }
+            catch (NumberFormatException e) { throw new IllegalArgumentException("Unrecognized position: " + s, e); }
+            if (val < 0) throw new IllegalArgumentException("Negative position not allowed: " + s);
+            if (val >= 10000L) { // meter
+                long kmL = val / 1000L, mL = val % 1000L;
+                return new int[]{1, (int)kmL, (int)mL};
+            } else { // km
+                return new int[]{1, (int)val, 0};
+            }
         }
-        return new int[]{ line, km, meters };    }
+    }
+
+    /** Direkta meter (double). */
+    public static double parseFlexibleToMeters(String s) {
+        int[] skm = parseFlexible(s);
+        return (skm == null) ? Double.NaN : (skm[1] * 1000.0 + skm[2]);
+    }
+
+    // --- helpers ---
+
+    /** Ta bort tusentalsavskiljare (space, NBSP, underscore, apostrof) ur ett numeriskt token. */
+    private static String compactDigits(String x) {
+        if (x == null) return "";
+        return x.replace('\u00A0', ' ').replaceAll("[\\s_']", "");
+    }
+
+    private static String normDecimal(String x) {
+        return x.replace(',', '.');
+    }
+
+    // om strängen ser ut som "section <decimal-km, med komma>" → låt decimalhantering ta den grenen
+    private static boolean looksLikeDecimalWithSection(String s) {
+        // t.ex. "1 0,5" (section + km.dec med komma), inte km,m
+        String[] toks = s.trim().split("\\s+");
+        if (toks.length >= 2) {
+            String second = toks[1];
+            return second.indexOf(',') >= 0 && second.chars().filter(ch -> ch == ',').count() == 1;
+        }
+        return false;
+    }
+
+    private static int safeInt(String a) {
+        if (a == null) return -1;
+        a = normDecimal(a);
+        try {
+            double d = Double.parseDouble(a);
+            if (d < 0) return -1;
+            return (int)Math.floor(d + 1e-9);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private static int safeIntFloor(String a) {
+        if (a == null) return -1;
+        a = normDecimal(a);
+        try {
+            double d = Double.parseDouble(a);
+            if (d < 0) return -1;
+            return clampM((int)Math.floor(d + 1e-9)); // trunkera meter-delen
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private static int clampM(int m) {
+        if (m < 0) return 0;
+        if (m >= 1000) return 999;
+        return m;
+    }
 
     /** Convert {line,km,m} to meters within the given line: km*1000+m. */
     public static double toMeters(int line, int km, int meters) {

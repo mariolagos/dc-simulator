@@ -25,6 +25,8 @@ import org.dcsim.export.ResultCsvWriter;
 import org.dcsim.math.Real;
 import org.dcsim.sim.TrainAnchorComponent;
 
+
+
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -58,7 +60,24 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
 
     private final Map<Integer, Double> lastNodeV = new HashMap<>();
     private final Map<String, Double> lastPosM = new HashMap<>();
+
+    // Energiackumulatorer (J) per tåg
+    private final Map<String, Double> burnedJ = new java.util.HashMap<>();
+
+    // (valfritt) spara senaste simtid för dt
+    private double lastTickSec = Double.NaN;
+
     private Double lastTickTime = null;
+
+    private boolean runMetaEmitted = false;
+
+    // Meta (justera om du har dem i config)
+    private final String metaProject  = System.getProperty("dcsim.project",  "default_project");
+    private final String metaScenario = System.getProperty("dcsim.scenario", "default_scenario");
+    private final String metaHashTag  = System.getProperty("dcsim.hash",     "nohash");
+
+    // Linje-ID:n vi vill emit:a (lägg till/ändra efter din topologi)
+    private static final String[] LINE_IDS = new String[] { "L_1_2", "L_2_3" };
 
     // Stabil header i CSV (bara rena id:n, t.ex. "T1")
     private final LinkedHashSet<String> knownTrainIds = new LinkedHashSet<>();
@@ -67,12 +86,39 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     private static final double BF_EPS_A = 1e-6;  // tolerans för backfeed (A)
     private static final int MAX_BF_ITERS = 3;
 
-    private org.dcsim.export.LongTableWriter longWriter;
+    private static org.dcsim.export.LongTableWriter longWriter;
 
+    // --- Long-file writer (set from DcSimApp) ---
+    private static volatile LongTableWriter LONG_WRITER = null;
+    private static volatile boolean RUN_EMITTED = false;
 
-    public void setLongWriter(org.dcsim.export.LongTableWriter w) {
-        this.longWriter = w;
+    /** Inject long writer once from DcSimApp (before first SolveTick). */
+    public static void setLongWriter(LongTableWriter writer) {
+        longWriter = writer;
     }
+
+    /** Null-safe accessor. */
+    private static LongTableWriter lw() { return LONG_WRITER; }
+
+    /** Write RUN meta exactly once (null-safe, never throws). */
+    private static void emitRunOnce(double t) {
+        if (RUN_EMITTED) return;
+        LongTableWriter w = lw();
+        if (w == null) return; // not yet injected → skip gracefully
+        synchronized (GridModelActor.class) {
+            if (RUN_EMITTED || LONG_WRITER == null) return;
+            final String project  = System.getProperty("dcsim.project",  "dc-simulator");
+            final String scenario = System.getProperty("dcsim.scenario", "default");
+            final String hash     = System.getProperty("dcsim.hash",     "nohash");
+            // value=0.0, unit="", stage="NET", iter=0, note=meta text
+            w.signalRow(t, "RUN", "meta", "project",  0.0, "", "NET", 0, project);
+            w.signalRow(t, "RUN", "meta", "scenario", 0.0, "", "NET", 0, scenario);
+            w.signalRow(t, "RUN", "meta", "hash_tag", 0.0, "", "NET", 0, hash);
+            RUN_EMITTED = true;
+            System.out.println("[GMA] RUN meta written once: " + project + " / " + scenario + " / " + hash);
+        }
+    }
+
 
     public static final class SetLongWriter implements Command {
         public final org.dcsim.export.LongTableWriter w;
@@ -417,7 +463,15 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     }
 
     private Behavior<Command> onUpdateTrainPower(UpdateTrainPower msg) {
+        // Debug: visa vad som kom in
+        System.out.println("[GMA] onUpdateTrainPower recv train=" + msg.trainId
+                + " mot=" + String.format(java.util.Locale.ROOT, "%.3f", msg.motoringKW) + "kW"
+                + " brk=" + String.format(java.util.Locale.ROOT, "%.3f", msg.brakingKW) + "kW"
+                + " aux=" + String.format(java.util.Locale.ROOT, "%.3f", msg.auxiliaryKW) + "kW");
+
         latest.put(msg.trainId, msg);
+        System.out.println("[GMA] latest.size=" + latest.size() + " after put(" + msg.trainId + ")");
+
         registerTrainId(msg.trainId);
         writer.setKnownTrains(knownTrainIds);
         ensureTrainDeviceInternal(msg.trainId);
@@ -425,12 +479,33 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     }
 
     private Behavior<Command> onSolveTick(SolveTick tick) {
+        // Debug: visa status innan solve
+        System.out.println("[GMA] onSolveTick t=" + String.format(java.util.Locale.ROOT, "%.3f", tick.timeSec)
+                + " latest.size=" + latest.size()
+                + " knownTrainIds=" + knownTrainIds.size());
+        emitRunOnce(tick.timeSec);
+
+        if (!runMetaEmitted) {
+            Double t = tick.timeSec;
+            longWriter.signalRow(t, "RUN", "meta", "project", 0.0, "", metaProject, 0, "");
+            longWriter.signalRow(t, "RUN", "meta", "scenario", 0.0, "", metaScenario, 0, "");
+            longWriter.signalRow(t, "RUN", "meta", "hash_tag", 0.0, "", metaHashTag, 0, "");
+            runMetaEmitted = true;
+        }
+
+        if (!knownTrainIds.isEmpty()) {
+            java.util.Set<String> missing = new java.util.HashSet<>(knownTrainIds);
+            missing.removeAll(latest.keySet());
+            if (!missing.isEmpty()) {
+                System.out.println("[GMA] Missing UpdateTrainPower for: " + missing);
+            }
+        }
         DcIterativeSolver.setSimTimeSec(tick.timeSec);
         // en gång vid init (DcSimApp) eller varje tick (GridModelActor)
         org.dcsim.solver.impl.DcIterativeSolver.clearProbeBranches();
         // Justera R till dina riktiga värden
-        org.dcsim.solver.impl.DcIterativeSolver.setProbeBranch("L_1_2", 1, 2, 0.05);
-        org.dcsim.solver.impl.DcIterativeSolver.setProbeBranch("L_2_3", 2, 3, 0.05);
+        //        org.dcsim.solver.impl.DcIterativeSolver.setProbeBranch("L_1_2", 1, 2, 0.05);
+        //        org.dcsim.solver.impl.DcIterativeSolver.setProbeBranch("L_2_3", 2, 3, 0.05);
 
         // Skicka anchors (behåller id i key via entrySet)
         this.solver.setTrainAnchors(anchors.entrySet(), this.trainDtSec);
@@ -490,7 +565,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         final Map<String, Double> pBrakeNetW = new HashMap<>();
         final Map<String, Double> pBrakeResW = new HashMap<>();
 
-// --- lös med rektifierblock: grundlös -> mät receptivitet -> ev. stryp regen -> lös igen
+        // --- lös med rektifierblock: grundlös -> mät receptivitet -> ev. stryp regen -> lös igen
         final SolveBundle sb;
         try {
             sb = solveWithRectifierBlocks(tick.timeSec, tick.step);
@@ -553,7 +628,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     /**
      * Sant om minst en substation leder (diodlikriktare) och tillåter backfeed.
      */
-// === Brake splitting helpers (unchanged) ===
+    // === Brake splitting helpers (unchanged) ===
     static final class BrakeSplit {
         final double netW;  // actual export to the DC net (W)
         final double resW;  // burned in braking resistor (W)
@@ -828,7 +903,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         double factor = (receptivity <= EPS || sumExport <= EPS)
                 ? 0.0 : Math.min(1.0, receptivity / sumExport);
 
-// Skala ner varje tågs nät-export (regen) proportionellt
+        // Skala ner varje tågs nät-export (regen) proportionellt
         for (var e : latest.entrySet()) {
             String id = e.getKey();
             UpdateTrainPower u = e.getValue();
@@ -842,7 +917,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
             tl.setRequestedComponents(u.motoringKW, regenKW, u.auxiliaryKW);
         }
 
-// Bygg och pusha den **justerade** totala effekten (W) per tåg till solvern
+        // Bygg och pusha den **justerade** totala effekten (W) per tåg till solvern
         java.util.Map<String, Double> reqW_direct2 = new java.util.LinkedHashMap<>();
         for (var e : latest.entrySet()) {
             String id2 = e.getKey();

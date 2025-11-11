@@ -6,6 +6,8 @@ import org.dcsim.math.Real;
 import java.util.Comparator;
 import java.util.List;
 import java.util.OptionalDouble;
+import java.util.function.ToDoubleFunction;
+
 
 /** Interpolates P/x/v from a list of PowerPoint samples. */
 public final class PointsPowerProfile implements PowerProfile {
@@ -24,23 +26,33 @@ public final class PointsPowerProfile implements PowerProfile {
         return Real.fromDouble((w != null) ? w : 0.0);
     }
 
+    // Position (m)
     @Override
-    public OptionalDouble getPositionAtTime(double t) {
-        return OptionalDouble.of(interp(t, p -> p.hasPositionM() ? p.positionM() : null));
+    public OptionalDouble getPositionAtTime(double tSec) {
+        // Interpolera position i meter; NaN om saknas
+        Double v = interpNumeric(tSec, p -> {
+            try {
+                double d = p.positionM(); // antas finnas; annars byt till din getter
+                return (Double.isNaN(d) || Double.isInfinite(d)) ? Double.NaN : d;
+            } catch (Throwable __) {
+                return Double.NaN;
+            }
+        });
+        return OptionalDouble.of((v == null || v.isNaN() || v.isInfinite()) ? Double.NaN : v.doubleValue());
     }
 
     @Override
-    public OptionalDouble getSpeedAtTime(double t) {
-        Double vs = interp(t, p -> p.hasSpeedMS() ? p.speedMS() : null);
-        if (vs != null) return OptionalDouble.of(vs);
-        // derive from x if v was not provided
-        int i = rightIndex(t);
-        if (i <= 0 || i >= pts.size()) return null;
-        PowerPoint a = pts.get(i - 1), b = pts.get(i);
-        if (!a.hasPositionM() || !b.hasPositionM()) return null;
-        double dt = b.time() - a.time();
-        if (dt <= 0) return null;
-        return OptionalDouble.of((b.positionM() - a.positionM()) / dt);
+    public OptionalDouble getSpeedAtTime(double tSec) {
+        // Interpolera hastighet i m/s; NaN om saknas
+        Double v = interpNumeric(tSec, p -> {
+            try {
+                double d = p.speedMS(); // antas finnas; annars byt till din getter
+                return (Double.isNaN(d) || Double.isInfinite(d)) ? Double.NaN : d;
+            } catch (Throwable __) {
+                return Double.NaN;
+            }
+        });
+        return OptionalDouble.of((v == null || v.isNaN() || v.isInfinite()) ? Double.NaN : v.doubleValue());
     }
 
     // ---------- helpers ----------
@@ -76,4 +88,60 @@ public final class PointsPowerProfile implements PowerProfile {
         }
         return lo;
     }
+
+    /**
+     * Robust interpolation: klampar tid inom profilens omfång, ignorerar NaN/∞,
+     * och faller tillbaka till giltig granne om bara ena sidan är definierad.
+     * Returnerar null om båda sidor saknar data.
+     */
+    private Double interpNumeric(double tSec, ToDoubleFunction<PowerPoint> extractor) {
+        if (pts == null || pts.isEmpty()) return null;
+        if (pts.size() == 1) {
+            double y = extractor.applyAsDouble(pts.get(0));
+            return (Double.isNaN(y) || Double.isInfinite(y)) ? null : y;
+        }
+
+        // Clamp tid
+        double t0 = pts.get(0).time();
+        double tN = pts.get(pts.size() - 1).time();
+        if (tSec <= t0) tSec = t0;
+        else if (tSec >= tN) tSec = tN;
+
+        // Segment via binärsök
+        int i = findLeftIndex(tSec);
+        int j = Math.min(i + 1, pts.size() - 1);
+
+        double y0 = extractor.applyAsDouble(pts.get(i));
+        double y1 = extractor.applyAsDouble(pts.get(j));
+        boolean ok0 = !(Double.isNaN(y0) || Double.isInfinite(y0));
+        boolean ok1 = !(Double.isNaN(y1) || Double.isInfinite(y1));
+
+        if (!ok0 && !ok1) return null;
+        if (!ok0) return y1;
+        if (!ok1) return y0;
+
+        double ti = pts.get(i).time();
+        double tj = pts.get(j).time();
+        if (tj == ti) return y0;
+
+        double alpha = (tSec - ti) / (tj - ti);
+        return y0 + alpha * (y1 - y0);
+    }
+
+    /** Hitta vänstra indexet för tSec (points[lo].time() ≤ tSec ≤ points[lo+1].time()). */
+    private int findLeftIndex(double tSec) {
+        int n = pts.size();
+        if (tSec <= pts.get(0).time()) return 0;
+        if (tSec >= pts.get(n - 1).time()) return n - 2; // så att j = lo+1 finns
+
+        int lo = 0, hi = n - 1;
+        while (hi - lo > 1) {
+            int mid = (lo + hi) >>> 1;
+            double tm = pts.get(mid).time();
+            if (tm <= tSec) lo = mid;
+            else hi = mid;
+        }
+        return lo;
+    }
+
 }

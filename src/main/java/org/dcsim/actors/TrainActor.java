@@ -13,6 +13,9 @@ import org.dcsim.solver.impl.DcIterativeSolver;
 import java.util.OptionalDouble;
 
 public class TrainActor extends AbstractBehavior<TrainActor.Command> {
+    private static volatile LongTableWriter LONG_WRITER = null;
+    public static void setLongWriter(LongTableWriter writer) { LONG_WRITER = writer; }
+    private static LongTableWriter lw() { return LONG_WRITER; }
 
     // ===== Protocol =====
     public interface Command {

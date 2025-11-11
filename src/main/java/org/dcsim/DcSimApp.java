@@ -13,9 +13,11 @@ import org.dcsim.actors.GridModelActor;
 import org.dcsim.actors.SimulationSpeed;
 import org.dcsim.actors.TrainActor;
 import org.dcsim.electric.*;
+import org.dcsim.export.LongFiles;
 import org.dcsim.export.LongTableWriter;
 import org.dcsim.export.ResultCsvWriter;
 import org.dcsim.math.Real;
+import org.dcsim.power.PointsPowerProfile;
 import org.dcsim.power.PowerProfile;
 import org.dcsim.power.PowerTemplateParser;
 import org.dcsim.power.TablePowerProfile;
@@ -23,6 +25,7 @@ import org.dcsim.sim.EdgeRef;
 import org.dcsim.sim.TrainAnchorComponent;
 import org.dcsim.solver.impl.DcIterativeSolver;
 import org.dcsim.utils.PositionUtils;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -327,6 +330,19 @@ public final class DcSimApp {
                         .setFormatted(true)
                         .setJson(false)
         );
+        LongFiles.bootstrapFromConfig();
+
+        final String project  = System.getProperty("dcsim.project",  "dc-simulator");
+        final String scenarioId = System.getProperty("dcsim.scenario", "3subs1train");
+        final String hash     = System.getProperty("dcsim.hash",     "8110f7deeaa232a8602fcccbd55f512cebdfc7af");
+        final String csvPath  = System.getProperty("dcsim.longtable","output/longtable.csv");
+        // overwrite=true is typical for a fresh run; switch to false if you want to append
+        final boolean overwrite = true;
+
+        LongTableWriter longWriter = new LongTableWriter(csvPath, overwrite, project, scenarioId, hash);
+        GridModelActor.setLongWriter(longWriter);
+        TrainActor.setLongWriter(longWriter);
+
         java.nio.file.Files.writeString(outDir.resolve("effective_dcsim.conf"), effectiveDcsim);
         String effectiveMd = "# Effective dcsim config\n\n```hocon\n" + effectiveDcsim + "\n```\n";
         java.nio.file.Files.writeString(outDir.resolve("effective_dcsim.md"), effectiveMd);
@@ -357,9 +373,9 @@ public final class DcSimApp {
                 : Collections.emptyMap();
         Map<String, PowerProfile> profileByTemplate = new HashMap<>();
 
-// --- Normaliseringspass: byTpl -> byTplNormalised ---
-// - positionM sätts via PositionUtils.parseFlexible(bisPosition)
-// - speedMS måste finnas; annars kastas IllegalStateException
+        // --- Normaliseringspass: byTpl -> byTplNormalised ---
+        // - positionM sätts via PositionUtils.parseFlexible(bisPosition)
+        // - speedMS måste finnas; annars kastas IllegalStateException
         Map<String, List<PowerPoint>> byTplNormalised = new LinkedHashMap<>();
 
         for (var e : byTpl.entrySet()) {
@@ -371,32 +387,32 @@ public final class DcSimApp {
                 PowerPoint p = src.get(i);
 
                 // 1) positionM via parseFlexible (vi antar att den returnerar int[]{section, km, m})
-                if (p.hasPositionM()) {
-                    final String posStr = p.position();
-                    if (posStr == null || posStr.isBlank()) {
-                        throw new IllegalStateException("Saknar bisPosition (template=" + tplId + ", row=" + i + ")");
-                    }
-                    int[] skm = PositionUtils.parseFlexible(posStr); // befintlig util
-                    if (skm == null || skm.length < 3) {
-                        throw new IllegalStateException("Kunde inte tolka bisPosition \"" + posStr
-                                + "\" (template=" + tplId + ", row=" + i + ")");
-                    }
-                    final int km = skm[1];
-                    final int mInt = skm[2]; // parseFlexible ger meter som heltal
-                    double posM = km * 1000.0 + Math.floor(mInt); // trunkera meter-delen
-                    p.setPositionM(posM);
+                // Läs position
+                String posStr = p.positionString();   // "" om okänd
+                double posM   = p.positionM();        // NaN om okänd
+
+                // Om meters saknas men vi har en BIS-sträng → räkna fram lokalt
+                if (Double.isNaN(posM) && posStr != null && !posStr.isBlank()) {
+                    int[] skm = PositionUtils.parseFlexible(posStr); // er util
+                    if (skm == null || skm.length < 3)
+                        throw new IllegalStateException("Kunde inte tolka bisPosition \"" + posStr + "\"");
+                    int km = skm[1], mInt = skm[2];
+                    posM = km * 1000.0 + Math.floor(mInt); // trunkera meter-delen
                 }
-
                 // 2) speedMS måste finnas
-                if (!p.hasSpeedMS()) {
 
-                        p.setSpeedMps(p.speedMS());
-                    }
-//                else {
-//                        String tInfo = (p.time() > 0 ? String.valueOf(p.time()) : "null");
-//                        throw new IllegalStateException(
-//                                "Saknar speedMS (template=" + tplId + ", row=" + i + ", time=" + tInfo + ")"
-//                        )}
+                // Läs position
+                posStr = p.positionString();   // "" om okänd
+                posM   = p.positionM();        // NaN om okänd
+
+                // Om meters saknas men vi har en BIS-sträng → räkna fram lokalt
+                if (Double.isNaN(posM) && posStr != null && !posStr.isBlank()) {
+                    int[] skm = PositionUtils.parseFlexible(posStr); // er util
+                    if (skm == null || skm.length < 3)
+                        throw new IllegalStateException("Kunde inte tolka bisPosition \"" + posStr + "\"");
+                    int km = skm[1], mInt = skm[2];
+                    posM = km * 1000.0 + Math.floor(mInt); // trunkera meter-delen
+                }
 
                 dst.add(p); // vi muterar p på plats; lägg kopia om du vill.
             }
@@ -404,9 +420,9 @@ public final class DcSimApp {
             byTplNormalised.put(tplId, dst);
         }
 
-// använd den normaliserade mappen för profiler
+        // använd den normaliserade mappen för profiler
         for (var e : byTplNormalised.entrySet()) {
-            profileByTemplate.put(e.getKey(), new TablePowerProfile(e.getValue()));
+            profileByTemplate.put(e.getKey(), new PointsPowerProfile(e.getValue()));
         }
         boolean sameModel = dcsim.hasPath("powerProfiles.motoringAndAuxiliariesInSameModel")
                 && dcsim.getBoolean("powerProfiles.motoringAndAuxiliariesInSameModel");
@@ -457,6 +473,7 @@ public final class DcSimApp {
         LONG_WRITER = new LongTableWriter(longPath, true, projectName, scenarioName, baseHash);
         System.out.println("[LongCSV] writing to " + longPath);
 
+
         // Registrera i solvern (statiskt)
         DcIterativeSolver.setLongWriter(LONG_WRITER);
 
@@ -489,6 +506,8 @@ public final class DcSimApp {
                 "SimulatorSystem",
                 scenario // <— injicera
         );
+
+        LongFiles.closeQuietly();
 
     }
 

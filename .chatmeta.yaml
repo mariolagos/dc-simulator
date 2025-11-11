@@ -1,67 +1,24 @@
-# Project chat/branch catalog for dc-simulator
-# Update this file whenever a new chat/branch is started or completed.
-
-version: 1
 project: dc-simulator
+default_branch: master
 
-defaults:
-  shell: "Windows CMD"
-  base_hash_policy: "All patches and discussions are anchored to a shared base hash per chat/branch."
-  commit_closure_policy: "Each chat/branch pair must end with a commit summarizing the work completed."
-
-entries:
-  - chat_name: "documentation"
-    chat_desc: "Continuation of 'Dokumentation dcSimulator'. Maintains README_dev*, USER_GUIDE, software specifications, and planning documents."
-    branch: "docs/structure-and-guides"
-    base_hash: "8110f7deeaa232a8602fcccbd55f512cebdfc7af"
-    started: "2025-10-24"
-    status: "active"
-    goals:
-      - "Promote README_dev_additions → README_project (workflow, base hash, patch handling)"
-      - "Add Graphviz export and usage documentation"
-      - "Split Change Requests and NiceToHave features into dedicated files"
+chats:
+  - title: "phase A1-timebase"
+    branch: "master"
+    status: "done"
+    milestone: "v0.5-a1"
     notes:
-      - "Documentation examples use Windows CMD"
-      - "Base hash recorded in each chat’s opening text"
-    closure_criteria:
-      - "Updated README files committed to repository"
-      - "At least one simple Quick Start for both users and developers"
+      - "All feature branches merged into master"
+      - "Longtable plumbing active (TA/GMA/NET)"
+      - "NET: S1–S3 V/I/P; Train T1 P_W"
+      - "TA: requested powers in W"
+      - "TODO: pos_m & speed_mps read/emit from PowerPoint"
+      - "Line signals (L_1_2, L_2_3) ready to enable with R"
 
-  - chat_name: "feat/consolidation-a-mode"
-    chat_desc: "Consolidation of solver/actors (DcIterativeAdapterSolver, GridModelActor, TrainLoad)"
-    branch: "feat/consolidation-a-mode"
-    base_hash: "92e6f0d596576ccc655bb4ed5e9185c36a53456b"
-    based_on: "master"
-    started: "2025-10-26"
-    status: "active"
-    goals:
-      - "Integrate DcIterativeAdapterSolver as stable fallback"
-      - "Fix zero-power issue in TrainLoad/Solver pipeline"
-      - "Throttled verbosity + smoke test path"
-    closure_criteria:
-      - "CSV shows non-zero train power; no solver exceptions"
-
-  - chat_name: "feat/smoke-test"
-    chat_desc: "Smoke hook + throttled verbosity (forces T1=200kW when req≈0)"
-    branch: "feat/smoke-test"
-    base_hash: "8110f7deeaa232a8602fcccbd55f512cebdfc7af"
-    based_on: "feat/consolidation-a-mode"
-    started: "2025-10-26"
-    status: "active"
-    goals:
-      - "Inject SMOKE T1=200kW when req≈0"
-      - "Confirm propagation: actor → solver → TrainLoad → CSV"
-    closure_criteria:
-      - "Smoke power visible in CSV; detail logs throttled"
-
-  - chat_name: "drop-legacy-tests"
-    chat_desc: "Remove obsolete Scala-based tests"
-    branch: "drop-legacy-tests"
-    base_hash: "92e6f0d596576ccc655bb4ed5e9185c36a53456b"
-    based_on: "master"
-    started: "2025-10-26"
-    status: "active"
-    goals:
-      - "Delete legacy Scala tests and references"
-    closure_criteria:
-      - "Build/CI green; no references to removed tests"
+  - title: "pivot long table"
+    branch: "master"
+    status: "planned"
+    milestone: "v0.5-a2"
+    notes:
+      - "Build user-facing pivots from longtable.csv"
+      - "Views: Stations (V/I/P), Train (req_W vs P_W, pos_m, speed_mps), Lines (I/P)"
+      - "Optional filters: project/scenario/baseHash"

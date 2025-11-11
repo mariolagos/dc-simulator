@@ -2,11 +2,11 @@ plugins {
     id("java")
     id("application")
     id("java-test-fixtures")
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+
 }
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
 
 java {
     toolchain {
@@ -14,6 +14,7 @@ java {
         languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
+
 
 dependencies {
     // ===== Core dependencies =====
@@ -26,6 +27,8 @@ dependencies {
 
     // Apache Commons Math (för RealMatrix/RealVector m.m.)
     implementation("org.apache.commons:commons-math3:3.6.1")
+
+    implementation("org.apache.commons:commons-csv:1.11.0")
 
     // ===== Logging (Log4j2 via SLF4J) =====
     implementation("org.apache.logging.log4j:log4j-api:2.22.1")
@@ -51,6 +54,10 @@ dependencies {
     // Excel (Apache POI)
     implementation("org.apache.poi:poi:5.2.5")
     implementation("org.apache.poi:poi-ooxml:5.2.5")
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+
+    implementation("com.google.guava:guava:33.2.1-jre")
+
 
     testImplementation(sourceSets["testFixtures"].output)
 
@@ -58,10 +65,18 @@ dependencies {
 // implementation("org.apache.commons:commons-csv:1.10.0")
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17) // eller din JDK-version
+    }
+}
+
+
 application {
     // 🟢 Detta fungerar endast om 'application'-pluginet är aktivt (plugins-blocket ovan)
     mainClass.set("org.dcsim.DcSimApp")
 }
+
 
 // Konfigurera den befintliga run-tasken (skapa inte en ny!)
 tasks.named<JavaExec>("run") {
@@ -74,13 +89,18 @@ tasks.named<JavaExec>("run") {
     }
 }
 
-    tasks.register("printTestCp") {
-        doLast {
-            println("TEST compileClasspath:")
-            println(sourceSets["test"].compileClasspath.asPath)
-            println()
-            println("TEST FIXTURES output:")
-            println(sourceSets["testFixtures"].output.asPath)
-        }
+tasks.register("printTestCp") {
+    doLast {
+        println("TEST compileClasspath:")
+        println(sourceSets["test"].compileClasspath.asPath)
+        println()
+        println("TEST FIXTURES output:")
+        println(sourceSets["testFixtures"].output.asPath)
     }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+}
+
 

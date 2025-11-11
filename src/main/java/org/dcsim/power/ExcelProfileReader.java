@@ -7,281 +7,209 @@ import org.dcsim.PowerPoint;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.*;
 import java.util.*;
 
 /**
- * ExcelProfileReader – läser kraftprofiler från .xlsx.
- * Klarar både att få en enskild fil OCH en katalog som innehåller flera .xlsx.
- * <p>
- * Förväntade kolumnrubriker (case-insensitive):
- * - time                 (sekunder)
- * - bisPosition          (t.ex. "1 0+550" eller "0.550")
- * - speed                (m/s)  [valfri]
- * - primaryMotoringPower (kW)
- * - primaryMotorBrakingPower (kW)
- * <p>
- * Output: List<PowerPoint>
+ * Läser .xlsx (eller katalog med .xlsx) med rubriker (case-insensitive).
+ * Minimikrav: "time [s]".
+ * Power tas från "P_W" eller "P [W]" om sådan kolumn finns; annars P_req = mot_W + aux_W − brk_W.
+ * Position tas från "bisposition [km,m]" som text; hastighet från "speed [m/s]".
  */
 public final class ExcelProfileReader {
 
-    private ExcelProfileReader() {
+    public static List<PowerPoint> read(java.io.File file) throws java.io.IOException {
+        return read(file.toPath());
     }
 
-    /**
-     * Läs en fil ELLER en katalog (alla .xlsx i katalogen).
-     */
-    public static List<PowerPoint> read(File input) {
-        if (input == null) return Collections.emptyList();
-
-        if (input.isDirectory()) {
-            File[] files = input.listFiles((dir, name) -> name.toLowerCase(Locale.ROOT).endsWith(".xlsx"));
-            if (files == null || files.length == 0) {
-                System.err.println("[ExcelProfileReader] No .xlsx files found in directory: " + input.getAbsolutePath());
-                return Collections.emptyList();
+    public static List<PowerPoint> read(Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            List<PowerPoint> all = new ArrayList<>();
+            try (DirectoryStream<Path> ds = Files.newDirectoryStream(path, "*.xlsx")) {
+                for (Path p : ds) all.addAll(readSingleFile(p.toFile()));
             }
-            List<PowerPoint> merged = new ArrayList<>();
-            // sortera för deterministisk ordning
-            Arrays.sort(files, Comparator.comparing(File::getName));
-            for (File f : files) {
-                merged.addAll(readSingle(f));
-            }
-            return merged;
-        } else if (input.isFile() && input.getName().toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
-            return readSingle(input);
-        } else {
-            System.err.println("[ExcelProfileReader] Not a valid Excel file/dir: " + input.getAbsolutePath());
-            return Collections.emptyList();
+            all.sort(Comparator.comparingDouble(PowerPoint::time));
+            return all;
         }
+        return readSingleFile(path.toFile());
     }
 
-    /**
-     * Läs en enskild .xlsx. Tar första arket.
-     */
-    private static List<PowerPoint> readSingle(File xlsx) {
+    private static List<PowerPoint> readSingleFile(File file) throws IOException {
         List<PowerPoint> out = new ArrayList<>();
-        try (FileInputStream fis = new FileInputStream(xlsx);
+        try (FileInputStream fis = new FileInputStream(file);
              Workbook wb = new XSSFWorkbook(fis)) {
 
-            Sheet sheet = wb.getNumberOfSheets() > 0 ? wb.getSheetAt(0) : null;
-            if (sheet == null) {
-                System.err.println("[ExcelProfileReader] No sheets in: " + xlsx.getName());
-                return out;
-            }
+            Sheet sheet = chooseSheet(wb);
+            if (sheet == null) return out;
 
-            // Hitta header-rad (första 5–10 raderna; vanligtvis rad 0)
             int headerRowIdx = findHeaderRow(sheet);
-            if (headerRowIdx < 0) {
-                // Försök fast kolumnordning om rubriker saknas
-                mapByFixedOrder(sheet, out);
-                return out;
-            }
-
+            if (headerRowIdx < 0) return out;
             Row header = sheet.getRow(headerRowIdx);
-            Map<String, Integer> colIx = mapHeader(header);
+            Map<String, Integer> idx = indexHeaders(header);
 
-/*
-            // Falla tillbaka på fast ordning om några nycklar saknas
-            if (!colIx.containsKey("time") ||
-                    !colIx.containsKey("bisposition") ||
-                    !colIx.containsKey("primarymotoringpower") ||
-                    !colIx.containsKey("primarymotorbrakingpower")) {
-                mapByFixedOrder(sheet, out);
-                return out;
-            }
-*/
+            Integer tIx = idx.get("time [s]");
+            if (tIx == null) return out;
 
-            // valfri kolumn
-            Integer speedIx = colIx.get("speed [m/s]");
+            Integer posIx = firstPresent(idx, "bisposition [km,m]");
+            Integer spdIx = firstPresent(idx, "speed [m/s]", "speed", "velocity", "v");
+            Integer motIx = firstPresent(idx, "primarymotoringpower [kw]");
+            Integer brkIx = firstPresent(idx, "primarymotorbrakingpower [kw]");
 
-            // Läs data-rader
             int firstData = headerRowIdx + 1;
             for (int r = firstData; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 if (row == null) continue;
 
-                Double timeSec = getNumeric(row, colIx.get("time [s]"));
-                if (timeSec == null) continue; // krävs
+                Double t = getNumeric(row, tIx);
+                if (t == null) continue;
 
-                String bisPos = getString(row, colIx.get("bisposition [km,m]"));
-                if (bisPos == null || bisPos.isBlank()) bisPos = "0.0";
+                String posStr = posIx != null ? getString(row, posIx) : null;
 
-                Double speedMs = getNumeric(row, colIx.get("speed [m/s]"));
-                if (speedMs == null) speedMs = 0.0;
+                // speed in km/h; if missing -> NaN
+                Double speedMs = spdIx != null ? getNumeric(row, spdIx) * 3.6 : null;
 
-                Double motKW = getNumeric(row, colIx.get("primarymotoringpower [kw]"));
-                if (motKW == null) motKW = 0.0;
+                // power in kW
+                Double mot = (motIx != null) ? getOrZero(row, motIx) * 1000 : null;
+                Double brk = (brkIx != null) ? getOrZero(row, brkIx) * 1000 : null;
+                double pW = 0;
+                if (mot != null && brk != null) {
+                    pW = mot + brk;
+                }
 
-                Double brkKW = getNumeric(row, colIx.get("primarymotorbrakingpower [kw]"));
-                if (brkKW == null) brkKW = 0.0;
+                PowerPoint pp = PowerPoint.ofPositionString(
+                        t,
+                        pW,
+                        Double.NaN,
+                        Double.NaN,
+                        posStr,
+                        (speedMs != null ? speedMs : Double.NaN)
+                );
 
-                // Antag PowerPoint(time, bisPosition, speed, motoringKW, brakingKW)
-                out.add(new PowerPoint(timeSec, bisPos, speedMs, (motKW + brkKW)*1000, 0., 0.));
+                out.add(pp);
             }
-
-        } catch (IOException e) {
-            System.err.println("[ExcelProfileReader] Failed to read " + xlsx.getAbsolutePath() + ": " + e);
         }
+        out.sort(Comparator.comparingDouble(PowerPoint::time));
         return out;
     }
 
-    // --- helpers ---
+    // ---------- helpers ----------
 
-    /**
-     * Försök hitta header-rad bland de första ~10 raderna.
-     */
+    private static Sheet chooseSheet(Workbook wb) {
+        for (int i = 0; i < wb.getNumberOfSheets(); i++) {
+            String name = wb.getSheetName(i);
+            if (name != null && name.trim().equalsIgnoreCase("data")) return wb.getSheetAt(i);
+        }
+        return wb.getNumberOfSheets() > 0 ? wb.getSheetAt(0) : null;
+    }
+
     private static int findHeaderRow(Sheet sheet) {
-        int maxProbe = Math.min(10, sheet.getLastRowNum());
-        for (int r = 0; r <= maxProbe; r++) {
+        for (int r = sheet.getFirstRowNum(); r <= sheet.getLastRowNum(); r++) {
             Row row = sheet.getRow(r);
             if (row == null) continue;
-            String joined = joinLower(row);
-            if (joined.contains("time") && (joined.contains("bis") || joined.contains("position"))) {
-                return r;
-            }
+            Map<String, Integer> m = indexHeaders(row);
+            if (m.containsKey("time [s]")) return r;
         }
         return -1;
     }
 
-    /**
-     * Mappar header-celler till index med case-insensitive nycklar.
-     */
-    private static Map<String, Integer> mapHeader(Row header) {
+    private static Map<String, Integer> indexHeaders(Row headerRow) {
         Map<String, Integer> m = new HashMap<>();
-        for (int c = 0; c < header.getLastCellNum(); c++) {
-            Cell cell = header.getCell(c);
-            String key = normalizeHeader(cell);
-            if (key == null) continue;
-
-            // normalisera kända varianter
-            if (
-                    key.equals("time [s]") ||
-                            key.equals("bisposition [km,m]") ||
-                            key.equals("speed [m/s]") ||
-                            key.equals("primarymotoringpower [kw]") ||
-                            key.equals("primarymotorbrakingpower [kw]")
-            ) {
-                m.put(key, c);
-            } ;
+        if (headerRow == null) return m;
+        short first = headerRow.getFirstCellNum();
+        short last = headerRow.getLastCellNum();
+        for (int c = first; c < last; c++) {
+            Cell cell = headerRow.getCell(c);
+            String s = (cell != null) ? getString(cell) : null;
+            if (s == null || s.isBlank()) continue;
+            m.put(s.trim().toLowerCase(Locale.ROOT), c);
         }
         return m;
     }
 
-    private static String normalizeHeader(Cell cell) {
-        if (cell == null) return null;
-        if (cell.getCellType() == CellType.STRING) {
-            String s = cell.getStringCellValue();
-            if (s != null) return s.trim().toLowerCase(Locale.ROOT);
-        }
-        // tillåt numeriska celler som header i nödfall (ovanligt)
-        if (cell.getCellType() == CellType.NUMERIC) {
-            return Double.toString(cell.getNumericCellValue()).trim().toLowerCase(Locale.ROOT);
+    private static Integer firstPresent(Map<String, Integer> m, String... keys) {
+        for (String k : keys) {
+            Integer ix = m.get(k);
+            if (ix != null) return ix;
         }
         return null;
     }
 
-    private static String joinLower(Row row) {
-        StringBuilder sb = new StringBuilder();
-        for (int c = 0; c < row.getLastCellNum(); c++) {
-            Cell cell = row.getCell(c);
-            if (cell != null) {
-                if (cell.getCellType() == CellType.STRING) {
-                    sb.append(' ').append(cell.getStringCellValue().toLowerCase(Locale.ROOT));
-                } else if (cell.getCellType() == CellType.NUMERIC) {
-                    sb.append(' ').append(cell.getNumericCellValue());
-                }
-            }
-        }
-        return sb.toString();
+    private static double getOrZero(Row row, Integer ix) {
+        Double v = getNumeric(row, ix);
+        return v == null ? 0.0 : v;
     }
 
-    /**
-     * Fallback: anta fast ordning på kolumnerna.
-     */
-    private static void mapByFixedOrder(Sheet sheet, List<PowerPoint> out) {
-        // Anta rad 0 = header eller data; läs från rad 1 om header finns.
-        int startRow = 0;
-        Row maybeHeader = sheet.getRow(0);
-        if (maybeHeader != null) {
-            String joined = joinLower(maybeHeader);
-            if (joined.contains("time") || joined.contains("bis") || joined.contains("motoring")) {
-                startRow = 1;
-            }
-        }
-
-        for (int r = startRow; r <= sheet.getLastRowNum(); r++) {
-            Row row = sheet.getRow(r);
-            if (row == null) continue;
-
-            Double timeSec = getNumeric(row, 0);
-            if (timeSec == null) continue;
-
-            String bisPos = getString(row, 1);
-            if (bisPos == null || bisPos.isBlank()) bisPos = "0.0";
-
-            Double speedMs = getNumeric(row, 2);
-            if (speedMs == null) speedMs = 0.0;
-
-            Double motKW = getNumeric(row, 3);
-            if (motKW == null) motKW = 0.0;
-
-            Double brkKW = getNumeric(row, 4);
-            if (brkKW == null) brkKW = 0.0;
-
-            out.add(new PowerPoint(timeSec, bisPos, speedMs, motKW + brkKW, 0.0, 0.0));
-        }
-    }
-
-    private static Double getNumeric(Row row, Integer col) {
-        if (col == null) return null;
-        Cell cell = row.getCell(col);
+    private static Double getNumeric(Row row, Integer colIx) {
+        if (colIx == null) return null;
+        Cell cell = row.getCell(colIx);
         if (cell == null) return null;
-
-        if (cell.getCellType() == CellType.NUMERIC) {
-            return cell.getNumericCellValue();
-        }
-        if (cell.getCellType() == CellType.STRING) {
-            String s = cell.getStringCellValue().trim();
-            if (s.isEmpty()) return null;
-            try {
-                return Double.parseDouble(s.replace(',', '.'));
-            } catch (NumberFormatException ignore) {
-                return null;
-            }
-        }
-        if (cell.getCellType() == CellType.FORMULA) {
-            try {
-                return cell.getNumericCellValue();
-            } catch (Exception ignore) {
-                return null;
-            }
-        }
-        return null;
-    }
-
-    private static String getString(Row row, Integer col) {
-        if (col == null) return null;
-        Cell cell = row.getCell(col);
-        if (cell == null) return null;
-
-        if (cell.getCellType() == CellType.STRING) {
-            return cell.getStringCellValue().trim();
-        }
-        if (cell.getCellType() == CellType.NUMERIC) {
-            // tillåt numerisk bisPosition (t.ex. 0.550 km) → gör om till sträng
-            double v = cell.getNumericCellValue();
-            return Double.toString(v);
-        }
-        if (cell.getCellType() == CellType.FORMULA) {
-            try {
-                return cell.getStringCellValue().trim();
-            } catch (Exception e) {
-                try {
-                    return Double.toString(cell.getNumericCellValue());
-                } catch (Exception ignore) {
+        try {
+            switch (cell.getCellType()) {
+                case NUMERIC:
+                    return cell.getNumericCellValue();
+                case STRING:
+                    String s = cell.getStringCellValue();
+                    if (s == null || s.isBlank()) return null;
+                    return Double.parseDouble(s.trim());
+                case FORMULA:
+                    try {
+                        return cell.getNumericCellValue();
+                    } catch (Exception e) {
+                        String fs = cell.getStringCellValue();
+                        if (fs == null || fs.isBlank()) return null;
+                        return Double.parseDouble(fs.trim());
+                    }
+                default:
                     return null;
-                }
             }
+        } catch (Exception ignore) {
+            return null;
         }
-        return null;
+    }
+
+    private static String getString(Row row, Integer colIx) {
+        if (colIx == null) return null;
+        Cell cell = row.getCell(colIx);
+        if (cell == null) return null;
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue().trim();
+            case NUMERIC:
+                return Double.toString(cell.getNumericCellValue());
+            case FORMULA:
+                try {
+                    return cell.getStringCellValue().trim();
+                } catch (Exception e) {
+                    try {
+                        return Double.toString(cell.getNumericCellValue());
+                    } catch (Exception ignore) {
+                        return null;
+                    }
+                }
+            default:
+                return null;
+        }
+    }
+
+    private static String getString(Cell cell) {
+        if (cell == null) return null;
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue().trim();
+            case NUMERIC:
+                return Double.toString(cell.getNumericCellValue());
+            case FORMULA:
+                try {
+                    return cell.getStringCellValue().trim();
+                } catch (Exception e) {
+                    try {
+                        return Double.toString(cell.getNumericCellValue());
+                    } catch (Exception ignore) {
+                        return null;
+                    }
+                }
+            default:
+                return null;
+        }
     }
 }

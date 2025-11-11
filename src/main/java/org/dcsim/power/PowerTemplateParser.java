@@ -2,8 +2,11 @@ package org.dcsim.power;
 
 import com.typesafe.config.Config;
 import org.dcsim.PowerPoint;
+import org.dcsim.tools.DebugPowerProfile;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
 
@@ -35,7 +38,7 @@ public final class PowerTemplateParser {
 
     private PowerTemplateParser() {}
 
-    public static Map<String, List<PowerPoint>> parse(Config powerProfilesRoot) {
+    public static Map<String, List<PowerPoint>> parse(Config powerProfilesRoot) throws IOException {
         Map<String, List<PowerPoint>> out = new HashMap<>();
 
         if (!powerProfilesRoot.hasPath("templates")) return out;
@@ -61,8 +64,8 @@ public final class PowerTemplateParser {
 
                 List<PowerPoint> pts = new ArrayList<>(2);
                 // PowerPoint(double time, String position, double speed, double power, double voltage, double current)
-                pts.add(new PowerPoint(0.0,     "inline", 0.0, w, 0.0, 0.0));
-                pts.add(new PowerPoint(durSec,  "inline", 0.0, w, 0.0, 0.0));
+                pts.add(PowerPoint.ofPositionString(0.0,    w, Double.NaN, Double.NaN, "inline", Double.NaN));
+                pts.add(PowerPoint.ofPositionString(durSec, w, Double.NaN, Double.NaN, "inline", Double.NaN));
 
                 out.put(id, pts);
                 continue;
@@ -78,6 +81,8 @@ public final class PowerTemplateParser {
                     String fileName = leg.getString("file");
                     // Läs Excel – lämna som hos dig (förutsatt ExcelProfileReader.read(File))
                      List<PowerPoint> points = ExcelProfileReader.read(new File(folder, fileName));
+                    // Snabb sanity dump (skriver CSV bara om tom/all-zero)
+                    DebugPowerProfile.dumpIfSuspicious("T1", points, Paths.get("output/debug"));
                     // Här gör vi en försiktig fallback om du kör utan Excel:
 //                    List<PowerPoint> points = Collections.emptyList();
                     if (points != null && !points.isEmpty()) merged.addAll(points);
