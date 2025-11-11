@@ -1,24 +1,34 @@
 project: dc-simulator
 default_branch: master
 
-chats:
-  - title: "phase A1-timebase"
-    branch: "master"
-    status: "done"
-    milestone: "v0.5-a1"
-    notes:
-      - "All feature branches merged into master"
-      - "Longtable plumbing active (TA/GMA/NET)"
-      - "NET: S1–S3 V/I/P; Train T1 P_W"
-      - "TA: requested powers in W"
-      - "TODO: pos_m & speed_mps read/emit from PowerPoint"
-      - "Line signals (L_1_2, L_2_3) ready to enable with R"
+title: "Pivotering A2 – longtable → CSV/XLSX"
+branch: "feat/pivot-a2-longtable"
 
-  - title: "pivot long table"
-    branch: "master"
-    status: "planned"
-    milestone: "v0.5-a2"
-    notes:
-      - "Build user-facing pivots from longtable.csv"
-      - "Views: Stations (V/I/P), Train (req_W vs P_W, pos_m, speed_mps), Lines (I/P)"
-      - "Optional filters: project/scenario/baseHash"
+goals:
+  - "Bygga pivot-verktyg som läser output/longtable.csv och skriver standardvyer"
+  - "Integrera effekter → energi (J) med trapetsmetoden"
+  - "Ta fram Excel-rapport (en flik per vy) som bonus"
+
+scope:
+  include:
+    - "Stations (S1–S3): V_V, I_A, P_W över tid"
+    - "Trains (T*): req_W, P_W, pos_m, speed_mps"
+    - "Lines (L_*): V_min_V, E_loss_J (+ ev. V_A_mean_V, V_B_mean_V)"
+    - "Energy summary per scenario: E_trac_J, E_aux_J, E_regen_J, E_burn_J, E_line_J, E_subs_J, E_total_J"
+  exclude:
+    - "Ändringar i simuleringskärnan"
+    - "Nya exporter i DcSim (longtable-format ligger fast)"
+
+tasks:
+  - "Läsa RUN-meta och filtrera på project/scenario/hash_tag"
+  - "Implementera trapetsintegration över time_s (robust mot ojämna tidssteg)"
+  - "Generera stations.csv, trains.csv, lines.csv, energy.csv"
+  - "(Bonus) Skapa pivots.xlsx med en flik per vy"
+
+run:
+  - "Kör simulering → generera output/longtable.csv"
+  - "./gradlew runPivot --args=\"--project <P> --scenario <S> [--hash <H>] [--excel]\""
+
+notes:
+  - "Enheter: W, V, A, m, m/s, J"
+  - "NaN tolereras i pivot – rader med saknade värden filtreras logiskt per vy"
