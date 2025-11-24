@@ -344,10 +344,13 @@ public final class ResultCsvWriter implements Closeable, Flushable {
         if (raw == null) return null;
         String s = raw.trim();
         if (s.isEmpty()) return null;
-        if (s.startsWith("Train:")) s = s.substring("Train:".length()).trim(); // Train:T1 -> T1
-        // Train1 -> T1
-        if (s.matches("(?i)train\\d+")) return "T" + s.replaceAll("(?i)train", "");
-        // T1 -> T1
+
+        // Behåll ev. "Train:XYZ" → "XYZ", men gör INGEN Train1→T1-mappning längre
+        if (s.startsWith("Train:")) {
+            s = s.substring("Train:".length()).trim(); // "Train:Train1" -> "Train1"
+        }
+
+        // Ingen regex-magi, ingen "T"-prefix – returnera bara städad sträng
         return s;
     }
 

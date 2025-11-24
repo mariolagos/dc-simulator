@@ -1,8 +1,7 @@
 # Software Specification
-**Document Level:** B (Requirements → Architecture)  
-**Version:** 1.1  
-**Date:** 2025‑10‑09
-
+**Document Level:** B (Developer Reference)  
+**Version:** 1.3  
+**Date:** 2025-11-14
 ---
 
 ## 1. Introduction
@@ -15,7 +14,14 @@ It defines architectural components, data flow, configuration mapping, and trace
 
 ---
 
-## 2. Purpose and Scope
+## 2  Purpose and Scope
+
+This document defines how the physical, numerical, and architectural requirements of the dc-simulator are implemented.  
+It serves as a binding specification between the physical model and the software architecture.  
+Scope includes the node-to-node electrical model, solver behaviour, and actor integration.
+
+---
+
 The purpose of this specification is to describe the architecture, numerical framework, and component interactions that implement the physical and functional requirements defined in:
 
 - `modelDescription.md` (system and mathematical model)
@@ -42,40 +48,136 @@ Scope includes:
 
 ---
 
-## 4. System Architecture
+## 4  System Architecture
 
-### 4.1 Overview
-The DcSimulator consists of a **simulation kernel** and a set of **actors** communicating asynchronously.  
-Actors represent independent components: trains, substations, the electrical grid, and reporting mechanisms.
+### 4.1  Overview
+The Symphony configuration represents a **node-to-node resistive DC network** with diode substations and moving train loads.  
+Each simulation step computes a quasi-static snapshot of the electrical state by solving Kirchhoff’s Current Law (KCL).  
+The network is not discretised at fixed 1 km intervals; node positions follow the physical coordinates of actual electrical connection points.
 
-    +-----------------------+        +--------------------+
-    |  SimulationController |  -->   |  TrainActors (n)   |
-    +-----------------------+        +--------------------+
-                 ↓                              ↓
-          +------------------+        +--------------------+
-          |  GridModelActor  | <----> |   ReporterActor   |
-          +------------------+        +--------------------+
+---
 
-### 4.2 Major Components
+### 4.2  Network Topology and Variables
+- Nodes *k = 1 … N* represent electrical connection points (substations, train feeders, junctions).
+- Each node carries voltage \( V_k(t) \).
+- Branches *i–j* have resistance \( R_{ij} \) and conductance \( G_{ij}=1/R_{ij}\).
+- The set of branches defines a sparse nodal admittance matrix Y.
 
-| Component | Responsibility | Notes |
-|------------|----------------|--------|
-| **SimulationController** | Central time and event coordinator. Spawns actors and synchronizes ticks. | Receives global config. |
-| **TrainActor** | Represents an individual train as a dynamic electrical load. | Reads timetable and power profile. |
-| **Substation** | Provides DC voltage with internal resistance and clamp diode. | Injects current into network. |
-| **GridModelActor** | Maintains nodal admittance matrix and executes numerical solver. | Uses `GridSolver`. |
-| **GridSolver** | Performs iterative relaxation to solve voltages. | Configured by `SolverConfig`. |
-| **ReporterActor** | Collects simulation data and writes results to file. | CSV/Excel/telemetry output. |
-| **ConfigLoader/Validator** | Loads and validates configuration from HOCON/JSON. | Ensures schema integrity (R‑07). |
-| **TopologyBuilder (NetBuilder)** | Builds DC network topology from config/fixtures. | Ensures mapping correctness (R‑08). |
+Kirchhoff’s Current Law for node *k*:
+\[
+\sum_{j\in N(k)} G_{kj}(V_k − V_j)
+= I^{sub}_k(V_k) + I^{tr}_k(V_k,t)
+\]
 
-### 4.3 Data Flow
-Each simulation tick triggers a sequence:
-1. **Controller** broadcasts tick event.
-2. **Trains** compute instantaneous power and send current injections.
-3. **GridModel** assembles the system matrix and solves voltages.
-4. **Reporter** records voltages, currents, and power per node.
-5. **Controller** advances to next tick.
+Matrix form per time step:
+\[
+\mathbf Y \mathbf V = \mathbf I_{sub}(\mathbf V) + \mathbf I_{tr}(\mathbf V,t)
+\]
+
+---
+
+### 4.3  Substation Model (Thevenin + Ideal Diode)
+Each substation *k* is a Thevenin source \( E_k, R_{s,k} \) followed by an ideal diode:
+
+\[
+I^{sub}_k(V_k) = \max \!\left( 0, \frac{E_k − V_k}{R_{s,k}} \right)
+\]
+
+- If \( V_k < E_k \): forward conduction (current into the line).
+- If \( V_k ≥ E_k \): blocked (no backfeed).
+
+**Active-set iteration:**
+1. Guess conducting set 𝒞.
+2. Stamp \( +1/R_{s,k}\) and \( +E_k/R_{s,k}\) for k∈𝒞.
+3. Solve Y·V = I.
+4. Update 𝒞 until stable.
+
+---
+
+### 4.4  Train Load Model (Power-Controlled Norton)
+Each train at node *k* requests active power \( P_k(t) \) [W]:
+
+\[
+I^{tr}_k(V_k,t)
+=
+\begin{cases}
+P^+(t)/\max(V_k,V_{min}), & \text{traction}\\[2mm]
+- P^-(t)/\max(V_k,V_{min}), & \text{regeneration}
+  \end{cases}
+  \]
+  where \( P^+=\max(P,0)\), \( P^-=\max(-P,0)\).
+
+Lifecycle gating:
+\[
+I^{tr}_k=
+\begin{cases}
+I^{tr}_k, & (t,x)\in \text{active lifecycle}\\
+0, & \text{otherwise.}
+\end{cases}
+\]
+
+Guards: limit traction when \( V_k<V_{op,min}\); clamp regeneration when \( V_k>V_{op,max}\).
+
+---
+
+### 4.5  Time-Stepping and Interpolation
+Time step Δt ∈ [0.1 s, 1.0 s].
+
+At each tick:
+1. Activate trains by lifecycle.
+2. Interpolate \( P_k(t) \) with **endpoint-clamped interpolation**  
+ (if t ≤ t₀ → P(t₀); if t ≥ tₙ → P(tₙ)).
+3. Assemble RHS currents \( I_{sub}+I_{tr} \).
+4. Solve Y·V = I (using sparse solver).
+5. Iterate diode set until stable.
+6. Compute segment currents \( I_{ij}=G_{ij}(V_i−V_j) \) and losses \( P_{loss}=I_{ij}^2R_{ij}\).
+
+---
+
+### 4.6  Boundary Conditions and Assumptions
+- Open ends unless a substation is attached.
+- Hard-voltage nodes via Thevenin sources if needed.
+- Isolated nodes receive a small leak \( R_{min}\) for stability.
+- Resistive only (no L or C).
+- Arbitrary node spacing.
+- Power profiles are prescribed inputs.
+- Quasi-static behaviour (transients neglected).
+
+---
+
+### 4.7  ⚡ Critical Boundaries and Dynamic Multi-Feeding
+> _Added 2025-11-14 to formalise the physical and numerical limits of the linear model._
+
+#### A. Supply-Network Boundaries
+- **Sectioning points:** introduce transitional resistance when zones are bridged.
+- **De-energised section:** V < 600 V → passive or disconnected state with hysteresis.
+- **Branching / multi-feed:** rebuild topology when zones connect or isolate.
+- **Faults / breakers:** require new Y-matrix.
+
+#### B. Train Operating Limits
+- Zero receptivity → resistive brake (\( U>U_{max}\)).
+- Partial receptivity → \( P_{regen}=P_{line}+P_{burn}\).
+- Low voltage → traction limited (\( U<U_{nom}\)).
+- Maintain consistent current/power signs.
+
+#### C. Dynamic Events
+Event-driven Y-matrix rebuild for section crossing or switch action.  
+Breakers as finite-state machines (open/closed/fault/reset).
+
+#### D. Energy and Stability
+Preserve energy at topology changes (using Rₘᵢₙ).  
+Loss definition includes I²R and optional transient terms.
+
+#### E. Traffic and Numerics
+Map train position to electrical node by interpolation; add Rₘᵢₙ shunts for isolated nodes; Δt < dominant RC time constant.
+
+#### F. Multi-Feeding Types
+| Type | Description | Solver Consequence |
+|:--|:--|:--|
+| Static | Fixed zones fed by separate substations | Single Y-matrix |  
+| Dynamic | Zones temporarily connected (train crossing or switch) | Rebuild Y + Rₘᵢₙ damping |
+
+**Critical breakpoints:** Section crossing → new topology; Receptivity = 0 → braking resistor; U < Uₘᵢₙ → traction limit; Dynamic multi-feed → rebuild Y.
 
 ---
 
@@ -193,7 +295,8 @@ Parameters are grouped by subsystem.
 
 ## 10. Version History
 
-| Date | Version | Notes |
-|------|----------|-------|
-| 2025‑10‑09 | v1.1 | Added R‑07 (Configuration integrity) and R‑08 (Topology builder correctness); updated components and config mapping. |
-| 2025‑10‑09 | v1.0 | Initial integrated software specification created from legacy architecture and model mapping. |
+| Date | Version | Notes                                                                                                                                                                                                                      |
+|:--|:--------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2025-11-14 | v1.3    | Section 4 fully rewritten to describe node-to-node Symphony model and critical boundaries. Added node-to-node Symphony DC model (§4.1-4.6) and Critical Boundaries (§4.7). All sections retained under MFE + Trace policy. |
+| 2025-10-09 | v1.2    | Architecture definition update                                                                                                                                                                                             |
+| 2025-09-01 | v1.1    | Initial integration                                                                                                                                                                                                        |

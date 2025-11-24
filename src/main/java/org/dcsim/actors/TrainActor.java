@@ -14,8 +14,14 @@ import java.util.OptionalDouble;
 
 public class TrainActor extends AbstractBehavior<TrainActor.Command> {
     private static volatile LongTableWriter LONG_WRITER = null;
-    public static void setLongWriter(LongTableWriter writer) { LONG_WRITER = writer; }
-    private static LongTableWriter lw() { return LONG_WRITER; }
+
+    public static void setLongWriter(LongTableWriter writer) {
+        LONG_WRITER = writer;
+    }
+
+    private static LongTableWriter lw() {
+        return LONG_WRITER;
+    }
 
     // ===== Protocol =====
     public interface Command {
@@ -92,6 +98,7 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
         final double localT = msg.timeSec - departureSec;
         final double dt = (lastTickAbsSec == null) ? 0.0 : (msg.timeSec - lastTickAbsSec);
 
+
         // --- 1) Power from profile (W; +motoring, −regen)
         double netW = 0.0;
         double xM = 0.;
@@ -154,13 +161,13 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
         try {
             LongTableWriter lt = DcIterativeSolver.getLongWriter();
             if (lt != null) {
-                double t = DcIterativeSolver.getSimTimeSec();
-                if (finite(t)) {// getter nedan i fix B{}
-                    if (finite(motKW)) lt.signalRow(t, "Train", trainId, "mot_W", motKW * 1000, "W", "TA", null, null);
-                    if (finite(brkKW)) lt.signalRow(t, "Train", trainId, "brk_W", brkKW * 1000, "W", "TA", null, null);
-                    if (finite(auxKW)) lt.signalRow(t, "Train", trainId, "aux_W", auxKW * 1000, "W", "TA", null, null);
-                    if (finite(xM)) lt.signalRow(t, "Train", trainId, "pos_m", xM, "m", "TA", null, null);
-                    if (finite(vMs)) lt.signalRow(t, "Train", trainId, "speed_mps", vMs, "m/s", "TA", null, null);
+//                double t = DcIterativeSolver.getSimTimeSec();
+                if (finite(localT)) {// getter nedan i fix B{}
+                    if (finite(motKW)) lt.signalRow(localT, "Train", trainId, "mot_W", motKW * 1000, "W", "TA", null, null);
+                    if (finite(brkKW)) lt.signalRow(localT, "Train", trainId, "brk_W", brkKW * 1000, "W", "TA", null, null);
+                    if (finite(auxKW)) lt.signalRow(localT, "Train", trainId, "aux_W", auxKW * 1000, "W", "TA", null, null);
+                    if (finite(xM)) lt.signalRow(localT, "Train", trainId, "pos_m", xM, "m", "TA", null, null);
+                    if (finite(vMs)) lt.signalRow(localT, "Train", trainId, "speed_mps", vMs, "m/s", "TA", null, null);
                 }
             }
         } catch (

@@ -1,19 +1,30 @@
-# Prototype Plan (v1.1) — Toward Deliverable System
+# Prototype Plan (v1.2) — Toward Deliverable System
 **Document Level:** C (Planning)  
 **Purpose:** Drive DcSimulator from prototype to a **deliverable**, usable for real case studies.  
 **Audience:** Product owner, architects, core developers.
+
 
 ---
 
 ## 1. Goals (Deliverable DoD)
 The system is considered **deliverable (0.9)** when ALL are true:
 - Runs from config + data files (no manual hacking).
-- Handles **s km+m chainage** for positions and maps onto section table & nodes.
+- Handles **s km+m** chainage for positions and maps onto section table & nodes.
 - Supports **double track** topology (two parallel lines, directional running, optional crossovers).
 - Imports **precomputed train profiles** from file (CSV/XLSX), applies them per train/timetable.
 - Produces stable CSV long-table outputs *(time, object, signal, value)* and summary metrics.
 - Minimum case executes end-to-end (chosen real case OR 3subs2train) with acceptance criteria met.
-- Documentation A/B updated (USER_GUIDE examples; SoftwareSpec R-07/R-08; TestPlan §3.1–3.3).
+- Documentation A/B updated (USER_GUIDE examples; SoftwareSpec R-07/R-08; TestPlan § 3.1–3.3).
+
+### 1.1 Symphony Baseline Context (added 2025-11-14)
+This prototype plan follows the **Symphony node-to-node DC baseline** introduced in version 1.3 of the documentation set.  
+Key relationships:
+
+- **A-level** (`A_user/modelDescription.md`) defines the physical and operational model.
+- **B-level** (`B_developer/softwareSpecification.md`) formalises the equations, boundaries, and solver design.
+- **C-level** (this plan) connects those definitions to milestones, experiments, and acceptance gates.
+
+All prototype workstreams and experiments in this document therefore assume the Symphony network model and its critical-boundary handling.
 
 ---
 
@@ -114,9 +125,10 @@ R‑06 | Config, Runner, All |
 ---
 
 ## 9. Plan Notes
-- This v1.1 replaces the earlier “4‑week” cadence with a **compressed, parallel** path aimed at unlocking a **usable system quickly**.
+- This v1.1 replaces the earlier “4-week” cadence with a **compressed, parallel** path aimed at unlocking a **usable system quickly**.
 - Documentation updates are part of each milestone (A/B levels).
 - After M5 (0.9), we can plan a short hardening pass → 1.0.
+- _This plan operates under the Symphony node-to-node DC baseline (see A/B documentation)._
 
 ---
 
@@ -144,8 +156,10 @@ Prepare only seams and TODOs in current code (comments like *“// later: Algebr
 
 ---
 
+
 ## Version History
 | Date | Version | Notes |
-|------|---------|------|
-| 2025‑10‑10 | v1.1 | Expanded scope to deliverable: chainage, double track, profile import; compressed plan & gates. |
-| 2025‑10‑10 | v1.0 | Initial prototype plan (pre‑deliverable). |
+|:--|:--|:--|
+| 2025-11-14 | v1.2 | Added § 1.1 Symphony Baseline Context; aligned plan notes with current documentation baseline (MFE + Trace). |
+| 2025-10-10 | v1.1 | Expanded scope to deliverable chainage/double track/profile import; compressed plan & gates. |
+| 2025-10-10 | v1.0 | Initial prototype plan (pre-deliverable). |

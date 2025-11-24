@@ -2,6 +2,7 @@ package org.dcsim.power;
 
 import org.dcsim.PowerPoint;
 import org.dcsim.math.Real;
+import org.dcsim.utils.PositionUtils;
 
 import java.util.Comparator;
 import java.util.List;
@@ -32,7 +33,7 @@ public final class PointsPowerProfile implements PowerProfile {
         // Interpolera position i meter; NaN om saknas
         Double v = interpNumeric(tSec, p -> {
             try {
-                double d = p.positionM(); // antas finnas; annars byt till din getter
+                double d = PositionUtils.parseFlexibleToMeters(p.positionString()); // antas finnas; annars byt till din getter
                 return (Double.isNaN(d) || Double.isInfinite(d)) ? Double.NaN : d;
             } catch (Throwable __) {
                 return Double.NaN;

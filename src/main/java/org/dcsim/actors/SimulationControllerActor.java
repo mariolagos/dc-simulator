@@ -144,6 +144,7 @@ public class SimulationControllerActor extends AbstractBehavior<SimulationContro
         final int thisStep = step;
         for (var e : trains.entrySet()) e.getValue().tell(new TrainActor.Tick(thisT));
         grid.tell(new GridModelActor.SolveTick(thisT, thisStep));
+
     }
 
     private void advanceOneStep() {

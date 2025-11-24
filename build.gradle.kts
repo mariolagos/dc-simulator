@@ -58,6 +58,10 @@ dependencies {
 
     implementation("com.google.guava:guava:33.2.1-jre")
 
+    implementation("com.opencsv:opencsv:5.9")
+    implementation("com.typesafe:config:1.4.3")
+
+    implementation("info.picocli:picocli:4.7.6")
 
     testImplementation(sourceSets["testFixtures"].output)
 
@@ -97,6 +101,23 @@ tasks.register("printTestCp") {
         println("TEST FIXTURES output:")
         println(sourceSets["testFixtures"].output.asPath)
     }
+}
+
+tasks.register<JavaExec>("runPivot") {
+    group = "application"
+    description = "Run the A2 pivot tool (project/<proj>/<scen>)"
+    mainClass.set("org.dcsim.tools.LongtablePivotTool")
+    classpath = sourceSets.main.get().runtimeClasspath
+
+    // -Pargs="--verbose --excel"
+    providers.gradleProperty("args").orNull?.takeIf { it.isNotBlank() }?.let { raw ->
+        args(raw.split(Regex("\\s+")))
+    }
+    // -PconfigFile=project/3subs1train/scenario1/application.conf
+    providers.gradleProperty("configFile").orNull?.takeIf { it.isNotBlank() }?.let { cf ->
+        jvmArgs("-Dconfig.file=$cf")
+    }
+    jvmArgs("-Dfile.encoding=UTF-8")
 }
 
 tasks.withType<JavaCompile>().configureEach {

@@ -10,14 +10,60 @@ import java.io.IOException;
 
 public class GridModelLoader {
 
+    /**
+     * Laddar ett {@link GridModel} från en Typesafe-config.
+     *
+     * Stöder flera "former" på den inkommande configen:
+     *
+     * 1) Hela roten med dcsim:
+     *    {
+     *      dcsim {
+     *        grid { ... }
+     *        electrics { ... }
+     *        trains { ... }
+     *      }
+     *    }
+     *
+     * 2) Rot med alias:
+     *    {
+     *      dcsim { ... }
+     *      grid = ${dcsim.grid}
+     *    }
+     *
+     * 3) Redan nedskuren grid-subkonfig:
+     *    {
+     *      groundNodeId = 0
+     *      nodes = [ ... ]
+     *      substations = [ ... ]
+     *      lines = [ ... ]
+     *    }
+     *
+     * I fall (1) och (2) läses även electrics/trains-konfigurationer.
+     * I fall (3) blir electrics/trains tomma (defaults används).
+     */
     public static GridModel load(Config config) throws IOException {
-        // Accept either a root config or a subtree under "dcsim"
-        Config root = config.hasPath("dcsim") ? config.getConfig("dcsim") : config;
+        Config root;   // innehåller ev. dcsim, electrics, trains
+        Config grid;   // själva grid-blocket (nodes/substations/lines)
 
-        // Sections (empty if missing → defaults below)
+        // --- Fall 1: full root med dcsim.grid ---
+        if (config.hasPath("dcsim.grid")) {
+            root = config.getConfig("dcsim");
+            grid = root.getConfig("grid");
+
+            // --- Fall 2: config ÄR redan dcsim-subträdet (har grid.* under sig) ---
+        } else if (config.hasPath("grid.nodes") || config.hasPath("grid.substations")) {
+            root = config;
+            grid = root.getConfig("grid");
+
+            // --- Fall 3: config ÄR själva grid-blocket (har nodes/substations direkt) ---
+        } else {
+            root = ConfigFactory.empty(); // inga electrics/trains tillgängliga
+            grid = config;
+        }
+
+        // Sections (empty if missing → defaults nedan)
         Config electrics = root.hasPath("electrics") ? root.getConfig("electrics") : ConfigFactory.empty();
         Config trainsCfg = root.hasPath("trains") ? root.getConfig("trains") : ConfigFactory.empty();
-        Config grid = root.getConfig("grid");   // must exist
 
         // ---- Electrics/Substations config (diode vs. backfeed + optional current limit) ----
         boolean ssDefaultAllowBackfeed =
@@ -70,8 +116,8 @@ public class GridModelLoader {
                     sub.hasPath("description") ? sub.getString("description") : null
             );
 
-            // allowBackfeed: default from electrics.*, per-station override in electrics.*,
-            // and inline override on grid.substations item (if present).
+            // allowBackfeed: default från electrics.*, per-station override i electrics.*,
+            // och inline override på grid.substations-item (om närvarande).
             boolean allow = ssDefaultAllowBackfeed;
             if (ssOverrides.hasPath(id + ".allowBackfeed")) {
                 allow = ssOverrides.getBoolean(id + ".allowBackfeed");
@@ -91,9 +137,8 @@ public class GridModelLoader {
 
             model.addDevice(ss);
         }
-        for (Object s : model.getSubstations()) ((Substation)s).setAllowBackfeed(true);
-        model.recomputeBackfeedFlag();
-
+        // Behåll nuvarande “force backfeed allowed” (om det är avsiktligt i din kodbas)
+        for (Object s : model.getSubstations()) ((Substation) s).setAllowBackfeed(true);
         model.recomputeBackfeedFlag();
 
         // Lines (description/category optional)
@@ -162,13 +207,6 @@ public class GridModelLoader {
                 train.setCutoffVoltage(Real.fromDouble(cutoff));
                 train.setMaxVoltage(Real.fromDouble(maxV));
                 train.setMaxCurrent(Real.fromDouble(maxA));
-
-                // NEW: constant requested power (kW) for simple tests (sign: + motoring, − braking).
-                // Stored internally in watts.
-                if (tr.hasPath("requestedPowerKW")) {
-                    double kw = tr.getDouble("requestedPowerKW");
-                    train.setRequestedPower(Real.fromDouble(kw * 1000.0));
-                }
 
                 model.addDevice(train);
             }

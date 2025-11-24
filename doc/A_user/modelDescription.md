@@ -1,5 +1,5 @@
 # modelDescription.md
-**Document Level:** A (User / Model Documentation)  
+**Document Level:** A (User / Model Documentation)**  
 **Purpose:** Describe the physical and numerical model underlying *dcSimulator*.  
 **References:** `terms.md`, `USER_GUIDE.md`, `softwareSpecification.md`
 
@@ -24,6 +24,7 @@ Limitations:
 
 ## 2. System Overview
 
+## 2. System Overview
 The electrical network is represented as a **graph**:
 
     [Substation]--R--(Node1)----R----(Node2)----R----[Train]
@@ -37,6 +38,9 @@ At every simulation tick, the network is solved for all node voltages `V`
 by enforcing **Kirchhoff’s Current Law** at each node:
 
     ∑ I_branch = 0
+
+> _Section extended (2025-11-14): Nodes represent arbitrary electrical connection points defined by configuration, not fixed-distance discretization.  Branch resistances are computed from line resistance per metre × actual distance._
+
 
 ---
 
@@ -144,6 +148,24 @@ If a part of the grid becomes disconnected (no substations, only trains),
 the solver detects an *island* and halts the iteration for that region.
 Voltage is then relaxed toward 0 V or a defined `seed` voltage.
 
+### 4.5 Node-to-Node Symphony Representation (added 2025-11-14)
+The Symphony configuration extends the model to an explicit **node-to-node resistive network**.  
+Each node *k* has voltage \(V_k(t)\); branches *i–j* have resistance \(R_{ij}\) derived from geometry.
+
+Kirchhoff’s law:
+
+\[
+\sum_{j\in N(k)} G_{kj}(V_k-V_j) = I^{sub}_k(V_k) + I^{tr}_k(V_k,t)
+\]
+
+Substations follow the diode-limited Thevenin rule  
+\(I^{sub}_k = \max(0,(E_k-V_k)/R_{s,k})\).  
+Trains act as power-controlled Norton elements  
+\(I^{tr}_k = \pm P_k(t)/\max(V_k,V_{min})\).
+
+No fixed discretization is assumed; distances and node positions are read directly from configuration.  
+Open nodes are stabilised with a small leak conductance \(G_{min}\).
+
 ---
 
 ## 5. Numerical Strategy
@@ -174,6 +196,16 @@ Relaxation prevents oscillation when trains and substations interact through str
 
 Each node may have an optional **seed voltage** used at solver start
 (e.g., for restarting from previous state or for continuity between ticks).
+
+### 5.4 ⚡ Critical Model Limits (added 2025-11-14)
+The simplified DC model remains valid until:
+- **Section crossing** – train bridges two zones → topology update.
+- **Zero receptivity** – no receiver during regeneration → braking resistor.
+- **Low voltage** – traction limited below nominal.
+- **Dynamic multi-feeding** – zones temporarily coupled → Y-matrix rebuild.
+
+For full formulation and boundary handling, see  
+`../B_developer/softwareSpecification.md`, Section 4 (Symphony DC Line Model).
 
 ---
 
@@ -233,9 +265,12 @@ These cases confirm energy balance, convergence, and proper substation clamping.
 
 ### References
 - *terms.md* – definitions of *stamp*, *island*, *clamp*, *relaxation*, *seed*.
-- *softwareSpecification.md* – implementation mapping.
+- *softwareSpecification.md* – developer-level equations and solver details.
 - *USER_GUIDE.md* – operational examples and configuration keys.
 
 ---
 
-_This modelDescription.md merges content from legacy files `README2.md`, `TechnicalDescription.md`, `DC_Grid_TechSpec_v1.md`, and `DcSimTechNotes.md` and has been normalized for portability._
+_Change summary (2025-11-14):  
+Added §4.5 Node-to-Node Symphony Representation and §5.4 Critical Model Limits.  
+Clarified that nodes are arbitrary physical points (no fixed discretization).  
+All previous content retained for traceability (MFE + Trace policy)._
