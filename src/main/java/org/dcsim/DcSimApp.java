@@ -332,9 +332,9 @@ public final class DcSimApp {
         );
         LongFiles.bootstrapFromConfig();
 
-        final String project  = System.getProperty("dcsim.project",  "dc-simulator");
-        final String scenarioId = System.getProperty("dcsim.scenario", "3subs1train");
-        final String hash     = System.getProperty("dcsim.hash",     "8110f7deeaa232a8602fcccbd55f512cebdfc7af");
+        final String project  = System.getProperty("dcsim.project",  "no-project");
+        final String scenarioId = System.getProperty("dcsim.scenario", "no-scenario");
+        final String hash     = System.getProperty("dcsim.hash",     "no-hash");
         final String csvPath  = System.getProperty("dcsim.longtable","output/longtable.csv");
         // overwrite=true is typical for a fresh run; switch to false if you want to append
         final boolean overwrite = true;

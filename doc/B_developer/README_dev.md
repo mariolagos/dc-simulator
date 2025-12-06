@@ -243,6 +243,57 @@ Actors follow a lifecycle coordinated by Akka supervision.
   - If a public build is produced, update `USER_GUIDE.md` screenshots/plots if they changed materially.
 
 
+### Naming conventions for physical quantities
+
+We use a consistent pattern for naming physical quantities, both in code and in longtable signals:
+
+> `<object>_<quantity>[_stage][_component][_unit]`
+
+- **object** – logical object name (lowercase):
+  - `train`, `sub`, `node`, `line`, `grid`, …
+- **quantity** – physical quantity:
+  - `p` (power), `v` (voltage), `i` (current), `r` (resistance), `y` (admittance), `soc`, …
+- **stage** – where in the processing pipeline the value belongs (optional):
+  - `prof` (profile), `req` (requested), `lim` (after limiting), `sol` (solver result), `log` (logged/derived view).
+- **component** – type of contribution (optional):
+  - `mot` (motoring), `brk`, `brk_net`, `brk_res`, `aux`, `loss`, `net`, …
+- **unit** – SI unit suffix when useful (especially in logs and longtable):
+  - `_W`, `_V`, `_A`, `_Ohm`, `_mps`, …
+
+Examples (code / internal variables):
+
+- `train_p_req_W`        – requested total train power (can be + or − depending on sign convention)
+- `train_p_req_net_W`    – requested *net* electrical power towards the DC network
+- `train_p_req_brk_W`    – requested total braking power
+- `train_p_sol_net_W`    – actual net power to/from the network according to the solver
+- `sub_p_sol_net_W`      – substation net power in the solver result
+- `node_v_sol_V`         – node voltage in the solver result
+
+#### Longtable signals
+
+In the longtable, `object_typ` and `object_id` already identify the object.  
+The `signal` column typically only carries the quantity + component + unit, e.g.:
+
+- `P_mot_W`       – traction motor power (Train)
+- `P_aux_W`       – auxiliary power (Train)
+- `P_brk_req_W`   – requested braking power (Train, **negative during braking**)
+- `P_brk_net_W`   – braking power sent to the network (Train, **negative during regen**)
+- `P_brk_res_W`   – braking power dissipated in onboard resistors (Train, **negative during resistive braking**)
+- `P_net_W`       – net power at the object (Train/Sub/Node)
+- `P_loss_W`      – losses in a component (Line/Sub)
+- `V_V`           – node or train voltage
+- `I_A`           – current
+- `speed_mps`     – train speed in m/s
+
+**Sign convention for braking:**
+
+- `P_brk_req_W`, `P_brk_net_W` and `P_brk_res_W` are **negative** during braking.
+- The total braking request satisfies approximately:
+
+  ```text
+  P_brk_req_W ≈ P_brk_net_W + P_brk_res_W
+
+
 ---
 
 ## Story 7: Scenarios & Tests

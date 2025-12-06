@@ -132,7 +132,7 @@ public final class DcIterativeSolver {
                 log("[isl] compBackfeedAllowed   =%s", Arrays.toString(isl.compBackfeedAllowed));
             }
 
-            // 4) Trains (vminDefault=0 ⇒ only tr.vmin_V() throttles)
+// 4) Trains (vminDefault=0 ⇒ only tr.vmin_V() throttles)
             for (TrainData tr : net.trains()) {
                 final int comp = isl.compOfNode[tr.a()];
                 final boolean motorEnabled =
@@ -140,6 +140,25 @@ public final class DcIterativeSolver {
                 if (DcDebug.VERBOSE) {
                     log("[train %s] comp=%d motorEnabled=%s", tr.id(), comp, motorEnabled);
                 }
+
+                // --- Derating debug (no physics change yet) ---
+                double vNode = (V == null ? Double.NaN : V.getEntry(tr.a()));
+
+                // Här antar vi att TrainData får dessa två nya getters från conf:
+                //   double vDerate1_V();
+                //   double vDerate2_V();
+                double v1 = tr.vDerate1_V();
+                double v2 = tr.vDerate2_V();
+                double alphaDerate = deratingFactor(vNode, v1, v2);
+
+                LongTableWriter lw = w;
+                if (lw != null && finite(simTimeSec)) {
+                    lw.signalRow(simTimeSec, "Train", tr.id(),
+                            "alpha_derate", alphaDerate, "", "SOLVER", it, null);
+                    lw.signalRow(simTimeSec, "Train", tr.id(),
+                            "V_node_V", vNode, "V", "SOLVER", it, null);
+                }
+                // --- End derating debug ---
 
                 DcStamps.stampTrain(
                         V, G, J,
@@ -324,6 +343,16 @@ public final class DcIterativeSolver {
         return V;
     }
 
+    private static double deratingFactor(double v, double v1, double v2) {
+        // Guard against degenerate config
+        if (Double.isNaN(v) || Double.isInfinite(v)) return 1.0;
+        if (v2 <= v1) return 1.0; // avoid divide-by-zero; treat as no derating
+
+        if (v <= v1) return 0.0;
+        if (v >= v2) return 1.0;
+
+        return (v - v1) / (v2 - v1);
+    }
 
     /**
      * Pick a clamp node inside component 'comp'. Prefer a substation b-node; fallback to first node in comp.

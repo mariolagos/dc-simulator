@@ -66,6 +66,8 @@ public final class DcStamps {
         final double dV   = Va - Vb;
         final double vabs = Math.abs(dV);
 
+
+
         final double req   = tr.req_W();              // + motor, - regen
         final double imax  = Math.max(0.0, tr.imax_A());
         final double vminT = tr.vmin_V();
@@ -78,21 +80,35 @@ public final class DcStamps {
 
         if (req > 0.0) {
             if (motorEnabled) {
-                if (vabs <= 1e-9) {
-                    effReq = 0.0;
-                } else if (vmin > 0.0 && vabs < vmin) {
-                    effReq = req * (vabs / vmin);  // throttle
+                // Traction derating based on V_derate1/V_derate2
+                double v1 = tr.vDerate1_V();
+                double v2 = tr.vDerate2_V();
+
+                double alpha;
+                if (Double.isNaN(vabs) || vabs <= 0.0) {
+                    // Ingen meningsfull spänning → ingen traction
+                    alpha = 0.0;
+                } else if (v2 <= v1 + 1e-9) {
+                    // Degenerat fall: ingen derating konfigurerad → alltid full kraft
+                    alpha = 1.0;
+                } else if (vabs <= v1) {
+                    alpha = 0.0;
+                } else if (vabs >= v2) {
+                    alpha = 1.0;
                 } else {
-                    effReq = req;
+                    alpha = (vabs - v1) / (v2 - v1);
                 }
+
+                effReq = req * alpha;  // 0..req
             } else {
                 effReq = 0.0;
             }
         } else if (req < 0.0) {
+            // Regen – oförändrad OVP-logik
             if (vabs >= vmax - 1e-12) {
-                effReq = 0.0; // regen stoppas över vmax
+                effReq = 0.0;         // regen stoppas över vmax
             } else {
-                effReq = req; // negativt
+                effReq = req;         // negativt
             }
         }
 

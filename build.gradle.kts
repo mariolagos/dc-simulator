@@ -120,6 +120,73 @@ tasks.register<JavaExec>("runPivot") {
     jvmArgs("-Dfile.encoding=UTF-8")
 }
 
+tasks.register<JavaExec>("runDcSim") {
+    group = "application"
+    description = "Run the DC simulator (DcSimApp)"
+    mainClass.set("org.dcsim.DcSimApp")
+    classpath = sourceSets.main.get().runtimeClasspath
+
+    // -Pargs="--verbose --excel"
+    providers.gradleProperty("args").orNull?.takeIf { it.isNotBlank() }?.let { raw ->
+        args(raw.split(Regex("\\s+")))
+    }
+    // -PconfigFile=project/3subs1train/scenario1/application.conf
+    providers.gradleProperty("configFile").orNull?.takeIf { it.isNotBlank() }?.let { cf ->
+        jvmArgs("-Dconfig.file=$cf")
+    }
+    jvmArgs("-Dfile.encoding=UTF-8")
+}
+
+tasks.register<JavaExec>("runTrainsPivotWide") {
+    group = "tools"
+    description = "Pivot trains.csv long -> wide"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("org.dcsim.tools.TrainsWidePivot")
+    args(
+        "output/pivots/trains.csv",
+        "output/pivots/trains_wide.csv"
+    )
+}
+
+tasks.register<JavaExec>("runWideExcel") {
+    group = "tools"
+    description = "Export wide Excel (one sheet per pivot CSV) from a pivot directory"
+
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("org.dcsim.tools.LongtableWideExcel")
+
+    // Använd -Pargs="pivotDir outFile" om du vill, annars default
+    val argsProp = project.findProperty("args") as String?
+    if (argsProp != null) {
+        args(argsProp.split("\\s+".toRegex()))
+    } else {
+        // default för 3subs2train2
+        args(
+            "output/pivots",
+            "output/pivots/wide.xlsx"
+        )
+    }
+}
+
+tasks.register<JavaExec>("runLongtableTrainSubWide") {
+    group = "tools"
+    description = "Export trains + subs wide Excel directly from longtable.csv"
+
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("org.dcsim.tools.LongtableTrainSubWideExcel")
+
+    val argsProp = project.findProperty("args") as String?
+    if (argsProp != null) {
+        args(argsProp.split("\\s+".toRegex()))
+    } else {
+        args(
+            "output/pivots/trains.csv",
+            "output/pivots/trains_wide.csv"
+        )
+    }
+}
+
+
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
 }

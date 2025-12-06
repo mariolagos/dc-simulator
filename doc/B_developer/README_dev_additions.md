@@ -275,3 +275,10 @@ git branch -D feature/<namn>
 3. Applicera 1 patch / 1 ändring i taget → bygg → kör → logga.
 4. Om något blir kaos → `git reset --hard` och börja om från ren branch.
 5. När det funkar → `git commit`, `git push`, PR.
+
+# History
+```markdown
+### 2025-11-xx – Naming conventions
+
+We introduced a consistent naming convention for physical quantities (P/V/I, braking, net power, etc.).  
+See *Naming conventions for physical quantities* in `README_DEV` for details.

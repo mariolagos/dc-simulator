@@ -36,14 +36,16 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+// TODO(bf-iteration): add logging of bf_iter, alpha and ΔV when backfeed iteration is introduced.
+// TODO(v0.9): Consider splitting GridModelActor into
+//  - TrainPowerAggregator
+//  - RectifierLimiter
+//  - NetLoggingAdapter
+// to reduce size/complexity. v0.7 keeps monolith for stability.
+
 public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     // Fast-track logging nodes for trains
     private final java.util.Map<String, Integer> trainLogNode = new LinkedHashMap<>();
-
-//    {
-//        trainLogNode.put("T1", 4);
-//        // trainLogNode.put("T2", 5); // enable for 3s2t
-//    }
 
     private static boolean finite(double x) {
         return !Double.isNaN(x) && !Double.isInfinite(x);
@@ -66,14 +68,6 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     // (valfritt) spara senaste simtid för dt
     private double lastTickSec = Double.NaN;
 
-    private Double lastTickTime = null;
-
-    private boolean runMetaEmitted = false;
-
-    // Meta (justera om du har dem i config)
-    private final String metaProject = System.getProperty("dcsim.project", "default_project");
-    private final String metaScenario = System.getProperty("dcsim.scenario", "default_scenario");
-    private final String metaHashTag = System.getProperty("dcsim.hash", "nohash");
 
     // Linje-ID:n vi vill emit:a (lägg till/ändra efter din topologi)
     private static final String[] LINE_IDS = new String[]{"L_1_2", "L_2_3"};
@@ -81,21 +75,14 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     // Stabil header i CSV (bara rena id:n, t.ex. "T1")
     private final LinkedHashSet<String> knownTrainIds = new LinkedHashSet<>();
 
-    // uppe i klassen
-    private static final double BF_EPS_A = 1e-6;  // tolerans för backfeed (A)
-    private static final int MAX_BF_ITERS = 3;
-
-    private static org.dcsim.export.LongTableWriter longWriter;
-
     // --- Long-file writer (set from DcSimApp) ---
     private static volatile LongTableWriter LONG_WRITER = null;
-    private static volatile boolean RUN_EMITTED = false;
 
     /**
      * Inject long writer once from DcSimApp (before first SolveTick).
      */
     public static void setLongWriter(LongTableWriter writer) {
-        longWriter = writer;
+        LONG_WRITER = writer;
     }
 
     /**
@@ -103,36 +90,6 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
      */
     private static LongTableWriter lw() {
         return LONG_WRITER;
-    }
-
-    /**
-     * Write RUN meta exactly once (null-safe, never throws).
-     */
-    private static void emitRunOnce(double t) {
-        if (RUN_EMITTED) return;
-        LongTableWriter w = lw();
-        if (w == null) return; // not yet injected → skip gracefully
-        synchronized (GridModelActor.class) {
-            if (RUN_EMITTED || LONG_WRITER == null) return;
-            final String project = System.getProperty("dcsim.project", "dc-simulator");
-            final String scenario = System.getProperty("dcsim.scenario", "default");
-            final String hash = System.getProperty("dcsim.hash", "nohash");
-            // value=0.0, unit="", stage="NET", iter=0, note=meta text
-            w.signalRow(t, "RUN", "meta", "project", 0.0, "", "NET", 0, project);
-            w.signalRow(t, "RUN", "meta", "scenario", 0.0, "", "NET", 0, scenario);
-            w.signalRow(t, "RUN", "meta", "hash_tag", 0.0, "", "NET", 0, hash);
-            RUN_EMITTED = true;
-            System.out.println("[GMA] RUN meta written once: " + project + " / " + scenario + " / " + hash);
-        }
-    }
-
-
-    public static final class SetLongWriter implements Command {
-        public final org.dcsim.export.LongTableWriter w;
-
-        public SetLongWriter(org.dcsim.export.LongTableWriter w) {
-            this.w = w;
-        }
     }
 
     // ===== protokoll =====
@@ -290,8 +247,6 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     private final Set<String> warnedTrainOnBus = new HashSet<>();
     private final Set<Integer> substationBusNodes = new HashSet<>();
 
-    private boolean treatNegBrakingAsBrake = false; // rapportera regen som "brake" (endast för visning)
-
     // ===== factory =====
     public static Behavior<Command> create(GridModel<Real> model,
                                            ElectricSolver solver,
@@ -375,15 +330,6 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                 trainOverrides.put(key, readTrainCfgFor(key, tdef, tovr));
             }
         }
-
-        // exportflaggor
-        boolean negAsBrake = false;
-        try {
-            if (root.hasPath("export.treatNegativeBrakingAsBrake"))
-                negAsBrake = root.getBoolean("export.treatNegativeBrakingAsBrake");
-        } catch (Throwable ignore) {
-        }
-        this.treatNegBrakingAsBrake = negAsBrake;
 
         // lås header
         writer.setKnownTrains(knownTrainIds);
@@ -486,235 +432,199 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     }
 
     private Behavior<Command> onSolveTick(SolveTick tick) {
-        // Debug: visa status innan solve
-        System.out.println("[GMA] onSolveTick t=" + String.format(java.util.Locale.ROOT, "%.3f", tick.timeSec)
-                + " latest.size=" + latest.size()
-                + " knownTrainIds=" + knownTrainIds.size());
-        emitRunOnce(tick.timeSec);
 
-        if (!runMetaEmitted) {
-            Double t = tick.timeSec;
-            longWriter.signalRow(t, "RUN", "meta", "project", 0.0, "", metaProject, 0, "");
-            longWriter.signalRow(t, "RUN", "meta", "scenario", 0.0, "", metaScenario, 0, "");
-            longWriter.signalRow(t, "RUN", "meta", "hash_tag", 0.0, "", metaHashTag, 0, "");
-            runMetaEmitted = true;
-        }
+        final double timeSec = tick.timeSec;
+        final int step = tick.step;
 
+        // Debug basic tick info
+        System.out.printf("[GMA] onSolveTick t=%.3f latest.size=%d knownTrainIds=%d%n",
+                timeSec, latest.size(), knownTrainIds.size());
+
+        // Warn for missing train updates
         if (!knownTrainIds.isEmpty()) {
-            java.util.Set<String> missing = new java.util.HashSet<>(knownTrainIds);
+            Set<String> missing = new HashSet<>(knownTrainIds);
             missing.removeAll(latest.keySet());
-            if (!missing.isEmpty()) {
+            if (!missing.isEmpty())
                 System.out.println("[GMA] Missing UpdateTrainPower for: " + missing);
-            }
         }
 
-        DcIterativeSolver.setSimTimeSec(tick.timeSec);
+        // Prepare solver state for this tick
         DcIterativeSolver.clearProbeBranches();
+        DcIterativeSolver.setSimTimeSec(timeSec);
 
-        // 3subs1train: hårdkodat just nu
-        double rPerKm = 0.03;
+        // Send anchors
+        solver.setTrainAnchors(anchors.entrySet(), trainDtSec);
 
-        DcIterativeSolver.setProbeBranch("L0", 1, 2, 1.5 * rPerKm);  // 1500 m → 0.045 Ω
-        DcIterativeSolver.setProbeBranch("L1", 2, 3, 1.5 * rPerKm);  // 1500 m → 0.045 Ω
-        DcIterativeSolver.setProbeBranch("L2", 3, 4, 0.1 * rPerKm); // 100 m  → 0.003 Ω
-
-
-        // Hårdkodad probning för 3subs1train: linjer och tågnod
-        // TODO: generalisera till godtyckligt antal linjer och tåg
-        org.dcsim.solver.impl.DcIterativeSolver.setProbeBranch("L0", 1, 2, 1.5 * rPerKm);
-        org.dcsim.solver.impl.DcIterativeSolver.setProbeBranch("L1", 2, 3, 1.5 * rPerKm);
-        org.dcsim.solver.impl.DcIterativeSolver.setProbeBranch("L2", 3, 4, 0.1 * rPerKm);
-
-//        org.dcsim.solver.impl.DcIterativeSolver.clearTrainNodes();
-//        org.dcsim.solver.impl.DcIterativeSolver.setTrainNode("Train1", 99);
-
-        // Skicka anchors (behåller id i key via entrySet)
-        this.solver.setTrainAnchors(anchors.entrySet(), this.trainDtSec);
-
-        // ===== 1) Applicera senaste komponentbegäran till TrainLoad + bygg direkta P_W =====
-        java.util.Map<String, Double> reqW_direct = new java.util.LinkedHashMap<>();
+        // ================================================================
+        // PASS 0: Build requested network power per train (including full regen)
+        // ================================================================
+        // ===== 1) Apply traction/braking/aux requests and build net P_W (PASS 0) =====
+        Map<String, Double> reqW_direct = new LinkedHashMap<>();
 
         for (String trainId : knownTrainIds) {
-            // Hämta senaste uppdateringen, men ta inte bort den
+
             UpdateTrainPower u = latest.get(trainId);
 
-            double motKW = 0.0;
-            double brkKW = 0.0;
-            double auxKW = 0.0;
+            // Motoring and auxiliaries as-is (normally ≥ 0)
+            double motKW    = (u != null) ? u.motoringKW   : 0.0;
+            double auxKW    = (u != null) ? u.auxiliaryKW  : 0.0;
 
-            if (u != null) {
-                motKW = u.motoringKW;
-                brkKW = u.brakingKW;
-                auxKW = u.auxiliaryKW;
-            } else {
-                System.out.printf("[GMA] No UpdateTrainPower for train=%s at t=%.3f -> assume 0 kW%n",
-                        trainId, tick.timeSec);
-            }
+            // brakingKW from upstream is interpreted as braking *magnitude* (≥ 0)
+//            double brkMagKW = (u != null) ? u.brakingKW : 0.0;
 
-            // Sätt komponenterna på TrainLoad
+            // FULL regenerative braking candidate: all braking goes towards the DC network.
+            // Rectifier logic (solveWithRectifierBlocks) will later limit this based on receptivity.
+            double brkRegenKW = (u != null) ? u.brakingKW : 0.0;   // ≤ 0 during braking
+
+            // Update TrainLoad – negative brakingKW means regenerative braking.
             TrainLoad tl = ensureTrainDeviceInternal(trainId);
-            tl.setRequestedComponents(motKW, brkKW, auxKW);
+            tl.setRequestedComponents(motKW, brkRegenKW, auxKW);
 
-            // Direkta begärda W mot solvern: mot + aux, aldrig carry-forward
-            double pNetLoadW = (motKW + auxKW) * 1000.0;  // regen hanteras separat via resistorlogik
-            if (pNetLoadW < 0.0) pNetLoadW = 0.0;             // ingen negativ last här
+            // Net electrical power with respect to the DC network [W]:
+            // > 0 : network → train (motoring)
+            // < 0 : train → network (regeneration)
+            double train_p_req_net_W = (motKW + auxKW + brkRegenKW) * 1000.0;
 
-            reqW_direct.put(trainId, pNetLoadW);
-            lastRequestedPowerW.put(trainId, pNetLoadW);   // bara logg/minne, inte "håll kvar"
+            // NO clamping – negative power is exactly what we want for regen
+            reqW_direct.put(trainId, train_p_req_net_W);
+            lastRequestedPowerW.put(trainId, train_p_req_net_W);
 
-            // === DEBUG GMA A: before first push to solver ===
+            // Simple debug (optional)
             System.out.printf(
-                    "[GMA-A] id=%s mot=%.3f kW brk=%.3f kW aux=%.3f kW -> push %.1f W%n",
-                    trainId, motKW, brkKW, auxKW, pNetLoadW
+                    "[GMA-A] id=%s mot=%.3f kW brkMag=%.3f kW -> brkRegen=%.3f kW aux=%.3f kW -> push %.1f W%n",
+                    trainId, motKW, brkRegenKW, brkRegenKW, auxKW, train_p_req_net_W
             );
 
-            double pTractionW = (motKW + brkKW + auxKW) * 1000.0;
-            if (longWriter != null) {
-                longWriter.signalRow(tick.timeSec, "Train", trainId,
+            LongTableWriter w = lw();
+            if (w != null) {
+                w.signalRow(timeSec, "Train", trainId,
+                        "brk_prof_kW", brkRegenKW, "kW", "GMA-prof", null, null);
+                double pTractionW = (motKW + brkRegenKW + auxKW) * 1000.0; // braking negative
+                w.signalRow(timeSec, "Train", trainId,
                         "req_trac_W", pTractionW, "W", "GMA-A", null, null);
-            }
-
-            // tid till solvern (en gång per tick)
-            org.dcsim.solver.impl.DcIterativeSolver.setSimTimeSec(tick.timeSec);
-
-            // (valfritt men bra för framtiden: uppdatera probelistorna varje tick)
-            org.dcsim.solver.impl.DcIterativeSolver.clearProbeNodes();
-            org.dcsim.solver.impl.DcIterativeSolver.setProbeNode("S1", 1);
-            org.dcsim.solver.impl.DcIterativeSolver.setProbeNode("S2", 2);
-            org.dcsim.solver.impl.DcIterativeSolver.setProbeNode("S3", 3);
-
-            org.dcsim.solver.impl.DcIterativeSolver.clearTrainNodes();
-            org.dcsim.solver.impl.DcIterativeSolver.setTrainNode("Train1", 4);
-
-            if (longWriter != null) {
-                longWriter.signalRow(tick.timeSec, "Train", trainId, "req_W", pNetLoadW, "W", "GMA-A", null, null);
             }
         }
 
-        // Se till att latest är tomt efter att alla uppdateringar "konsumerats"
-//        latest.clear();
+        // PASS 0: send to solver
+        solver.setTrainRequestedPower(reqW_direct, trainDtSec);
 
-        System.out.printf("[GMA-A] pushing requestedPowerW: %s%n", reqW_direct);
-        this.solver.setTrainRequestedPower(reqW_direct, this.trainDtSec);
-
-        // ===== 2) Förbered bromsmappar (W) – kan fyllas av solveWithRectifierBlocks =====
-        final Map<String, Double> pBrakeReqW = new HashMap<>();
-        final Map<String, Double> pBrakeNetW = new HashMap<>();
-        final Map<String, Double> pBrakeResW = new HashMap<>();
-
-        // --- lös med rektifierblock: grundlös -> mät receptivitet -> ev. stryp regen -> lös igen
+        // ================================================================
+        // PASS 1: Run 2-step rectifier logic (receptivity, regen limiting)
+        // ================================================================
         final SolveBundle sb;
         try {
-            sb = solveWithRectifierBlocks(tick.timeSec, tick.step);
+            sb = solveWithRectifierBlocks(timeSec, tick.step);
         } catch (Exception ex) {
-            getContext().getLog().error(
-                    "Solve failed at t={}s step={}: {}",
-                    tick.timeSec, tick.step, ex.toString()
-            );
+            getContext().getLog().error("Solve failed at t={}s step={}: {}", timeSec, tick.step, ex.toString());
             return this;
         }
 
-        // resultatet från tvåstegaren
-        final GridResult res = sb.res;
+        GridResult res = sb.res;
 
-        // --- TÅG: P_net_W (effektutbyte mot nätet) ---
-        if (longWriter != null) {
-            double t = tick.timeSec;
+        // ================================================================
+        // LOG: P_net_W for trains
+        // ================================================================
 
+        LongTableWriter w = lw();
+        if (w != null) {
             for (String trainId : trainDevices.keySet()) {
                 Real pDev = res.getLatestDevicePower(trainId);
-                if (pDev == null) continue;
+                if (pDev != null) {
+                    w.signalRow(timeSec, "Train", trainId,
+                            "P_net_W", pDev.asDouble(), "W", "NET", tick.step, null);
+                }
+            }
+        }
 
-                double pNet = pDev.asDouble();  // + motordrift, - regen
+        // --- Train voltages: TrainX.V_V ---
+        if (w != null) {
+            double t = tick.timeSec;
 
-                longWriter.signalRow(
+            for (String trainId : knownTrainIds) {
+                TrainLoad tl = trainDevices.get(trainId);
+                if (tl == null) continue;
+
+                // Todo: generalisera. Hämta nod-id för tåget (anpassa till ditt API)
+                int nodeId = 3; //tl.getFromNode();
+
+                Real vNode = res.getLatestNodeVoltage(nodeId);
+                if (vNode == null) continue;
+
+                double v = vNode.asDouble();
+
+                w.signalRow(
                         t,
-                        "Train",
-                        trainId,
-                        "P_net_W",
-                        pNet,
-                        "W",
-                        "NET",
-                        tick.step,
-                        null
+                        "Train",      // object_type
+                        trainId,      // object_id
+                        "V_V",        // signal
+                        v,            // value
+                        "V",          // unit
+                        "NET",        // stage
+                        tick.step,    // iter
+                        null          // note
                 );
             }
         }
 
 
-        // uppdatera writer med faktisk bromsdelning (W)
+        // Save brake maps (magnitudes)
         writer.setLatestBrakeMaps(sb.brakeReqW, sb.brakeNetW, sb.brakeResW);
 
-        if (longWriter != null && DcIterativeSolver.finite(tick.timeSec)) {
-            double t = tick.timeSec;
-            for (var e : sb.brakeReqW.entrySet()) {
-                String trainId = e.getKey();
-                double pReq = e.getValue();                             // begärd regen (W, magnitud)
-                double pNet = sb.brakeNetW.getOrDefault(trainId, 0.0);  // regen till nät
-                double pBurn = sb.brakeResW.getOrDefault(trainId, 0.0);  // till resistor
+        // ================================================================
+        // LOG final brake split (negative values for braking)
+        // ================================================================
+        if (w != null) {
+            for (String trainId : sb.brakeReqW.keySet()) {
+                double reqMag = sb.brakeReqW.get(trainId);
+                double netMag = sb.brakeNetW.get(trainId);
+                double resMag = sb.brakeResW.get(trainId);
 
-                longWriter.signalRow(t, "Train", trainId, "brk_req_W", pReq, "W", "NET", null, null);
-                longWriter.signalRow(t, "Train", trainId, "brk_net_W", pNet, "W", "NET", null, null);
-                longWriter.signalRow(t, "Train", trainId, "brk_burn_W", pBurn, "W", "NET", null, null);
+                w.signalRow(timeSec, "Train", trainId,
+                        "P_brk_req_W", -reqMag, "W", "NET", tick.step, null);
+                w.signalRow(timeSec, "Train", trainId,
+                        "P_brk_net_W", -netMag, "W", "NET", tick.step, null);
+                w.signalRow(timeSec, "Train", trainId,
+                        "P_brk_res_W", -resMag, "W", "NET", tick.step, null);
             }
         }
-//        if (longWriter != null && sb.brakeResW != null) {
-//            final double t = tick.timeSec;
-//            for (var e : sb.brakeResW.entrySet()) {
-//                String trainId = e.getKey();
-//                Double pBurnW = e.getValue();   // effekt som hamnar i resistor (W)
-//                if (pBurnW == null) continue;
-//
-//                longWriter.signalRow(
-//                        t,
-//                        "Train",          // object_type
-//                        trainId,          // object_id
-//                        "brk_burn_W",     // signalnamn
-//                        pBurnW,           // value
-//                        "W",              // unit
-//                        "NET",            // stage
-//                        tick.step,        // iter
-//                        null              // note
-//                );
-//            }
-//        }
 
-        // cachea nodspänningar
+        // ================================================================
+        // Cache node voltages
+        // ================================================================
         for (Object node : model.getNodeIds()) {
             int nid = (node instanceof Integer) ? (Integer) node : Integer.parseInt(node.toString());
-            var vv = res.getLatestNodeVoltage(nid);
-            if (vv != null) lastNodeV.put(nid, vv.asDouble());
+            Real v = res.getLatestNodeVoltage(nid);
+            if (v != null) lastNodeV.put(nid, v.asDouble());
         }
 
-        lastTickTime = tick.timeSec;
+//        lastTickTime = timeSec;
 
-        // totals + sanity
+        // Totals, sanity checks, etc.
         try {
             var totals = PowerAccounting.compute(model, res);
             res.addTotals(totals);
 
             if (ENABLE_POWER_SANITY) {
-                checkSubstationPowerSanity(res, tick.timeSec);
+                checkSubstationPowerSanity(res, timeSec);
                 checkTrainLineFlowSanity(res);
             }
+
         } catch (Exception ex) {
-            getContext().getLog().warn("Post-process failed at t={}s step={}: {}", tick.timeSec, tick.step, ex.toString());
+            getContext().getLog().warn("Post-process failed at t={} step={}: {}", timeSec, tick.step, ex.toString());
         }
 
-//        // Extra loggning: substationeffekt mot nätet och intern förlust
-//        emitSubstationPowerToLongFile(res, tick.timeSec);
-
-        // CSV
+        // Write CSV
         try {
-            writer.append(res, tick.timeSec, tick.step);
+            writer.append(res, timeSec, tick.step);
             writer.flush();
         } catch (IOException ex) {
             getContext().getLog().error("CSV write failed: {}", ex.toString());
         }
 
-        // ack
-        if (tick.replyTo != null) tick.replyTo.tell(new Solved(tick.timeSec, tick.step));
-//        latest.clear();
+        // ACK
+        if (tick.replyTo != null)
+            tick.replyTo.tell(new Solved(timeSec, tick.step));
+
         return this;
     }
 
@@ -940,234 +850,171 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     private SolveBundle solveWithRectifierBlocks(double timeSec, int step) {
         System.out.printf("[RECT] latest.size=%d%n", latest.size());
 
-        // ---------- Pass 0: lös basfallet ----------
+        // ----------------------------------------------------
+        // PASS 0: Lös basfallet med nuvarande train requests
+        // ----------------------------------------------------
+//        System.out.printf("[DBG] t=%.1f requested=%s%n", timeSec, requestedPowerW);
         GridResult r0 = solver.solve(model, timeSec, step);
 
-        // per-tåg begäran (W) och faktiskt export i basfallet (W)
-        java.util.Map<String, Double> reqW = new java.util.LinkedHashMap<>();
-        java.util.Map<String, Double> netW0 = new java.util.LinkedHashMap<>();
+        // per-tåg: bromsbegäran (magnitud, W) och faktisk export i basfallet (magnitud, W)
+        Map<String, Double> brkReqMagW   = new LinkedHashMap<>();
+        Map<String, Double> netExport0W  = new LinkedHashMap<>();
 
-        double sumExport = 0.0;   // totalt tåg → nät
-        double sumMotoring = 0.0;   // totalt nät → tåg (positiv last)
+        double sumExportW    = 0.0; // totalt tåg → nät (regen), W (magnitud)
+        double sumMotoringW  = 0.0; // totalt nät → tåg (motoring), W (magnitud)
 
+        // --- Samla info per tåg från PASS 0 ---
         for (var e : latest.entrySet()) {
             String id = e.getKey();
             UpdateTrainPower u = e.getValue();
 
-            // Begärd bromseffekt (W): positivt oavsett om den kommer som +ohmisk eller −regen i profilen
-            double req = 0.0;
+            // 1) Begärd bromseffekt (magnitud, W).
+            //    brakingKW > 0  = ren resistiv broms (allt går i resistor, ingen regen)
+            //    brakingKW < 0  = regenerativ bromsbegäran (magnitud = -brakingKW)
+            double brkReqMag = 0.0;
             if (u != null) {
-                if (u.brakingKW > 0.0) req = u.brakingKW * 1000.0;    // dissipativ begäran
-                if (u.brakingKW < 0.0) req = -u.brakingKW * 1000.0;    // regen-begäran (magnitud)
+                if (u.brakingKW > 0.0) {
+                    // resistiv broms: begäran till resistor
+                    brkReqMag = u.brakingKW * 1000.0;
+                } else if (u.brakingKW < 0.0) {
+                    // regen-begäran: magnitud
+                    brkReqMag = -u.brakingKW * 1000.0;
+                }
             }
-            reqW.put(id, req);
+            brkReqMagW.put(id, brkReqMag);
 
-            // Enhetskraft i baslösningen (+förbrukning från nätet, −export till nätet)
+            // 2) Enhetskraft i baslösningen:
+            //    p > 0  = last (nät -> tåg)
+            //    p < 0  = export (tåg -> nät, regen)
             Real pDev = r0.getLatestDevicePower(id);
             double p = (pDev != null) ? pDev.asDouble() : 0.0;
 
-            if (p > 0.0) sumMotoring += p;                 // positiv = last
-            double export = (p < 0.0) ? (-p) : 0.0;        // export = −P
-            netW0.put(id, export);
-            sumExport += export;
+            if (p > 0.0) {
+                sumMotoringW += p;  // positiv = last
+            }
+
+            double exportMag = (p < 0.0) ? (-p) : 0.0; // magnitud av tåg→nät
+            netExport0W.put(id, exportMag);
+            sumExportW += exportMag;
         }
-        System.out.printf("[RECT] reqW.size=%d netW0.size=%d%n",
-                reqW.size(), netW0.size());
+        System.out.printf("[RECT] brkReqMagW.size=%d netExport0W.size=%d%n",
+                brkReqMagW.size(), netExport0W.size());
 
-
-        // Substationers absorption i baslösningen (om backfeed tillåts blir detta > 0)
-        double sumSubAbsorb = 0.0;
+        // --- Substationers absorption i PASS 0 ---
+        // p < 0 => substation tar emot effekt (t.ex. mot AC-sidan)
+        double sumSubAbsorbW = 0.0;
         for (Object did : model.getDeviceIds()) {
             Device<Real> d = model.getDevice(String.valueOf(did));
             if (d instanceof Substation) {
                 Real p = r0.getLatestDevicePower(d.getId());
-                if (p != null && p.asDouble() < 0.0) sumSubAbsorb += (-p.asDouble());
+                if (p != null && p.asDouble() < 0.0) {
+                    sumSubAbsorbW += (-p.asDouble());
+                }
             }
         }
 
         // Receptivitet = annan förbrukning (motoringtåg) + substationers absorption
-        double receptivity = sumMotoring + sumSubAbsorb;
+        double receptivityW = sumMotoringW + sumSubAbsorbW;
 
-        // Om basfallet redan ryms i receptiviteten: inget att strypa
-// Om basfallet redan ryms i receptiviteten: inget att strypa
-        if (sumExport <= receptivity + EPS) {
-            java.util.Map<String, Double> resW = new java.util.LinkedHashMap<>();
-            for (String id : reqW.keySet()) {
-                double net = netW0.getOrDefault(id, 0.0);
-                double res = Math.max(0.0, reqW.get(id) - net);
-                resW.put(id, res);
+        System.out.printf("[RECT] sumExportW=%.1f sumMotoringW=%.1f sumSubAbsorbW=%.1f receptivityW=%.1f%n",
+                sumExportW, sumMotoringW, sumSubAbsorbW, receptivityW);
+
+        // ----------------------------------------------------
+        // FALL A: basfallet ryms inom receptiviteten
+        //         -> inga justeringar, använd PASS 0 direkt
+        // ----------------------------------------------------
+        if (sumExportW <= receptivityW + EPS) {
+            Map<String, Double> netMagW = new LinkedHashMap<>();
+            Map<String, Double> resMagW = new LinkedHashMap<>();
+
+            for (String id : brkReqMagW.keySet()) {
+                double reqMag = brkReqMagW.getOrDefault(id, 0.0);     // W >= 0
+                double netMag = netExport0W.getOrDefault(id, 0.0);    // W >= 0 (tåg -> nät)
+                double resMag = Math.max(0.0, reqMag - netMag);       // W >= 0
+
+                netMagW.put(id, netMag);
+                resMagW.put(id, resMag);
             }
 
-            // --- Logga bromsdelning: begärd, till nät, till resistor ---
-            if (longWriter != null && DcIterativeSolver.finite(timeSec)) {
-                final double t = timeSec;
-                for (String id : reqW.keySet()) {
-                    double pReq = reqW.getOrDefault(id, 0.0);
-                    double pNet = netW0.getOrDefault(id, 0.0);
-                    double pRes = resW.getOrDefault(id, 0.0);
-
-                    longWriter.signalRow(t, "Train", id, "P_brk_req_W", pReq, "W", "NET", step, null);
-                    longWriter.signalRow(t, "Train", id, "P_brk_net_W", pNet, "W", "NET", step, null);
-                    longWriter.signalRow(t, "Train", id, "P_brk_res_W", pRes, "W", "NET", step, null);
-                }
-            }
-
-            return new SolveBundle(r0, reqW, netW0, resW);
+            // SolveBundle behåller magnituderna (bakåtkompatibelt internt),
+            // även om longtable får negativa värden.
+            return new SolveBundle(r0, brkReqMagW, netMagW, resMagW);
         }
 
-        // ---------- Pass 1: proportionellt strypa regen och lös igen ----------
-        double factor = (receptivity <= EPS || sumExport <= EPS)
-                ? 0.0 : Math.min(1.0, receptivity / sumExport);
+        // ----------------------------------------------------
+        // FALL B: vi måste strypa regen (sumExportW > receptivityW)
+        //         -> skala ner varje tågs export proportionellt
+        //            och lös igen (PASS 1)
+        // ----------------------------------------------------
+        double factor = (receptivityW <= EPS || sumExportW <= EPS)
+                ? 0.0
+                : Math.min(1.0, receptivityW / sumExportW);
 
-        // Skala ner varje tågs nät-export (regen) proportionellt
+        System.out.printf("[RECT] regen limiting factor=%.6f%n", factor);
+
+        // Skala ner varje tågs nät-export proportionellt i kW-komponenterna
         for (var e : latest.entrySet()) {
             String id = e.getKey();
             UpdateTrainPower u = e.getValue();
             TrainLoad tl = trainDevices.get(id);
             if (tl == null || u == null) continue;
 
-            double allowedNetW = netW0.getOrDefault(id, 0.0) * factor; // W till nät (kan vara negativt)
-            double regenKW = -allowedNetW / 1000.0;                 // <0 = regen-komponent
+            double exportMag0 = netExport0W.getOrDefault(id, 0.0); // W
+            double allowedExportMag = exportMag0 * factor;         // W
+            double regenKW = -allowedExportMag / 1000.0;           // <0 = regen-komponent
 
-            // behåll motoring/aux som i begäran, ersätt bara brake med justerad regen
+            // Behåll motoring/aux som i begäran, ersätt bara regen-komponenten
             tl.setRequestedComponents(u.motoringKW, regenKW, u.auxiliaryKW);
         }
 
-        // Bygg och pusha den **justerade** totala effekten (W) per tåg till solvern
-        java.util.Map<String, Double> reqW_direct2 = new java.util.LinkedHashMap<>();
+        // Bygg total begärd effekt per tåg efter regen-begränsning (för loggning/debug).
+        Map<String, Double> reqW_direct2 = new LinkedHashMap<>();
         for (var e : latest.entrySet()) {
             String id2 = e.getKey();
             UpdateTrainPower u2 = e.getValue();
+            if (u2 == null) continue;
 
-            double allowedNetW2 = netW0.getOrDefault(id2, 0.0) * factor;
-            double regenKW2 = -allowedNetW2 / 1000.0;
+            double exportMag0 = netExport0W.getOrDefault(id2, 0.0);
+            double allowedExportMag = exportMag0 * factor;
+            double regenKW2 = -allowedExportMag / 1000.0;
 
-//            double pTotW2 = (u2.motoringKW + u2.brakingKW + u2.auxiliaryKW) * 1000.0;
-//            double prev2 = lastRequestedPowerW.getOrDefault(id2, 0.0);
-//            if (pTotW2 <= 0.0 && prev2 > 0.0) {
-//                pTotW2 = prev2;
-//            }
-//            reqW_direct2.put(id2, pTotW2);
-//
-//            // === DEBUG GMA B: before second push to solver (after regen limiting) ===
-//            System.out.printf(
-//                    "[GMA-B] id=%s mot=%.3f kW brkAdj=%.3f kW aux=%.3f kW -> push %.1f W (factor=%.6f)%n",
-//                    id2, u2.motoringKW, regenKW2, u2.auxiliaryKW, pTotW2, factor
-//            );
-//            if (longWriter != null)
-//                longWriter.signalRow(timeSec, "Train", id2, "req_W", pTotW2, "W", "GMA-B", null, null);
-//
-//        }
-//        // update carry-forward memory with positive values (post-regen limiting)
-//        for (var e3 : reqW_direct2.entrySet()) {
-//            if (e3.getValue() > 0.0) lastRequestedPowerW.put(e3.getKey(), e3.getValue());
-//        }
-
-            // Total requested power after regen limiting.
-            // IMPORTANT: use regenKW2 (the adjusted braking component), not the original u2.brakingKW.
             double pTotW2 = (u2.motoringKW + regenKW2 + u2.auxiliaryKW) * 1000.0;
-
-            // No carry-forward hack in 3S1T v0.1: what we log is what we actually push now.
             reqW_direct2.put(id2, pTotW2);
-            // Debug + logging
+
             System.out.printf(
-                    "[GMA-B] id=%s mot=%.3f kW brkAdj=%.3f kW aux=%.3f kW -> push %.1f W (factor=%.6f)%n",
+                    "[NET] id=%s mot=%.3f kW brkAdj=%.3f kW aux=%.3f kW -> push %.1f W (factor=%.6f)%n",
                     id2, u2.motoringKW, regenKW2, u2.auxiliaryKW, pTotW2, factor
             );
-            if (longWriter != null) {
-                longWriter.signalRow(timeSec, "Train", id2, "req_W", pTotW2, "W", "GMA-B", null, null);
+            LongTableWriter w = lw();
+            if (w != null) {
+                w.signalRow(timeSec, "Train", id2,
+                        "req_W", pTotW2, "W", "NET", step, null);
             }
         }
 
-        System.out.printf("[GMA-B] pushing requestedPowerW2: %s%n", reqW_direct2);
+        System.out.printf("[NET] pushing requestedPowerW2: %s%n", reqW_direct2);
         this.solver.setTrainRequestedPower(reqW_direct2, this.trainDtSec);
 
-
+        // PASS 1: lös med begränsad regen
         GridResult r1 = solver.solve(model, timeSec, step);
 
-        // Slutlig delning: net = netW0*factor, res = req − net
-        java.util.Map<String, Double> netW = new java.util.LinkedHashMap<>();
-        java.util.Map<String, Double> resW = new java.util.LinkedHashMap<>();
-        for (String id : reqW.keySet()) {
-            double net = netW0.getOrDefault(id, 0.0) * factor;
-            double res = Math.max(0.0, reqW.get(id) - net);
-            netW.put(id, net);
-            resW.put(id, res);
+        // Slutlig delning: använd FAKTISK export efter PASS 1
+        Map<String, Double> netMagW_final = new LinkedHashMap<>();
+        Map<String, Double> resMagW_final = new LinkedHashMap<>();
+
+        for (String id : brkReqMagW.keySet()) {
+            Real pDev1 = r1.getLatestDevicePower(id);
+            double p1 = (pDev1 != null) ? pDev1.asDouble() : 0.0;
+
+            double netMag = (p1 < 0.0) ? (-p1) : 0.0; // W, faktisk tåg→nät efter begränsning
+            double reqMag = brkReqMagW.getOrDefault(id, 0.0);      // W, begärd broms
+            double resMag = Math.max(0.0, reqMag - netMag);        // W, till resistor
+
+            netMagW_final.put(id, netMag);
+            resMagW_final.put(id, resMag);
         }
 
-        // --- Logga bromsdelning: begärd, till nät, till resistor ---
-        if (longWriter != null && DcIterativeSolver.finite(timeSec)) {
-            final double t = timeSec;
-            for (String id : reqW.keySet()) {
-                double pReq = reqW.getOrDefault(id, 0.0);
-                double pNet = netW.getOrDefault(id, 0.0);
-                double pRes = resW.getOrDefault(id, 0.0);
-
-                longWriter.signalRow(t, "Train", id, "P_brk_req_W", pReq, "W", "NET", step, null);
-                longWriter.signalRow(t, "Train", id, "P_brk_net_W", pNet, "W", "NET", step, null);
-                longWriter.signalRow(t, "Train", id, "P_brk_res_W", pRes, "W", "NET", step, null);
-            }
-        }
-
-        return new SolveBundle(r1, reqW, netW, resW);
+        return new SolveBundle(r1, brkReqMagW, netMagW_final, resMagW_final);
     }
-
-//    /**
-//     * Emit substation power to the longtable:
-//     *  - P_net_W  = power that actually goes into the DC network (V_bus * I)
-//     *  - P_loss_W = power lost in the substation internal resistance ((E - V_bus)^2 / R)
-//     */
-//    private void emitSubstationPowerToLongFile(GridResult res, double tSec) {
-//        // Longtable may be disabled
-//        if (longWriter == null) return;
-//
-//        for (Object device : model.getDeviceIds()) {
-//            String deviceId = String.valueOf(device);
-//            Device<Real> dev = model.getDevice(deviceId);
-//            if (!(dev instanceof Substation ss)) continue;
-//
-//            double E = ss.getEmf().asDouble();
-//            double R = ss.getInternalResistance().asDouble();
-//            if (R <= 0.0) continue; // avoid division by zero / nonsense
-//
-//            // Bus-sidan (DC-nätets nod)
-//            Real vBusR = res.getLatestNodeVoltage(ss.getToNode());
-//            if (vBusR == null) continue;
-//            double V = vBusR.asDouble();
-//
-//            double dV = E - V;
-//            double I  = dV / R;
-//
-//            double pNetW  = V * I;        // effekt in i nätet
-//            double pLossW = (dV * dV) / R; // intern förlust
-//
-//            // Effekt mot nätet, loggas per substation
-//            longWriter.signalRow(
-//                    tSec,
-//                    "Sub",
-//                    ss.getId(),
-//                    "P_net_W",
-//                    pNetW,
-//                    "W",
-//                    "NET",
-//                    null,
-//                    null
-//            );
-//
-//            // Effekt som förloras i substationens interna resistans
-//            longWriter.signalRow(
-//                    tSec,
-//                    "Sub",
-//                    ss.getId(),
-//                    "P_loss_W",
-//                    pLossW,
-//                    "W",
-//                    "NET",
-//                    null,
-//                    null
-//            );
-//        }
-//    }
-
 
 }

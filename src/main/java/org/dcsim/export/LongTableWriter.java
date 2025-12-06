@@ -4,6 +4,9 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
+//TODO(v0.9): Introduce BaseSig/NiceSig split and per-signal verbosity flag in signalRow,
+//and use config-driven selection for NiceSig in wide export.
+
 public final class LongTableWriter implements Closeable, Flushable {
     private final BufferedWriter bw;
     private final String project, scenario, baseHash;

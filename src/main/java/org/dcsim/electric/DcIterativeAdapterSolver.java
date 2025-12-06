@@ -42,8 +42,63 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
         solver.setSimTimeSec(timeSec);
         RealVector V = solver.solve(net);
 
-        // 4) Packa tillbaka i GridResult (RealMatrix=null, RealVector=V)
-        return new GridResult(null, V);
+        // Bygg ett "fullt" GridResult istället för bara (null, V)
+        GridResult res = new GridResult(null, V);
+
+        // 1) Fyll nodspänningar i map (om GridResult har set-metoder för det)
+        for (Object nodeObj : model.getNodeIds()) {
+            int nid = (nodeObj instanceof Integer)
+                    ? (Integer) nodeObj
+                    : Integer.parseInt(nodeObj.toString());
+
+            if (nid < 0 || nid >= V.getDimension()) continue;
+
+            double vNode = V.getEntry(nid);
+            if (!Double.isFinite(vNode)) continue;
+
+            // Anpassa till din API:
+            res.setLatestNodeVoltage(nid, Real.fromDouble(vNode));
+        }
+
+        // 2) Fyll effekt för TrainLoad-enheter
+        for (Object did : model.getDeviceIds()) {
+            String devId = String.valueOf(did);
+            Device<Real> dev = model.getDevice(devId);
+
+            if (dev instanceof TrainLoad tl) {
+                int nodeId = tl.getToNode();          // eller motsv.
+                double vTrain = V.getEntry(nodeId);   // spänning vid tågnoden
+
+                // Läs begärd nettoeffekt – med tecken:
+                double pTotW = readRequestedPowerRobust(tl);
+                // (denna pTotW kan vara negativ vid regen)
+
+                // Om du vill: sanity-koll
+                // if (!Double.isFinite(pTotW)) pTotW = 0.0;
+
+                res.setLatestDevicePower(devId, Real.fromDouble(pTotW));
+            }
+            else if (dev instanceof Substation ss) {
+                // klassiska substationformler:
+                double E = ss.getEmf().asDouble();
+                double R = ss.getInternalResistance().asDouble();
+                if (R <= 0.0) continue;
+
+                int nodeId = ss.getToNode();
+                double vBus = V.getEntry(nodeId);
+
+                double dV = E - vBus;
+                double I  = dV / R;
+
+                double pNetW  = vBus * I;        // effekt in i nätet (kan bli < 0 vid backfeed)
+                double pLossW = (dV * dV) / R;   // intern förlust
+
+                res.setLatestDevicePower(devId, Real.fromDouble(pNetW));
+                // pLossW kan du antingen ta med i totals eller logga via PowerAccounting
+            }
+        }
+
+        return res;
     }
 
     /**

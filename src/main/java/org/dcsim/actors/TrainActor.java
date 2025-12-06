@@ -13,6 +13,7 @@ import org.dcsim.solver.impl.DcIterativeSolver;
 import java.util.OptionalDouble;
 
 public class TrainActor extends AbstractBehavior<TrainActor.Command> {
+
     private static volatile LongTableWriter LONG_WRITER = null;
 
     public static void setLongWriter(LongTableWriter writer) {
@@ -161,13 +162,14 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
         try {
             LongTableWriter lt = DcIterativeSolver.getLongWriter();
             if (lt != null) {
-//                double t = DcIterativeSolver.getSimTimeSec();
-                if (finite(localT)) {// getter nedan i fix B{}
-                    if (finite(motKW)) lt.signalRow(localT, "Train", trainId, "mot_W", motKW * 1000, "W", "TA", null, null);
-                    if (finite(brkKW)) lt.signalRow(localT, "Train", trainId, "brk_W", brkKW * 1000, "W", "TA", null, null);
-                    if (finite(auxKW)) lt.signalRow(localT, "Train", trainId, "aux_W", auxKW * 1000, "W", "TA", null, null);
-                    if (finite(xM)) lt.signalRow(localT, "Train", trainId, "pos_m", xM, "m", "TA", null, null);
-                    if (finite(vMs)) lt.signalRow(localT, "Train", trainId, "speed_mps", vMs, "m/s", "TA", null, null);
+                final double t = msg.timeSec;   // 🔁 GLOBAL simtid, inte localT
+
+                if (finite(t)) {// getter nedan i fix B{}
+                    if (finite(motKW)) lt.signalRow(t, "Train", trainId, "mot_W", motKW * 1000, "W", "TA", null, null);
+                    if (finite(brkKW)) lt.signalRow(t, "Train", trainId, "brk_W", brkKW * 1000, "W", "TA", null, null);
+                    if (finite(auxKW)) lt.signalRow(t, "Train", trainId, "aux_W", auxKW * 1000, "W", "TA", null, null);
+                    if (finite(xM)) lt.signalRow(t, "Train", trainId, "pos_m", xM, "m", "TA", null, null);
+                    if (finite(vMs)) lt.signalRow(t, "Train", trainId, "speed_mps", vMs, "m/s", "TA", null, null);
                 }
             }
         } catch (

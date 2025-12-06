@@ -1,5 +1,6 @@
 package org.dcsim.utils;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -12,6 +13,7 @@ public class PositionUtilsParseTest {
         assertArrayEquals(new int[]{3, 13, 5}, p);
     }
 
+    @Ignore("Legacy format '3 12.345 km' is no longer supported. New spec is 'km+m' with truncated meters.")
     @Test
     public void parse_flexible_accepts_decimal_km_truncates_meters() {
         int[] p = PositionUtils.parseFlexible("3 12.345 km");

@@ -91,6 +91,141 @@ Populate/confirm using IDE or grep (see Section 5).
 | 2      | `Tracks2_IsolationAndSharingTest` | R‑04, R‑08 | Double-track isolation & load sharing (ev. crossover) |
 | 3+     | `Tracks3_ScalingSmokeTest` | R‑04, R‑08 | Convergence + schema only (smoke) |
 
+## 3.4 Detailed Scenario Test Procedures
+
+### 3.4.1 Three Substations + One Train (3S1T) — Regen-Absent Baseline Test
+
+**Purpose**  
+Validate correct voltage distribution, substation load sharing, and braking behaviour in a single-train scenario without regenerative braking. Serves as a baseline test for 3S2T.
+
+**Relevant Requirements**  
+R-01, R-02, R-03, R-04, R-05.
+
+**Input Configuration**
+- Case: `project/3subs1train/scenario1`
+- One train (T1), traction + resistive braking only
+- Three substations (SS0, SS1, SS2), fixed topology
+- Wide-file generated from longtable
+
+**Expected Qualitative Behaviour**
+- During motoring:
+  - `T1.P_net_W > 0`
+  - Train node voltage (`V_V`) lowest near the train
+  - Nearest substation supplies most current
+- During resistive braking:
+  - `T1.P_brk_req_W < 0`
+  - `T1.P_brk_net_W ≈ 0`
+  - `T1.P_brk_res_W ≈ |P_brk_req_W|`
+- No substation exhibits negative `P_net_W`
+- Train voltage always within allowed DC band (e.g. 500–900 V)
+- Approximate energy balance:  
+  Σ P_substations ≈ P_train + P_loss
+
+**Manual Verification Steps**
+1. Open the wide-file and inspect:
+  - `T1.P_net_W`, `T1.V_V`, `T1.P_brk_req_W`, `T1.P_brk_res_W`.
+2. Inspect substations:
+  - `SSx.P_net_W`, `SSx.P_loss_W`, `SSx.V_V`.
+3. Choose at least one motoring time and one braking time.
+  - Verify P = V·I
+  - Verify P_loss ≈ (E − V)² / R
+4. Confirm consistency across SS0, SS1, SS2.
+
+---
+
+### 3.4.2 Three Substations + Two Trains (3S2T) — Regenerative Interaction Test (Generalized)
+
+**Purpose**  
+Validate regenerative braking behaviour, receptivity detection, inter-train energy transfer, and substation absorption in any multi-train configuration where at least one train brakes while another consumes energy.
+
+**Scope**  
+This test does not depend on specific timing, power profiles, or timetable data.  
+It applies to all scenarios where:
+- Train A performs braking,
+- Train B performs motoring at overlapping but not necessarily identical times,
+- The DC network has at least one substation capable of absorbing or transmitting regenerative energy.
+
+**Relevant Requirements**  
+R-01 through R-06.
+
+---
+
+### Expected Behaviour (Independent of Specific Timing)
+
+The simulation shall exhibit **three distinct regen regimes**, regardless of *when* they occur:
+
+#### 1. **No Receptivity Periods**
+Conditions:
+- Braking train(s) produce regenerated power.
+- No other train is motoring sufficiently to receive it.
+- Substations cannot accept it (due to operating mode or voltage limits).
+
+Expected signals:
+- `P_brk_req_W < 0`
+- `P_brk_net_W ≈ 0`
+- `P_brk_res_W ≈ P_brk_req_W`
+- All substations have `P_net_W ≥ 0` (no backfeed)
+
+---
+
+#### 2. **Partial Receptivity Periods**
+Conditions:
+- A braking train produces regen.
+- One or more trains consume energy, but not enough to absorb all regen.
+
+Expected signals:
+- `P_brk_req_W < 0`
+- `0 > P_brk_net_W > P_brk_req_W` (partial regen delivered)
+- `P_brk_res_W < 0` with reduced magnitude
+- Motoring trains have `P_net_W > 0`
+- Substations may show reduced net supply, and occasionally slight negative `P_net_W`
+
+---
+
+#### 3. **Full Receptivity Periods**
+Conditions:
+- One or more motoring trains can absorb all delivered regenerative energy.
+- Substations only need to absorb residual energy (if any).
+
+Expected signals:
+- `P_brk_res_W ≈ 0`
+- `P_brk_net_W ≈ P_brk_req_W`
+- Receiving trains show increased `P_net_W > 0`
+- One or more substations may have `P_net_W < 0` (absorbing regen surplus)
+- Substation losses (`P_loss_W`) remain physically consistent with voltage differences
+
+---
+
+### Global Sanity Conditions (All Scenarios)
+These checks must hold for all configurations:
+
+- Train voltages (`V_V`) must track substation voltages with correct IR-drop sign.
+- Energy consistency:
+  \[
+  \sum P_{\text{substations}} + \sum P_{\text{trains}} \approx \sum P_{\text{loss}}
+  \]
+- No illegal sign transitions (e.g. resistive brake power > braking request).
+- No unbounded voltage excursions outside configured system voltage limits.
+
+---
+
+### Quantitative Spot-Check (Scenario-Independent)
+For any chosen time during regen activity:
+
+1. For each substation:
+  - Read `V_V`, `P_net_W`, `P_loss_W`.
+2. Verify:
+  - `I = P_net_W / V_V` (consistency with expected load direction)
+  - `P_loss ≈ (E − V_V)² / R_int`
+3. Deviations within ±5–10% are acceptable for prototype.
+
+---
+
+### Note on Scenario Data
+Exact timing of braking, motoring, and receptivity transitions is **scenario-dependent** and shall be documented in the scenario-specific test protocol, not in this test plan.
+
+This generalized procedure applies to *any* future 3S2T scenario using arbitrary driving profiles, timetables, or ramp configurations.
+
 ## 4. Test Data and Configuration
 
 | File Type | Purpose | Example |

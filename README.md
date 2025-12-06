@@ -7,6 +7,43 @@ A modular DC railway power system simulator, written in Java, with a focus on:
 - traceable numerical behavior (MFE + trace versioning),
 - high-resolution time series output for further analysis (CSV “longtable”).
 
+---
+
+## 1.1 Versioning and Traceability (MFE + trace)
+
+Since **v0.7**, the simulator applies the **MFE + trace** principle consistently across
+code, documentation, and output files.
+
+### Minimal Functional Extension (MFE)
+Each version introduces the smallest necessary functional change.
+Larger redesigns are decomposed into small, independently testable increments.
+
+### Traceability
+Every change must be:
+
+- documented in `/doc` (requirements, specs, tests, change requests),
+- reproducible from machine-readable metadata stored in:
+  - **longtable** (one row per event),
+  - **wide Excel** (metadata header for each sheet),
+  - scenario configuration,
+  - git hash / manual hash.
+
+### Metadata propagation (v0.7)
+
+From v0.7 onward:
+
+- Every **longtable row** includes:
+  - `project-id`
+  - `scenario-id`
+  - `hash_tag`
+
+- The **wide Excel** output adds this metadata in the header of each sheet:
+  - project-id
+  - scenario-id
+  - hash
+  - (Signals-sheet) `generated_at`, `longtable_path`, `wide_path`, `cli_args`
+
+This guarantees that any analysis file is fully reproducible and traceable back
 The current baseline scenario is **3S1T v0.1 – static anchor at S2**, which models a single train supplied by three DC substations along a simple feeder.
 
 ---
