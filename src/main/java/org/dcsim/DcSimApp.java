@@ -155,6 +155,9 @@ public final class DcSimApp {
 
             // Grid actor
             this.grid = ctx.spawn(GridModelActor.create(model, solver, csvOut, anchorNodeId), "grid");
+            System.out.println("[GMA] anchorNodeId=" + anchorNodeId
+                    + " label=" + model.getNodeById(anchorNodeId).getPosition());
+
 
             // Train actors — men ankare installeras inte här!
             for (var ts : trainSpawns) {
@@ -292,7 +295,9 @@ public final class DcSimApp {
         if (verboseAll) {
             System.setProperty("dcsim.verbose.all", "true");
             System.out.println("[CONF] Verbose mode enabled (dcsim.verbose.all=true)");
-        }        // ---- 3) Säkerställ att 'dcsim' finns och plocka ut den delkonfigurationen ----
+        }
+
+        // ---- 3) Säkerställ att 'dcsim' finns och plocka ut den delkonfigurationen ----
         if (!scenario.hasPath("dcsim")) {
             System.err.println("[ERROR] Top-level 'dcsim' section is missing in: " + confFile.getAbsolutePath());
             System.exit(3);
@@ -367,6 +372,9 @@ public final class DcSimApp {
                 ? dcsim.getInt("grid.anchorNodeId")
                 : firstNonGroundNonBus(model);
 
+        Node<Real> anchor = model.getNodeById(anchorNodeId);
+        anchor.setNodeKind(NodeKind.TRAIN);
+
         // ---- 8) Power-profiler ----
         Map<String, List<PowerPoint>> byTpl = dcsim.hasPath("powerProfiles")
                 ? PowerTemplateParser.parse(dcsim.getConfig("powerProfiles"))
@@ -429,7 +437,17 @@ public final class DcSimApp {
         double auxKW = dcsim.hasPath("powerProfiles.auxiliaryPower")
                 ? dcsim.getDouble("powerProfiles.auxiliaryPower") : 0.0;
 
-        // ---- 9) Traffic → Train spawns ----
+        System.out.println("=== NODE METADATA AT START ===");
+        for (Node<Real> n : model.getNodes()) {
+            System.out.println("[NODE0] id=" + n.getId()
+                    + " label=\"" + n.getPosition() + "\""
+                    + " kind=" + n.getNodeKind()
+                    + " trackId=" + n.getTrackId()
+                    + " posM=" + n.getPositionM());
+        }
+        System.out.println("=== END NODE METADATA ===");
+
+         // ---- 9) Traffic → Train spawns ----
         List<TrainSpawn> spawns = new ArrayList<>();
         if (dcsim.hasPath("traffic")) {
             var timetable = dcsim.getConfig("traffic.timetable");

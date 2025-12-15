@@ -38,6 +38,32 @@ public final class PositionUtils {
                     "\\s*(?:m)?"
     );
 
+    /**
+     * Canonical parser: always returns {sectionId, positionM} in meters.
+     * Accepted formats:
+     *   - "1 3+100"   -> {1, 3100}
+     *   - "1 0+000"   -> {1, 0}
+     *   - "1 3100m"   -> {1, 3100} (om vi vill stödja det)
+     */
+    public static int[] parseSectionAndMeters(String position) {
+        int[] raw = parseFlexible(position); // gamla intern-funktionen
+
+        if (raw.length == 2) {
+            // redan {section, positionM}
+            return raw;
+        } else if (raw.length == 3) {
+            int section = raw[0];
+            int km      = raw[1];
+            int m       = raw[2];
+            int posM    = km * 1000 + m;
+            return new int[] { section, posM };
+        } else {
+            throw new IllegalArgumentException("Unexpected parsed position length "
+                    + raw.length + " for '" + position + "'");
+        }
+    }
+
+
     // Lägg in i PositionUtils (samma klass som merged-filen)
     public static int[] parse(String pos) {
         // Behåll samma semantik som tidigare (troligen flexibel)

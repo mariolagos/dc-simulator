@@ -11,11 +11,13 @@ public class DcLine implements TwoNodeDevice<Real> {
     private final int toNode;
     private final Real resistance;
     private Real current = Real.ZERO;
+    private String description;
 
     public DcLine(int fromNode, int toNode, Real resistance) {
         this.fromNode = fromNode;
         this.toNode = toNode;
         this.resistance = resistance;
+        this.description = description;
     }
 
     public int getFromNode() {
@@ -70,5 +72,9 @@ public class DcLine implements TwoNodeDevice<Real> {
         yMatrix.addToEntry(j, j, g);
         yMatrix.addToEntry(i, j, -g);
         yMatrix.addToEntry(j, i, -g);
+    }
+
+    public String getDescription() {
+        return description;
     }
 }

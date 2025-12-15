@@ -16,11 +16,22 @@ public class Node<T extends FieldElement<T>> {
     private final Real voltage;
     private final String position;
 
+    // v0.8 additions (MFE)
+    private NodeKind nodeKind;     // SUBSTATION / TRAIN / GROUND
+    private int trackId;           // -1 if not on a track
+    private int positionM;      // numeric coordinate [m] along track
+
     public Node(int id, Real voltage, String position) {
         this.id = id;
         this.voltage = voltage;
         this.position = position;
+
+        // reasonable defaults:
+        this.nodeKind = NodeKind.GROUND;
+        this.trackId = -1;
+        this.positionM = -1;
     }
+
     public Node(int id, Real voltage, String position, String description) {
         this(id, voltage, position);
         this.description = description;
@@ -52,4 +63,29 @@ public class Node<T extends FieldElement<T>> {
     public String getDescription() {
         return description;
     }
+
+    public NodeKind getNodeKind() {
+        return nodeKind;
+    }
+
+    public void setNodeKind(NodeKind nodeKind) {
+        this.nodeKind = nodeKind;
+    }
+
+    public int getTrackId() {
+        return trackId;
+    }
+
+    public void setTrackId(int trackId) {
+        this.trackId = trackId;
+    }
+
+    public int getPositionM() {
+        return positionM;
+    }
+
+    public void setPositionM(int positionM) {
+        this.positionM = positionM;
+    }
+
 }

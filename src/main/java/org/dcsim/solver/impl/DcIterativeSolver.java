@@ -36,12 +36,12 @@ public final class DcIterativeSolver {
     private static final int IT_MAX = 50;
 
     // === Long-table: multi-train + multi-node support ===
-    private static final java.util.LinkedHashMap<String,Integer> sTrainNodeById = new java.util.LinkedHashMap<>();
-    private static final java.util.LinkedHashMap<String,Integer> sProbeNodesByName = new java.util.LinkedHashMap<>();
+    private static final java.util.LinkedHashMap<String, Integer> sTrainNodeById = new java.util.LinkedHashMap<>();
+    private static final java.util.LinkedHashMap<String, Integer> sProbeNodesByName = new java.util.LinkedHashMap<>();
 
-    private static final java.util.LinkedHashMap<String,int[]> sProbeBranches = new java.util.LinkedHashMap<>();
+    private static final java.util.LinkedHashMap<String, int[]> sProbeBranches = new java.util.LinkedHashMap<>();
     // name -> [i, j], resistans hämtas från RByEdge om du har, annars skickas som extra lista
-    private static final java.util.LinkedHashMap<String,Double> sBranchR = new java.util.LinkedHashMap<>();
+    private static final java.util.LinkedHashMap<String, Double> sBranchR = new java.util.LinkedHashMap<>();
 
     private static org.dcsim.export.LongTableWriter w;
 
@@ -49,24 +49,35 @@ public final class DcIterativeSolver {
         sProbeBranches.clear();
         sBranchR.clear();
     }
+
     public static void setProbeBranch(String name, int i, int j, double R_ohm) {
         if (name == null) return;
-        sProbeBranches.put(name, new int[]{i,j});
+        sProbeBranches.put(name, new int[]{i, j});
         sBranchR.put(name, R_ohm);
     }
 
 
-    public static void clearTrainNodes() { sTrainNodeById.clear(); }
+    public static void clearTrainNodes() {
+        sTrainNodeById.clear();
+    }
+
     public static void setTrainNode(String trainId, int nodeIdx) {
         if (trainId != null) sTrainNodeById.put(trainId, nodeIdx);
     }
-    public static void clearProbeNodes() { sProbeNodesByName.clear(); }
+
+    public static void clearProbeNodes() {
+        sProbeNodesByName.clear();
+    }
+
     public static void setProbeNode(String name, int nodeIdx) {
         if (name != null) sProbeNodesByName.put(name, nodeIdx);
     }
 
     // NaN/Inf guard
-    public static boolean finite(double x) { return !Double.isNaN(x) && !Double.isInfinite(x); }
+    public static boolean finite(double x) {
+        return !Double.isNaN(x) && !Double.isInfinite(x);
+    }
+
     /**
      * Backwards-compatible alias some tests still call.
      */
@@ -74,7 +85,7 @@ public final class DcIterativeSolver {
         return solveVoltages(net);
     }
 
-//    private static org.dcsim.export.LongTableWriter longWriter;
+    //    private static org.dcsim.export.LongTableWriter longWriter;
     private static int trainNodeIndex = 4; // fast track – samma nod du loggade
 
     public static void setLongWriter(org.dcsim.export.LongTableWriter w) {
@@ -89,16 +100,24 @@ public final class DcIterativeSolver {
         trainNodeIndex = idx;
     }
 
-    public static double getSimTimeSec() { return simTimeSec; }
+    public static double getSimTimeSec() {
+        return simTimeSec;
+    }
+
+    public static RealVector solveVoltages(DcNet net) {
+        return solveVoltages(net, new ArrayRealVector(net.n()));
+    }
 
     /**
      * Main entry: compute node voltages.
      */
-    public static RealVector solveVoltages(DcNet net) {
+    public static RealVector solveVoltages(DcNet net, RealVector V0) {
         final int n = net.n();
         final int g = net.groundIndex();
 
-        RealVector V = new ArrayRealVector(n); // seed 0V
+        RealVector V = V0.copy(); // warm start
+        System.out.println("[TEST] seed V1=" + V.getEntry(1));
+
         DcSystem base = null;
         RealMatrix G = null;
         RealVector J = null;
@@ -132,7 +151,7 @@ public final class DcIterativeSolver {
                 log("[isl] compBackfeedAllowed   =%s", Arrays.toString(isl.compBackfeedAllowed));
             }
 
-// 4) Trains (vminDefault=0 ⇒ only tr.vmin_V() throttles)
+            // 4) Trains (vminDefault=0 ⇒ only tr.vmin_V() throttles)
             for (TrainData tr : net.trains()) {
                 final int comp = isl.compOfNode[tr.a()];
                 final boolean motorEnabled =
@@ -151,7 +170,7 @@ public final class DcIterativeSolver {
                 double v2 = tr.vDerate2_V();
                 double alphaDerate = deratingFactor(vNode, v1, v2);
 
-                LongTableWriter lw = w;
+                LongTableWriter lw = LongWriter;
                 if (lw != null && finite(simTimeSec)) {
                     lw.signalRow(simTimeSec, "Train", tr.id(),
                             "alpha_derate", alphaDerate, "", "SOLVER", it, null);
@@ -212,25 +231,33 @@ public final class DcIterativeSolver {
 
         // --- TEMP NET-PROBE (efter konvergens) ---
         try {
-            final int nTrain = net.tryIdxOf(4); // din hårdkodade tågnod
-            if (nTrain >= 0 && nTrain < V.getDimension()) {
-                double Vt = V.getEntry(nTrain);  // spänning i tågnoden
-                double It = J.getEntry(nTrain);  // nodström = rhs-komponent
+            LongTableWriter lw = LongWriter;
+            for (TrainData tr : net.trains()) {
+                int a = tr.a();                 // index i V
+                double vTrain = V.getEntry(a);
+                if (!Double.isNaN(vTrain) && !Double.isInfinite(vTrain)) {
+                    lw.signalRow(simTimeSec, "Train", tr.id(), "V_V", vTrain, "V", "NET", null, null);
+                }
+                int nTrain = (int) V.getEntry(a);
+                if (nTrain >= 0 && nTrain < V.getDimension()) {
+                    double Vt = V.getEntry(a);  // spänning i tågnoden
+                    double It = J.getEntry(a);  // nodström = rhs-komponent
 
-                // Teckenkonvention:
-                // Om J definieras som "injektion till nätet" (vanligt i nodanalys),
-                // vill du se positiv last vid motordrift: använd -It.
-                double Pt = Vt * (-It);
+                    // Teckenkonvention:
+                    // Om J definieras som "injektion till nätet" (vanligt i nodanalys),
+                    // vill du se positiv last vid motordrift: använd -It.
+                    double Pt = Vt * (-It);
 
-                System.out.printf("[NET] node=%d V=%.1f V I=%.0f A P=%.0f W%n",
-                        nTrain, Vt, -It, Pt);
-            } else {
-                System.out.printf("[NET] node=%d out of bounds (dim=%d)%n", nTrain, V.getDimension());
+                    System.out.printf("[NET] node=%d V=%.1f V I=%.0f A P=%.0f W%n",
+                            nTrain, Vt, -It, Pt);
+                } else {
+                    System.out.printf("[NET] node=%d out of bounds (dim=%d)%n", nTrain, V.getDimension());
+                }
             }
         } catch (Throwable t) {
             System.out.println("[NET] probe disabled: " + t);
         }
-// --- END PROBE ---
+        // --- END PROBE ---
 
         try {
 
@@ -243,49 +270,52 @@ public final class DcIterativeSolver {
                 for (int idx = 1; idx <= 3; idx++) {
                     final String name = "S" + idx;
                     if (idx < 0 || idx >= V.getDimension()) continue;
-                    final double Vn    = V.getEntry(idx);
-                    final double Iinj  = J.getEntry(idx);  // + till nät
+                    final double Vn = V.getEntry(idx);
+                    final double Iinj = J.getEntry(idx);  // + till nät
                     final double Iload = -Iinj;            // + från nät (last)
-                    final double Pn    = Vn * Iload;
+                    final double Pn = Vn * Iload;
 
-                    if (!Double.isNaN(Vn)    && !Double.isInfinite(Vn))    w.signalRow(t, "Node",  name, "V_V", Vn,    "V", "NET", null, null);
-                    if (!Double.isNaN(Iload) && !Double.isInfinite(Iload)) w.signalRow(t, "Node",  name, "I_A", Iload, "A", "NET", null, null);
-                    if (!Double.isNaN(Pn)    && !Double.isInfinite(Pn))    w.signalRow(t, "Node",  name, "P_W", Pn,    "W", "NET", null, null);
+                    if (!Double.isNaN(Vn) && !Double.isInfinite(Vn))
+                        w.signalRow(t, "Node", name, "V_V", Vn, "V", "NET", null, null);
+                    if (!Double.isNaN(Iload) && !Double.isInfinite(Iload))
+                        w.signalRow(t, "Node", name, "I_A", Iload, "A", "NET", null, null);
+                    if (!Double.isNaN(Pn) && !Double.isInfinite(Pn))
+                        w.signalRow(t, "Node", name, "P_W", Pn, "W", "NET", null, null);
                 }
 
                 // Todo: byta ut de hårdkodade 900 V / 0.1 Ω och node-index mot riktiga data från solverns substation-objekt
                 // --- Substations: SS0,SS1,SS2 -> P_net_W, P_loss_W ---
                 // Temporär “lokal sanning”: SS0→nod 1, SS1→nod 2, SS2→nod 3,
                 // emf = 900 V, Rint = 0.1 ohm (som i application.conf)
-                final String[] subIds    = { "SS0", "SS1", "SS2" };
-                final int[]    subNodes  = { 1, 2, 3 };
-                final double[] subEmf    = { 900.0, 900.0, 900.0 };
-                final double[] subRint   = { 0.1,   0.1,   0.1   };
+                final String[] subIds = {"SS0", "SS1", "SS2"};
+                final int[] subNodes = {1, 2, 3};
+                final double[] subEmf = {900.0, 900.0, 900.0};
+                final double[] subRint = {0.1, 0.1, 0.1};
 
                 for (int k = 0; k < subIds.length; k++) {
                     final String subId = subIds[k];
-                    final int nodeIdx  = subNodes[k];
-                    final double E     = subEmf[k];
-                    final double R     = subRint[k];
+                    final int nodeIdx = subNodes[k];
+                    final double E = subEmf[k];
+                    final double R = subRint[k];
 
                     if (nodeIdx < 0 || nodeIdx >= V.getDimension()) continue;
                     if (R <= 0.0) continue;
 
                     final double Vn = V.getEntry(nodeIdx);   // [V] busspänning S1/S2/S3
                     final double dV = E - Vn;                // [V]
-                    final double I  = dV / R;                // [A] från källa till nät
+                    final double I = dV / R;                // [A] från källa till nät
 
-                    final double pNetW  = Vn * I;            // [W] effekt in i DC-nätet
+                    final double pNetW = Vn * I;            // [W] effekt in i DC-nätet
                     final double pLossW = (dV * dV) / R;     // [W] förlust i internresistans
 
-                    if (!Double.isNaN(Vn)  && !Double.isInfinite(Vn)) {
-                        w.signalRow(t, "Sub", subId, "V_V",  Vn,  "V", "NET", null, null);
+                    if (!Double.isNaN(Vn) && !Double.isInfinite(Vn)) {
+                        w.signalRow(t, "Sub", subId, "V_V", Vn, "V", "NET", null, null);
                     }
-                    if (!Double.isNaN(I)  && !Double.isInfinite(I)) {
-                        w.signalRow(t, "Sub", subId, "I_A",  I,  "A", "NET", null, null);
+                    if (!Double.isNaN(I) && !Double.isInfinite(I)) {
+                        w.signalRow(t, "Sub", subId, "I_A", I, "A", "NET", null, null);
                     }
-                    if (!Double.isNaN(pNetW)  && !Double.isInfinite(pNetW)) {
-                        w.signalRow(t, "Sub", subId, "P_net_W",  pNetW,  "W", "NET", null, null);
+                    if (!Double.isNaN(pNetW) && !Double.isInfinite(pNetW)) {
+                        w.signalRow(t, "Sub", subId, "P_net_W", pNetW, "W", "NET", null, null);
                     }
                     if (!Double.isNaN(pLossW) && !Double.isInfinite(pLossW)) {
                         w.signalRow(t, "Sub", subId, "P_loss_W", pLossW, "W", "NET", null, null);
@@ -295,17 +325,17 @@ public final class DcIterativeSolver {
 
                 // --- Tågnoder: logga spänning, ström och nät-effekt för alla registrerade tåg ---
                 for (var eTrain : sTrainNodeById.entrySet()) {
-                    final String trainId   = eTrain.getKey();
-                    final int    trainNode = eTrain.getValue();
+                    final String trainId = eTrain.getKey();
+                    final int trainNode = eTrain.getValue();
 
                     if (trainNode < 0 || trainNode >= V.getDimension()) {
                         continue;
                     }
 
-                    final double Vt    = V.getEntry(trainNode);
-                    final double Iinj  = J.getEntry(trainNode);  // + till nät
+                    final double Vt = V.getEntry(trainNode);
+                    final double Iinj = J.getEntry(trainNode);  // + till nät
                     final double Iload = -Iinj;                  // + från nät till tåg
-                    final double Pt    = Vt * Iload;             // nät-effekt vid tåget
+                    final double Pt = Vt * Iload;             // nät-effekt vid tåget
 
                     if (finite(Vt)) {
                         w.signalRow(t, "Train", trainId, "V_V",
@@ -330,10 +360,10 @@ public final class DcIterativeSolver {
                     if (i < 0 || j < 0 || i >= V.getDimension() || j >= V.getDimension()) continue;
 
                     final double Vi = V.getEntry(i), Vj = V.getEntry(j);
-                    final double I  = (Vi - Vj) / R;     // riktning i->j
+                    final double I = (Vi - Vj) / R;     // riktning i->j
                     final double Pl = I * I * R;
 
-                    if (finite(I))  w.signalRow(t, "Line", name, "I_A", I,  "A", "NET", null, null);
+                    if (finite(I)) w.signalRow(t, "Line", name, "I_A", I, "A", "NET", null, null);
                     if (finite(Pl)) w.signalRow(t, "Line", name, "P_W", Pl, "W", "NET", null, null);
                 }
 

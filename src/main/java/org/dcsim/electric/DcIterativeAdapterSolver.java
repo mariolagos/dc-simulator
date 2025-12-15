@@ -31,11 +31,46 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
 
     @Override
     public GridResult solve(GridModel model, double timeSec, int timestep) {
+
         // 1) Applicera senaste anchor-requests på TrainLoad
         applyAnchorsToTrainLoads(model);
 
         // 2) Bygg nät via din NetBuilder (utan reflection)
         final DcNet net = buildNetSafe(model, timeSec, timestep);
+
+        // ===== DEBUG: koppla ihop GridModel och DcNet =====
+        if (VERBOSE_ALL) {
+            System.out.println("=== [ADAPT-NODES] nodeIndex from DcNet ===");
+            for (Object nodeObj : model.getNodeIds()) {
+                int nodeId = (nodeObj instanceof Integer)
+                        ? (Integer) nodeObj
+                        : Integer.parseInt(nodeObj.toString());
+                Integer idx = net.tryIdxOf(nodeId);
+                System.out.printf("[ADAPT-NODE] nodeId=%d idx=%s%n",
+                        nodeId, String.valueOf(idx));
+            }
+            System.out.println("=== [ADAPT-NODES] end ===");
+
+            System.out.println("=== [ADAPT-TRAINS] TrainLoad attachment ===");
+            for (Object o : model.getDevices()) {
+                if (o instanceof TrainLoad tl) {
+                    int nodeId = tl.getToNode();     // noden tåget sitter på i GridModel
+                    Integer idx = net.tryIdxOf(nodeId);
+                    System.out.printf("[ADAPT-TRAIN] id=%s nodeId=%d idx=%s%n",
+                            tl.getId(), nodeId, String.valueOf(idx));
+                }
+            }
+            System.out.println("=== [ADAPT-TRAINS] end ===");
+
+            System.out.println("=== [ADAPT-LINES] from DcNet ===");
+            int i = 0;
+            for (var L : net.lines()) {
+                System.out.printf("[ADAPT-LINE] #%d id=%s a=%d b=%d R=%.6f%n",
+                        i++, L.id(), L.a(), L.b(), L.r_ohm());
+            }
+            System.out.println("=== [ADAPT-LINES] end ===");
+        }
+        // ===== SLUT DEBUG =====
 
         // 3) Kör iterativa lösaren (din version tar endast DcNet)
         DcIterativeSolver solver = new DcIterativeSolver();
@@ -73,13 +108,9 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
                 double pTotW = readRequestedPowerRobust(tl);
                 // (denna pTotW kan vara negativ vid regen)
 
-                // Om du vill: sanity-koll
-                // if (!Double.isFinite(pTotW)) pTotW = 0.0;
-
                 res.setLatestDevicePower(devId, Real.fromDouble(pTotW));
             }
             else if (dev instanceof Substation ss) {
-                // klassiska substationformler:
                 double E = ss.getEmf().asDouble();
                 double R = ss.getInternalResistance().asDouble();
                 if (R <= 0.0) continue;

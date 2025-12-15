@@ -296,3 +296,124 @@ Artifacts: CSV-outputs, diffs, loggar.
 
 - **CI-gate:** Alla **MUST**-märkta tester gröna på default-branch (unit + obligatoriska scenarion).
 - **Baseline-diffar:** Inga regressioner utanför dokumenterade toleranser.
+
+
+2. For several ticks (t = 0, 10, 20, 30 s):
+- Read `pos_m` from longtable.
+- Read `(B, D, NEW)` from the log.
+
+### **Checks**
+
+- `delta ≈ pos_m` (within rounding).
+- `NEW == B + delta`.
+
+### **Pass criteria**
+
+- For all checked ticks:
+- `|delta − pos_m| ≤ 1 m`
+- `NEW = B + delta` (integer equality).
+
+
+
+---
+
+## **TP-v0.8-3 — D4–D5 Dynamic topology around the train**
+
+### **Goal**
+
+Verify that the dynamic DC line segments generated around the train node:
+
+1. Reflect the train’s changing absolute position
+2. Are actually installed into the solver via `dynamicLineDevices`
+
+### **Scenario**
+
+- 3S1T baseline.
+- `computeLineResistance` should be configured with an **overlarge test resistance**
+  (e.g. `R_per_m = 0.01`) to make the distance effect easy to observe.
+
+### **Method**
+
+1. Enable topology debug logs:
+
+[TOPO-DEBUG] train node 99: trackId=T posM=P
+[TOPO] track=T pair A(posM=Pa) <-> B(posM=Pb) R=Rij
+[TOPO-TRAIN] (pairs that contain node 99)
+
+
+2. At several ticks (e.g. t = 5, 20, 40):
+- Record `P` from `[TOPO-DEBUG]`.
+- Record all `[TOPO-TRAIN]` edges and their resistances R.
+
+3. Optionally inspect via debugger:
+- `model.getLines()`
+- `model.getDevices()`
+
+### **Checks**
+
+- `P` (train position) must increase consistently with `pos_m`.
+- For any fixed substation node A:
+- The effective distance `|P − Pa|` increases as the train moves away.
+- The logged resistance `Rij` increases correspondingly.
+- No static `Line` devices remain in use while `dynamicLineDevices` is present.
+
+### **Pass criteria**
+
+- At least one substation–train edge shows **strictly increasing R**
+  as the train moves away.
+- The set of dynamic `DcLine` devices exactly matches the `[TOPO]` output.
+
+
+
+---
+
+## **TP-v0.8-4 — D6 End-to-end voltage vs position (A/B comparison)**
+
+### **Goal**
+
+Demonstrate that train node voltage is affected by distance-dependent line resistance.
+
+### **Scenario**
+
+Perform **two** runs of the same 3S1T scenario:
+
+- **Run A:** `computeLineResistance` returns negligible values  
+  (e.g. `R_per_m = 0` or extremely small)
+- **Run B:** `computeLineResistance` returns large values  
+  (e.g. `R_per_m = 0.01`, or larger for testing)
+
+### **Method**
+
+1. Export longtable from both runs.
+2. Extract:
+- `Train1.pos_m`
+- `Train1.V_node_V`
+3. Plot `V_node_V` vs time or vs `pos_m` for both runs together.
+
+### **Checks**
+
+- At the same `pos_m`, Run B should yield **lower** `V_node_V` than Run A.
+- The difference between A and B should **grow** as the train moves farther from
+  feeding substations.
+
+### **Pass criteria**
+
+- A clear monotonic voltage degradation is seen in Run B relative to Run A
+  for sustained periods of similar power demand.
+- `ΔV = V_node_V(A) − V_node_V(B)` increases with distance travelled.
+
+---
+
+## Summary for v0.8 delta
+
+The new dynamic topology requires that six conceptual steps (D1–D6) function
+correctly.  
+The four tests above cover these steps:
+
+- **TP-v0.8-1**: profile → UpdateTrainPower
+- **TP-v0.8-2**: absolute train node position
+- **TP-v0.8-3**: DC line rebuilding & exposure to solver
+- **TP-v0.8-4**: observable voltage-vs-distance behaviour
+
+These tests should be executed whenever major changes to the topology logic,
+node model, or solver integration are made.

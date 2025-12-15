@@ -273,6 +273,106 @@ Development guidelines and internal notes:
 
 Contributions or test cases should reference the relevant documentation and, if possible, include longtable or wide extracts.
 
+# Deltas
+
+---
+
+## Δ v0.8.M0 – Alignment note for roadmap_v0.7
+
+This note clarifies how the original v0.7 roadmap references to “train movement”
+and “multi-section DC line” should be interpreted after the v0.8.M0 design
+update.
+
+### From roadmap_v0.7 to v0.8.M0
+
+The v0.7 roadmap states that v0.8 will introduce:
+
+- train movement along the line,
+- a multi-section DC line,
+- distance-dependent voltage drops.
+
+v0.8.M0 implements these concepts using:
+
+- a **one-node-per-device** electrical topology (substations, trains, ground),
+- **track sections with R_per_m** forming a continuous electrical chain,
+- dynamic node metadata (`nodeKind`, `trackId`, `positionM`) updated each tick,
+- solver-side topology construction:
+  - nodes grouped per track,
+  - sorted by position,
+  - adjacent nodes connected with resistors based on the integrated R_per_m.
+
+Voltage drops therefore follow spatial geometry automatically, without trains
+manually computing distances to all substations.
+
+### What remains valid from the original v0.7 roadmap
+
+All high-level intents remain valid:
+
+- v0.7: clean-up, ramping, stable 3S1T/3S2T baseline,
+- v0.8: train movement + multi-section DC line,
+- v0.9: scenario and project handling + output refinements.
+
+v0.8.M0 should be seen as the **foundational topology step**:
+
+- it provides the electrical node model and line segmentation needed for later
+  v0.8 milestones (converter limits, nearest-train-wins, advanced multi-train
+  scenarios),
+- it does not change the solver API or matrix structure.
+
+Future v0.8.x work will build on this basis to implement converter behaviour,
+local absorption limits, and more advanced spatial interactions.
 
 
+---
+
+## Δ v0.8.M0 – Node Model & Track-Section Interpretation Update
+
+This delta clarifies how v0.8 development should be interpreted in light of the
+updated M0 architecture.
+
+### ✔ What v0.8.M0 delivers
+
+- A physically correct **one-node-per-device** electrical topology.
+- Each train instance obtains a dynamic electrical node whose `positionM` is
+  updated every tick.
+- Track segments now carry **R_per_m**, forming a continuous electrical chain.
+- The solver no longer relies on a static or heuristic topology:
+  - nodes are grouped per track,
+  - sorted by position,
+  - connected as **adjacent electrical neighbours**,
+  - resistances derived from integrating `R_per_m` over intervening sections.
+- Voltage drops therefore follow spatial geometry automatically.
+
+**Meaning:**  
+“Train movement” no longer implies that trains must calculate distances to every
+substation. The solver handles all spatial behaviour via the new node model.
+
+### ✔ How this affects the interpretation of v0.8 items in the roadmap
+
+- “Multi-section DC line” now means a **continuous R_per_m representation**, not
+  discrete electrical nodes every 100 m.
+- “Dynamic electrical node assignment” refers to **per-device node metadata**
+  (`nodeKind`, `trackId`, `positionM`), not topology rewriting.
+- “Voltage drop depends on distance” is implemented via **PathResolver +
+  adjacency stamping**, not per-train distance queries.
+- All solver APIs remain unchanged; only the network assembly logic is enriched.
+
+### ✔ Future work (v0.8.M1 and later)
+
+The following items remain planned exactly as originally stated, but now build on
+the M0 topology foundation:
+
+- Converter-based limits (`I_max`, `V_min`, `V_max`)
+- Local power absorption and nearest-train-wins behaviour
+- Advanced multi-train interactions (3S2T, braking–motoring conflicts)
+- Spatial receptivity limits and return-path extensions
+- Full rewrite of sS.md to integrate the new topology model
+
+### ✔ Backwards compatibility
+
+- All v0.7 behaviour remains valid.
+- Existing solver logic and node index mapping remain unchanged.
+- Only metadata and solver-preparation logic have been extended.
+
+---
 

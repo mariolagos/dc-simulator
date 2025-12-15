@@ -291,3 +291,82 @@ Bug reports, improvement ideas, and test case suggestions are best driven by:
 
 - explicit references to `softwareSpecification.md` and `testPlan_updated.md`,
 - example longtable extracts showing the observed behavior.
+
+# Deltas
+# Delta_v0.8
+## v0.8 (delta): Node model and track section integration
+
+This release introduces a physically consistent “one electrical node per device”
+model for the DC network, implemented with minimal changes to the existing
+GridModel, GridModelActor and solver architecture.
+
+### Summary of changes
+
+- **One node per device**  
+  Each substation and each active train instance now has its own electrical
+  node. A single ground node remains the solver reference.
+
+- **Node metadata extended**  
+  All nodes now carry:
+  - `nodeKind` (`SUBSTATION`, `TRAIN`, `GROUND`)
+  - `trackId` (nullable)
+  - `positionM` (nullable; meters along the track)
+
+  These fields are used only for solver preparation and do not affect the
+  existing node index or matrix structure.
+
+- **Track sections enhanced (R_per_m)**  
+  The existing DC line/segment model is extended with resistance per meter.  
+  Track segments form a continuous chain along each line.
+
+- **Line resistance computed from geometry**  
+  A new utility computes electrical distance between two positions by
+  integrating `R_per_m` over the relevant track sections.
+
+- **Adjacency built dynamically**  
+  Before each solver call:
+  1. Substation and train nodes are grouped by `trackId`.
+  2. Nodes on each track are sorted by `positionM`.
+  3. Consecutive nodes are connected with a resistor whose value derives from
+     the track geometry.
+
+  No other solver logic is changed.
+
+### No breaking API changes
+
+- Node indices remain stable.
+- Solver interface and equation structure remain unchanged.
+- GridModelActor continues to assemble the DC network, now with position-based
+  line resistances.
+
+### Impact for developers
+
+- Configuration files must now provide `R_per_m` for each track section.
+- Substation definitions must include their position along the line.
+- Train actors must report their current position to GridModelActor every tick.
+
+This delta enables a physically accurate multi-node DC topology without
+introducing additional matrix nodes or changing the solver API.
+
+### v0.8 – Per-tick flow (short ASCII)
+
+1. Train update
+  - TrainActor får Tick(t)
+  - uppdaterar kinematik och beräknar P_net_W(t) + positionM(t)
+
+2. Node update
+  - TrainActor skickar TrainState(t) till GridModelActor
+  - GridModelActor uppdaterar tågnodens metadata i GridModel  
+    (`nodeKind=TRAIN`, `trackId`, `positionM`)
+
+3. Network assembly + solve
+  - GridModelActor hämtar alla aktiva noder, grupperar per trackId
+  - sorterar per positionM och kopplar intilliggande noder  
+    med R_ij från R_per_m-track-sektionerna (via PathResolver)
+  - stämplar linjer, substationer och tåg in i Solver och kör solve()
+
+4. Results back to trains
+  - Solver returnerar nodspänningar/strömmar
+  - GridModelActor skickar TrainResult(t) (t.ex. V_V, P_net_W) till varje TrainActor
+  - TrainActor uppdaterar intern state och logg
+

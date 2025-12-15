@@ -22,7 +22,7 @@ public class TrainLoad implements Device<Real> {
 
     private final String id;
     private int fromNode;
-    private final int toNode;
+    private int toNode;
 
     // Requested components (W)
     private Real requestedMotoringPower  = Real.ZERO;   // >= 0
@@ -133,6 +133,7 @@ public class TrainLoad implements Device<Real> {
 
     /** Allow topology to move train along the line later. */
     public void setFromNode(int newFromNode) { this.fromNode = newFromNode; }
+    public void setToNode(int newToNode) { this.toNode = newToNode; }
 
     /** Set requested motoring/braking/auxiliary in kW (braking already negative). */
     public void setRequestedComponents(double motoringKW, double brakingKW, double auxiliaryKW) {
@@ -339,4 +340,5 @@ public class TrainLoad implements Device<Real> {
     // Optional: helpers for debug reset/inspect
     public static void debugResetStampCounter() { DEBUG_STAMP_COUNT.set(0); }
     public static int  debugGetStampCount()     { return DEBUG_STAMP_COUNT.get(); }
+
 }

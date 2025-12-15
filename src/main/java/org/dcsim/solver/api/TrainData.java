@@ -21,4 +21,13 @@ public record TrainData(
         return 600;
     }
 
+    public int a() {
+        return a;
+    }
+
+    public int b() {
+        return b;
+    }
+
+
 }

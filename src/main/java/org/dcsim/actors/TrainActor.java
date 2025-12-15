@@ -155,8 +155,12 @@ public class TrainActor extends AbstractBehavior<TrainActor.Command> {
 
         grid.tell(new GridModelActor.UpdateTrainPower(
                 trainId,
-                motKW, brkKW, auxKWout,   // NOTE: brkKW <= 0 for regen
-                xMeters, vMS
+                motKW,
+                brkKW,
+                auxKW,
+                lastPosM,
+                vMS,
+                localT  // samma t som du loggar pos_m med
         ));
 
         try {

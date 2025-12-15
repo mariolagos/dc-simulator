@@ -1,5 +1,74 @@
 # Changelog
 
+## v0.8 — Node model & track-section topology
+
+**Status:** Inception → M0 implementation underway  
+**Focus:** Dynamic power nodes, line segmentation, position-based load sharing
+
+---
+
+### Implemented in v0.8.M0 (delta)
+
+#### Added
+- Introduced a physically correct **one node per device** model (substations, trains, ground).
+- Added node metadata fields:
+  - `nodeKind` (`SUBSTATION`, `TRAIN`, `GROUND`)
+  - `trackId`
+  - `positionM` (meters along the line)
+- Added **R_per_m** to track-section configuration and the corresponding segment model.
+- Added **PathResolver**: computes line resistance between two positions using the underlying
+  track sections.
+- Added dynamic adjacency building in GridModelActor:
+  - active nodes are grouped by track,
+  - sorted by position,
+  - consecutive nodes are connected with resistors derived from track geometry.
+
+#### Changed
+- Network assembly now uses **geometric distance** between nodes to build the DC matrix.
+- Train nodes are created dynamically when trains enter the line and removed when they leave.
+- Train node position is updated each tick to maintain correct impedance calculations.
+
+#### Not changed (compatibility preserved)
+- Solver API and matrix structure remain unchanged.
+- Node indices and indexing logic remain intact.
+- Internal models for substations and trains (EMF, internal resistance, Norton equivalents)
+  remain unchanged.
+
+#### Configuration impact
+- Track sections must now include an `R_per_m` field.
+- Substations must specify an explicit position along the line.
+
+---
+
+### Planned (high priority, later v0.8 milestones)
+
+*(These items originate from the earlier planning notes and remain fully valid.
+Nothing removed.)*
+
+- Introduce **dynamic electrical nodes** following train position  
+  *(partially fulfilled in v0.8.M0 for topology; future work involves richer metadata + events).*
+- Implement **segmented line model** with distributed impedances  
+  *(v0.8.M0 covers electrical R-per-meter; spatial return modelling remains future work).*
+- Replace heuristic derating with **converter-based limits**  
+  (`I_max`, `V_min`, `V_max`, ramps, absorption constraints).
+- Enable physically correct **“nearest-train-wins”** current distribution.
+- Redesign solver stamping for moving topology  
+  *(M0 adds adjacency stamping; further work includes incremental stamping and caching).*
+- Rewrite and integrate **softwareSpecification.md** for v0.8 architecture.
+
+---
+
+### Planned (secondary)
+
+- Add test scenarios:
+  - Dynamic **3S2T**
+  - **Multi-train acceleration conflict**
+  - **Regenerative absorption edge cases** with spatial separation
+- Performance improvements for multi-hour simulations with >50 trains.
+- Optional extension: **rail-return modelling**.
+
+---
+
 ## [v0.7] – Stabiliserad prototyp (2025-11-20)
 
 **Status**: Completed / Frozen

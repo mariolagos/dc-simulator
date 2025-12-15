@@ -7,6 +7,11 @@ import org.dcsim.math.Real;
 import org.dcsim.utils.PositionUtils;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class GridModelLoader {
 
@@ -91,10 +96,21 @@ public class GridModelLoader {
         for (var nodeConf : nodeList) {
             int id = nodeConf.getInt("id");
             String position = nodeConf.getString("position");
+            int[] parsedPosition = PositionUtils.parseFlexible(position);
             Real voltage = nodeConf.hasPath("voltage")
                     ? Real.fromDouble(nodeConf.getDouble("voltage"))
                     : Real.ZERO;
             Node node = new Node(id, voltage, position);
+            if ("GND".equals(position)) {
+                node.setNodeKind(NodeKind.GROUND);
+                node.setTrackId(-1);
+                node.setPositionM(-1);
+            } else {
+                int[] secPos = PositionUtils.parseSectionAndMeters(position);
+                node.setNodeKind(NodeKind.SUBSTATION); // TRAIN fixar vi senare via anchorNodeId
+                node.setTrackId(secPos[0]);
+                node.setPositionM(secPos[1]);
+            }
             model.addNode(node);
         }
 
@@ -214,4 +230,6 @@ public class GridModelLoader {
 
         return model;
     }
+
+
 }

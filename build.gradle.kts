@@ -65,6 +65,9 @@ dependencies {
 
     testImplementation(sourceSets["testFixtures"].output)
 
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.mockito:mockito-core:5.12.0")
+
 // (valfritt) om du även skriver/parsar CSV någonstans
 // implementation("org.apache.commons:commons-csv:1.10.0")
 }

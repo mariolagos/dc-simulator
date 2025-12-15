@@ -17,6 +17,10 @@ public class GridModel<F extends FieldElement<F>> {
 
     // --- Devices (Real-baserade i din kodbas) ---
     private final List<Device<Real>> devices = new ArrayList<>();
+    private final List<Substation> substations = new ArrayList<>();
+
+    // v0.8: dynamic line devices (rebuilt each electrical solve tick)
+    private List<Device<Real>> dynamicLineDevices = Collections.emptyList();
 
     private final Map<String, List<PowerPoint>> powerProfiles = new HashMap<>();
     private final List<GridResult> results = new ArrayList<>();
@@ -89,18 +93,72 @@ public class GridModel<F extends FieldElement<F>> {
     public List<Node<F>> getNodes() { return Collections.unmodifiableList(nodes); }
 
     // -------- Devices --------
-    public void addDevice(Device<Real> device) {
-        devices.add(device);
-        if (device instanceof Substation) recomputeBackfeedFlag();
+//    public void addDevice(Device<Real> device) {
+//        devices.add(device);
+//        if (device instanceof Substation) recomputeBackfeedFlag();
+//    }
+    public void addDevice(Device<Real> d) {
+        devices.add(d); // <-- alltid
+        if (d instanceof Substation) {
+            substations.add((Substation) d);
+            // om du behöver:
+            // recomputeBackfeedFlag();
+        }
     }
+
+
     public Device<Real> getDevice(String id) {
         return devices.stream().filter(d -> d.getId().equals(id))
                 .findFirst().orElseThrow(() -> new IllegalArgumentException("No device with id " + id));
     }
-    public List<Device<Real>> getDevices() { return devices; }
-    public List<Device<Real>> getLines() { return devices.stream().filter(d -> d instanceof Line).collect(Collectors.toList()); }
+
+    public List<Device<Real>> getDevices() {
+        if (dynamicLineDevices == null || dynamicLineDevices.isEmpty()) {
+            return devices;
+        }
+
+        // v0.8: static devices + dynamic lines
+        List<Device<Real>> merged = new ArrayList<>(devices.size() + dynamicLineDevices.size());
+        merged.addAll(devices);
+        merged.addAll(dynamicLineDevices);
+        return merged;
+    }
+
+    public List<Device<Real>> getLines() {
+        if (dynamicLineDevices != null && !dynamicLineDevices.isEmpty()) {
+            return dynamicLineDevices.stream()
+                    .filter(d -> d instanceof Line)
+                    .collect(Collectors.toList());
+        }
+
+        return devices.stream()
+                .filter(d -> d instanceof Line)
+                .collect(Collectors.toList());
+    }
+
+//    public List<Substation> getSubstations() {
+//        return devices.stream().filter(d -> d instanceof Substation).map(d -> (Substation)d).collect(Collectors.toList());
+//    }
+
+    public void addSubstation(Substation s) {
+        substations.add(s);
+    }
+
     public List<Substation> getSubstations() {
-        return devices.stream().filter(d -> d instanceof Substation).map(d -> (Substation)d).collect(Collectors.toList());
+        return substations;
+    }
+
+    public void setDynamicLineDevices(List<Device<Real>> devices) {
+        if (devices == null || devices.isEmpty()) {
+            this.dynamicLineDevices = Collections.emptyList();
+        } else {
+            this.dynamicLineDevices = devices;
+        }
+    }
+
+    // v0.8: dynamic per-tick line devices (DcLine)
+    public List<Device<Real>> getDynamicLineDevices() {
+        return dynamicLineDevices != null ? dynamicLineDevices : Collections.emptyList();
     }
 
     // -------- Power profiles / results --------

@@ -31,30 +31,40 @@ The milestone plan converts the high-level roadmap into concrete, deliverable st
 ---------------------------------------------------------------------
 
 # v0.8 — Train Movement + Multi-Section DC Line
-**Goal:** Introduce physical realism: trains move along the network, and voltage drops depend on distance.
+**Goal:** Introduce physically correct electrical topology: trains move along the network, and voltage drops follow distance via R_per_m track sections.
 
-## Scope
-- Dynamic electrical node assignment: train node follows position
-- Helper: getNearestElectricalSection(position)
-- Basic S–D–T hooks (optional): mapping position → track section
-- Segmented DC line:
-    - Multiple line segments with R_per_km
-    - Each substation assigned to physical coordinate
-    - Train calculates actual distance to each substation
-- Solver update:
-    - Replace hardcoded nodes (e.g., “4”) with dynamic node IDs
-    - Multi-section voltage drop calculation
+## Scope (updated for v0.8.M0)
+- Dynamic electrical nodes:
+  - Train node is created when entering the simulation and removed when leaving.
+  - Train node carries `positionM` which is updated every tick.
+- Track-section-based DC line:
+  - Multiple contiguous track sections with `R_per_m`.
+  - Each substation assigned a physical coordinate (meters along track).
+  - Electrical distance between nodes computed via integration of `R_per_m`.
+- Topology construction:
+  - Nodes grouped by track and sorted by `positionM`.
+  - Only adjacent nodes are connected in solver stamping.
+- Solver update (MFE):
+  - Replace fixed node IDs with dynamic per-device nodes.
+  - Use PathResolver to compute resistances between adjacent nodes.
 - Logging:
-    - Train.node_id
-    - Section IDs
-    - Distance-based voltage effects
+  - Log `node_id`, `positionM`.
+  - Log segment boundaries / track section identifiers (optional).
+  - Wide-files reflect dynamic node positions.
 
-## Acceptance Criteria
-- Train voltage follows physically correct behaviour when moving away/toward feed points
-- A train at different positions produces different voltage drops for the same power
-- 3S2T scenario shows correct asymmetry depending on train positions
-- Wide-files include node_id and section_id
-- All tests from v0.7 remain valid
+## Out-of-scope for M0 (future v0.8.x milestones)
+- Converter-based limits (I_max, V_min, V_max).
+- Full regenerative handling and local absorption constraints.
+- “Nearest-train-wins” current distribution behaviour (requires converter model).
+- Rail-return / dual-path extensions.
+
+## Acceptance Criteria (updated)
+- Voltage at a train varies correctly as its `positionM` changes along the line.
+- A train at different positions yields different voltage drops for the same power.
+- 3S2T-like scenarios show correct asymmetry based on spatial configuration.
+- Wide-files include train node IDs and updated positions.
+- All v0.7 tests pass unchanged, except where behaviour is intentionally more physical.
+
 
 ---------------------------------------------------------------------
 

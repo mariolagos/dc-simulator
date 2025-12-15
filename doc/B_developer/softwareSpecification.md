@@ -300,3 +300,291 @@ Parameters are grouped by subsystem.
 | 2025-11-14 | v1.3    | Section 4 fully rewritten to describe node-to-node Symphony model and critical boundaries. Added node-to-node Symphony DC model (§4.1-4.6) and Critical Boundaries (§4.7). All sections retained under MFE + Trace policy. |
 | 2025-10-09 | v1.2    | Architecture definition update                                                                                                                                                                                             |
 | 2025-09-01 | v1.1    | Initial integration                                                                                                                                                                                                        |
+
+# Deltas
+
+## Delta_v0.8
+
+Algorithm:
+
+1. Order positions: `a = min(posA, posB)`, `b = max(posA, posB)`.
+2. For each segment:
+  - Compute overlap between `[a, b]` and `[seg.startM, seg.endM]`.
+  - If overlap > 0:
+    - accumulate `seg.rPerMeter * overlapLength`.
+3. Return the accumulated resistance in Ohm.
+
+The utility has no knowledge of nodes or topology.
+
+---
+
+#### 2.4 Solver preparation: adjacency and stamping
+
+During network assembly (before invoking the DC solver):
+
+1. Collect all active nodes where `nodeKind` is `SUBSTATION` or `TRAIN`.
+
+2. Group nodes by `trackId`.
+
+3. For each track:
+  - Sort its nodes by `positionM`.
+
+4. For each consecutive node pair `(node_i, node_j)`:
+  - Use the PathResolver to compute  
+    `R_ij = lineResistance(trackSegments(trackId), node_i.positionM, node_j.positionM)`.
+  - Stamp a resistor between the two nodes using the existing solver API  
+    (e.g. via a method like `stampResistor(i, j, R_ij)`).
+
+No changes are made to how substations or trains contribute their internal
+equivalents (EMF, internal resistance, Norton equivalents, etc.).
+
+The only new responsibility in the solver assembly is building neighbour pairs
+along the track and computing their line resistances.
+
+---
+
+#### 2.5 Train node lifecycle
+
+Where the simulator currently manages train activation:
+
+- On creation:
+  - set `nodeKind = TRAIN`,
+  - assign `trackId`,
+  - assign initial `positionM`.
+
+- On each time step:
+  - update `positionM` from the train’s current location.
+
+- On removal:
+  - deactivate or delete the node using existing mechanisms
+  - optionally clear `trackId` and `positionM`.
+
+---
+
+#### 2.6 Substation node initialisation
+
+During configuration loading:
+
+- `nodeKind = SUBSTATION`
+- `trackId = <line id>`
+- `positionM = <configured position>`
+
+No dynamic behaviour.
+
+---
+
+#### 2.7 Ground node initialisation
+
+The ground/reference node is initialised once:
+
+- `nodeKind = GROUND`
+- `trackId = null`
+- `positionM = null`
+
+Used only as solver reference; never updated.
+
+---
+
+#### Result
+
+With these minimal deltas:
+
+- the simulator now supports one-node-per-device modelling,
+- electrical distance between nodes is derived from R-per-meter track sections,
+- GridModelActor builds physically correct adjacency per time step,
+- the solver remains untouched and continues to operate on the same matrix API.
+
+This completes the v0.8.M0 specification for the node model and track section
+integration.
+
+### v0.8.M0 topology snapshot (ASCII)
+
+          (DC line, modelled as chained R_per_m sections)
+
+pos=0m                pos=5km              pos=12km             pos=20km
+|                     |                    |                    |
+v                     v                    v                    v
+
+[Sub A]----R----[Train 1]----R----[Sub B]----R----[Train 2]----R----[Sub C]
+nodeKind=SUBSTATION        nodeKind=TRAIN          nodeKind=TRAIN
+trackId=Line1              trackId=Line1           trackId=Line1
+positionM=0                positionM≈5000          positionM≈12000
+
+Where:
+
+- Each device (Sub A, Train 1, Sub B, Train 2, Sub C) has its own electrical node.
+- The R between neighbours is computed by integrating R_per_m over the sections
+  between their positions:
+
+        R(A, Train1)   = ∫ R_per_m dx over [0 m, 5 km]
+        R(Train1, B)   = ∫ R_per_m dx over [5 km, 12 km]
+        R(B, Train2)   = ∫ R_per_m dx over [12 km, ...]
+        ...
+
+- Only **adjacent nodes along the track** are connected in the solver.
+
+A single ground node provides the reference potential:
+
+             [Sub A]----R----[Train 1]----R----[Sub B]----R----[Train 2]----R----[Sub C]
+                |               |              |              |                 |
+                +---------------+--------------+--------------+-----------------+
+                                              |
+                                            [GND]
+                                nodeKind=GROUND, no positionM
+
+Key points:
+
+- Trains move by updating `positionM`; topology (who is neighbour to whom) is
+  rebuilt each tick before solving.
+- The solver API does not change; only the way we assemble the resistive links
+  between node indices is updated.
+
+### v0.8.M0 – per-tick sequence (Train movement + DC solve)
+
+Participants:
+
+TrainActor        – one per train, owns kinematic state and power profile
+GridModelActor    – owns GridModel, builds topology, calls Solver
+GridModel         – holds nodes (incl. nodeKind, trackId, positionM) and track sections
+PathResolver      – utility: integrates R_per_m between two positions
+Solver            – DC network solver (matrix build + solve)
+
+Tick t:
+
+### v0.8.M0 – Per-tick sequence (ASCII)
+
+Legend:
+- TA  = TrainActor
+- GMA = GridModelActor
+- GM  = GridModel
+- PR  = PathResolver
+- SOL = Solver
+
+1. Scheduler → TA  
+   TA får Tick(t), uppdaterar kinematik och beräknar P_net(t) + positionM(t).
+
+2. TA → GMA : TrainState(t)  
+   Innehåller minst (trainId, P_net_W, positionM).  
+   GMA uppdaterar motsvarande nod i GM:
+  - nodeKind = TRAIN
+  - trackId  = <line id>
+  - positionM = positionM(t)
+
+3. Scheduler → GMA : SolveTick(t)  
+   GMA startar nätverksbyggnad för tid t.
+
+4. GMA → GM : getActiveNodes()  
+   Hämtar alla noder med nodeKind = SUBSTATION eller TRAIN.
+
+5. GMA → GM : groupBy(trackId) + sortBy(positionM)  
+   För varje trackId får GMA en ordnad lista av noder längs banan.
+
+6. För varje trackId, för varje intilliggande nodpar (i, j):  
+   6a. GMA → PR : lineResistance(pos_i, pos_j, trackSections(trackId))  
+   PR integrerar R_per_m över sträckan mellan pos_i och pos_j  
+   och returnerar R_ij (Ohm).  
+   6b. GMA → SOL : stampResistor(node_i, node_j, R_ij)
+
+7. GMA → SOL : stampSources(...)  
+   GMA stämplar substationers EMF + interna R, samt tågens
+   Norton/Thévenin-ekvivalenter, via befintliga solver-anrop.
+
+8. SOL → GMA : solve()  
+   SOL bygger matrisen, löser nätet och returnerar nodspänningar, strömmar osv.
+
+9. GMA → TA : TrainResult(t)  
+   För varje tåg skickas t.ex. V_V(t), P_net_W(t) tillbaka.  
+   TA uppdaterar sina interna tillstånd och loggar vid behov.
+
+
+Notes:
+
+- Movement is represented solely by changes in node.positionM for TRAIN nodes.
+- GridModelActor rebuilds adjacency from positions on each SolveTick.
+- PathResolver is pure: positionA + positionB + segments → R_ij.
+- Solver API is unchanged; only the stamping phase uses the new topology logic.
+
+### v0.8.M0 – Debug chain for dynamic node position and line resistance
+
+Goal: Verify that train motion along the track translates into a position-dependent
+line resistance and, ultimately, a change in train node voltage.
+
+We break this into explicit checkpoints:
+
+**D1 – Train profile → `pos_m(t)`**
+
+- Source: `TrainActor`
+- Signal: `pos_m` in longtable (`Train/<id> pos_m`).
+- Expected:
+    - `pos_m(t)` is non-decreasing and matches the kinematics profile.
+    - When the train has not departed yet, `pos_m(t) ≈ 0`.
+
+**D2 – TrainActor → GridModelActor (`UpdateTrainPower`)**
+
+- Source: `TrainActor` sends `UpdateTrainPower(trainId, ..., positionMeters, speedMS)`.
+- Expected:
+    - For each tick `t` where the train is active, GMA receives one `UpdateTrainPower`
+      with `msg.trainId = trainId` and `msg.positionMeters ≈ pos_m(t)` (up to rounding).
+    - No unexpected `null` positions once the train has departed.
+
+**D3 – GMA updates electrical node coordinates**
+
+- Source: `GridModelActor.onUpdateTrainPower`
+- Operation:
+    - Lookup anchor train node (currently node 99).
+    - Compute absolute position:
+        - `basePosM(trainId)` = initial node position at profile start.
+        - `node.positionM = basePosM(trainId) + floor(msg.positionMeters)`.
+- Expected:
+    - Debug log shows:
+        - `trainNode=99 ... moved from posM=... to posM=... (base=..., delta=...)`.
+    - Invariant per tick:
+        - `node99.positionM(t) ≈ basePosM + pos_m(t)`.
+
+**D4 – Topology rebuild (`rebuildDynamicLineTopology`)**
+
+- Source: `GridModelActor.onSolveTick`
+- Operation:
+    - Group all non-GROUND nodes by `trackId`.
+    - For each track:
+        - Sort nodes by `positionM`.
+        - Connect adjacent nodes with `DcLine(fromId, toId, R_ij)`.
+    - Store result in `model.setDynamicLineDevices(...)`.
+- Expected:
+    - Debug log each tick:
+        - `[TOPO-DEBUG] train node 99: trackId=..., posM=...`.
+        - `[TOPO] track=<id> pair A(posM=...) <-> B(posM=...) R=...`.
+        - `[TOPO-TRAIN]` lines where either `A` or `B` is node 99.
+    - Invariant:
+        - If `node99.positionM` increases away from a substation node,
+          then the corresponding `R(track, substation, 99)` increases
+          according to `computeLineResistance`.
+
+**D5 – GridModel exposes dynamic lines to the solver**
+
+- Source: `GridModel.getDevices()` / `GridModel.getLines()`.
+- Operation:
+    - If `dynamicLineDevices` is non-empty:
+        - `getDevices()` returns:
+            - All non-line devices (substations, trains, etc.) from the static list, plus
+            - all dynamic `DcLine` devices.
+        - `getLines()` returns only the dynamic lines.
+- Expected:
+    - No static `Line` devices are used while `dynamicLineDevices` is non-empty.
+    - The solver sees exactly the same set of lines as logged by `[TOPO]`.
+
+**D6 – Solver stamping and voltages**
+
+- Source: `DcIterativeSolver` (via `DcIterativeAdapterSolver`).
+- Operation:
+    - Build `DcNet` from `GridModel` devices (including dynamic `DcLine`s).
+    - Stamp each `DcLine` as a resistor `R_ij` between its two nodes.
+    - Solve for node voltages.
+- Expected (qualitative, 3S1T):
+    - For a fixed train power:
+        - Moving the train away from the central substation towards the end substations
+          increases effective line resistance seen by the train.
+        - Train node voltage `Train<V_node_V>` decreases as distance to feeding
+          substations increases (all else equal).
+    - With an exaggerated `R_per_m` in `computeLineResistance`, the voltage
+      drop should be clearly visible in longtable plots.

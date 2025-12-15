@@ -1,5 +1,6 @@
 package org.dcsim.solver.build;
 
+import org.dcsim.electric.DcLine;
 import org.dcsim.electric.Device;
 import org.dcsim.electric.GridModel;
 import org.dcsim.electric.Line;
@@ -32,7 +33,7 @@ import static org.dcsim.solver.impl.DcDebug.VERBOSE;
 public final class NetBuilder {
     public static volatile boolean VERBOSE = false;
 
-    private NetBuilder() {}
+    public NetBuilder() {}
 
     // Slå på för mer feedback vid "ignorera okända noder"
     private static final boolean WARN_UNKNOWN_NODE = false;
@@ -67,23 +68,60 @@ public final class NetBuilder {
         final List<SubstationData> substations = new ArrayList<>();
         final List<TrainData> trains = new ArrayList<>();
 
-        for (Device<Real> d : model.getDevices()) {
+        // v0.8: choose which line devices to use
+        List<Device<Real>> lineDevices;
+        if (!model.getDynamicLineDevices().isEmpty()) {
+            // dynamic topology present -> use those only
+            lineDevices = new ArrayList<>(model.getDynamicLineDevices());
+            System.out.println("[ADAPT] Using DYNAMIC line devices: n=" + lineDevices.size());
+        } else {
+            // legacy behaviour: use static lines
+            lineDevices = new ArrayList<>(model.getLines());
+            System.out.println("[ADAPT] Using STATIC line devices: n=" + lineDevices.size());
+        }
+
+        for (Device<Real> d : lineDevices) {
             if (d instanceof Line ln) {
-                final Integer a = idxById.get(ln.getFromNode());
-                final Integer b = idxById.get(ln.getToNode());
+                Line l = (Line) d;
+                int fromId = l.getFromNode();
+                int toId = l.getToNode();
+                Integer a = idxById.get(fromId);
+                Integer b = idxById.get(toId);
                 if (a == null || b == null) {
-                    if (WARN_UNKNOWN_NODE) {
-                        System.out.println("[NetBuilder] Skip Line " + ln.getId()
-                                + " due to unknown node(s) " + ln.getFromNode() + " or " + ln.getToNode());
-                    }
+                    System.out.printf("[ADAPT-LINE] SKIP static %s from=%d to=%d (idx a=%s b=%s)%n",
+                            l.getDescription(), fromId, toId, a, b);
                     continue;
                 }
-                final double R = safe(ln.getResistance());
-                if (!(R > 0.0))
-                    throw new IllegalArgumentException("Line " + ln.getId() + " has non-positive resistance: " + R);
-                lines.add(new LineData(ln.getId(), a, b, R));
 
-            } else if (d instanceof Substation ss) {
+                double R = l.getResistance().asDouble();
+                System.out.printf("[ADAPT-LINE] static %s a=%d b=%d R=%.6f%n",
+                        l.getDescription(), a, b, R);
+
+                lines.add(new LineData(l.getId(), a, b, R));
+
+            } else if (d instanceof DcLine) {
+                DcLine l = (DcLine) d;
+                int fromId = l.getFromNode();
+                int toId = l.getToNode();
+                Integer a = idxById.get(fromId);
+                Integer b = idxById.get(toId);
+                if (a == null || b == null) {
+                    System.out.printf("[ADAPT-DCLINE] SKIP dynamic %s from=%d to=%d (idx a=%s b=%s)%n",
+                            l.getDescription(), fromId, toId, a, b);
+                    continue;
+                }
+
+                double R = l.getResistance().asDouble();
+                System.out.printf("[ADAPT-DCLINE] dynamic %s a=%d b=%d R=%.6f%n",
+                        l.getDescription(), a, b, R);
+
+                lines.add(new LineData(l.getId(), a, b, R));
+            }
+        }
+
+        for (Device<Real> d : model.getDevices()) {
+
+            if (d instanceof Substation ss) {
                 final Integer a = idxById.get(ss.getFromNode());
                 final Integer b = idxById.get(ss.getToNode());
                 if (a == null || b == null) {
@@ -102,7 +140,6 @@ public final class NetBuilder {
                 if (!Double.isFinite(E))
                     throw new IllegalArgumentException("Substation " + ss.getId() + " has non-finite EMF: " + E);
 
-                // Har din SubstationData fler fält (t.ex. current_max)? Lägg till här om/när det behövs.
                 substations.add(new SubstationData(ss.getId(), a, b, E, R, allow));
 
             } else if (d instanceof TrainLoad tr) {
@@ -116,12 +153,11 @@ public final class NetBuilder {
                     continue;
                 }
 
-                final double reqW  = safe(tr.getRequestedPower()); // +W = motordrift, −W = regen
+                final double reqW  = safe(tr.getRequestedPower());
                 final double imaxA = safe(tr.getMaxCurrent());
                 final double cutV  = safe(tr.getCutoffVoltage());
                 final double vmaxV = safe(tr.getMaxVoltage());
 
-                // Rimlighetskoll – imax kan vara 0 (obegränsad i solve), men varna om negativ:
                 if (imaxA < 0.0)
                     throw new IllegalArgumentException("Train " + tr.getId() + " has negative Imax: " + imaxA);
                 if (!(vmaxV > 0.0))
@@ -129,10 +165,12 @@ public final class NetBuilder {
                 if (cutV < 0.0)
                     throw new IllegalArgumentException("Train " + tr.getId() + " has negative cutoff voltage: " + cutV);
 
-                // OBS: Stämmer denna signatur med din TrainData? Om inte, ändra ordningen/fälten.
                 trains.add(new TrainData(tr.getId(), a, b, reqW, imaxA, cutV, vmaxV));
             }
         }
+
+        System.out.printf("[NetBuilder] substations=%d, trains=%d, lines=%d%n",
+                substations.size(), trains.size(), lines.size());
 
         DcNet net = new DcNet(
                 n,
