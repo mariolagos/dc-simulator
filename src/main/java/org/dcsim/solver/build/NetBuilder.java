@@ -139,6 +139,8 @@ public final class NetBuilder {
                     throw new IllegalArgumentException("Substation " + ss.getId() + " has non-positive internal R: " + R);
                 if (!Double.isFinite(E))
                     throw new IllegalArgumentException("Substation " + ss.getId() + " has non-finite EMF: " + E);
+                if (a == b)
+                    throw new IllegalArgumentException("Substation " + ss.getId() + " must have distinct terminals");
 
                 substations.add(new SubstationData(ss.getId(), a, b, E, R, allow));
 
