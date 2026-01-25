@@ -85,6 +85,11 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     // v0.8: base position per train (absolute track coordinate where profile position=0)
     private final Map<String, Integer> trainBasePosM = new HashMap<>();
 
+    private Integer lastTrainPosM = null;
+
+    private long topoSeq = 0;
+
+
     /**
      * Inject long writer once from DcSimApp (before first SolveTick).
      */
@@ -143,6 +148,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
             this.speedMS = speedMS;
             this.timeSec = timeSec;
         }
+
 
         // backwards-compatible ctor (if du behöver den någonstans)
         public UpdateTrainPower(String trainId,
@@ -479,24 +485,49 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         writer.setKnownTrains(knownTrainIds);
         ensureTrainDeviceInternal(msg.trainId);
 
+        double motKW = msg.motoringKW;
+        double brkKW = msg.brakingKW;
+        double auxKW = msg.auxiliaryKW;
+
+        // exempel-konvention: positiv reqW = traction, negativ reqW = regen
+        double reqW = 1000.0 * (motKW - brkKW - auxKW);
+
+        System.out.println(
+                "[TA-IN ] msg.t=" + msg.timeSec
+                        + " train=" + msg.trainId
+                        + " posM=" + msg.positionMeters
+                        + " motKW=" + motKW
+                        + " brkKW=" + brkKW
+                        + " auxKW=" + auxKW
+                        + " => reqW=" + reqW
+        );
+
         if (msg.positionMeters != null) {
             Node<Real> trainNode = model.getNodeById(anchorNodeId);
 
-            int base = trainBasePosM.computeIfAbsent(msg.trainId, id -> {
-                int p0 = trainNode.getPositionM(); // initialpos från config
-                System.out.println("[POS] init basePosM for " + id + " = " + p0);
-                return p0;
-            });
+//            int base = trainBasePosM.computeIfAbsent(msg.trainId, id -> {
+//                int p0 = trainNode.getPositionM(); // initialpos från config
+//                System.out.println("[POS] init basePosM for " + id + " = " + p0);
+//                return p0;
+//            });
 
-            int delta = (int) Math.floor(msg.positionMeters.doubleValue());
+            int newPos = (int) Math.floor(msg.positionMeters.doubleValue());
             int oldPos = trainNode.getPositionM();
-            int newPos = base + delta;
+
+            // Guard, plausibility check
+            if (Math.abs(newPos - oldPos) > 500) {
+                System.out.println("[TOPO-WARN] large train pos jump: " + oldPos + " -> " + newPos);
+            }
+
+            double t = msg.timeSec; // om den finns
+            System.out.println("[TRAIN-POS-SET] t=" + t
+                    + " dt=" + trainDtSec
+                    + " trainId=" + msg.trainId
+                    + " incomingAbsPosM=" + msg.positionMeters
+                    + " oldPosM=" + oldPos
+                    + " newPosM=" + newPos);
 
             trainNode.setPositionM(newPos);
-
-            System.out.println("[GMA] trainNode=" + anchorNodeId + " (trainId=" + msg.trainId
-                    + ") moved from posM=" + oldPos + " to posM=" + newPos
-                    + " (base=" + base + ", delta=" + delta + ")");
 
             // === TP-v0.8-2: logga absolut nodposition ===
             LongTableWriter w2 = lw();
@@ -544,7 +575,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                 timeSec, latest.size(), knownTrainIds.size());
 
         // v0.8: bygg om linjetopologin
-        rebuildDynamicLineTopology();
+        rebuildDynamicLineTopology(timeSec);
         System.out.println("[GMA] rebuildDynamicLineTopology DONE at t=" + timeSec);
 
         // Warn for missing train updates
@@ -572,6 +603,12 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
 
             UpdateTrainPower u = latest.get(trainId);
 
+            if (u != null && Math.abs(u.timeSec - timeSec) > 1e-9) {
+                System.out.println("[GMA-TIME-WARN] solve.t=" + timeSec
+                        + " latest.t=" + u.timeSec
+                        + " train=" + trainId);
+            }
+
             // Motoring and auxiliaries as-is (normally ≥ 0)
             double motKW = (u != null) ? u.motoringKW : 0.0;
             double auxKW = (u != null) ? u.auxiliaryKW : 0.0;
@@ -597,10 +634,8 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
             lastRequestedPowerW.put(trainId, train_p_req_net_W);
 
             // Simple debug (optional)
-            System.out.printf(
-                    "[GMA-A] id=%s mot=%.3f kW brkMag=%.3f kW -> brkRegen=%.3f kW aux=%.3f kW -> push %.1f W%n",
-                    trainId, motKW, brkRegenKW, brkRegenKW, auxKW, train_p_req_net_W
-            );
+            System.out.printf("[GMA-A] id=%s mot=%.3f kW brk=%.3f kW aux=%.3f kW -> push %.1f W%n",
+                    trainId, motKW, brkRegenKW, auxKW, train_p_req_net_W);
 
             LongTableWriter w = lw();
             if (w != null) {
@@ -610,10 +645,17 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                 w.signalRow(timeSec, "Train", trainId,
                         "req_trac_W", pTractionW, "W", "GMA-A", null, null);
             }
+
+            System.out.println("[GMA->ADAPT] solve.t=" + timeSec
+                    + " train=" + trainId
+                    + " latest.t=" + (u == null ? "null" : u.timeSec)
+                    + " reqW=" + train_p_req_net_W);
+
         }
 
         // === TP-v0.8-1: logga position som GMA ser den ===
 //        logTrainPositionsFromProfile(timeSec);
+
 
         // PASS 0: send to solver
         solver.setTrainRequestedPower(reqW_direct, trainDtSec);
@@ -655,8 +697,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                 if (tl == null) continue;
 
                 // Todo: generalisera. Hämta nod-id för tåget (anpassa till ditt API)
-                int nodeId = 3; //tl.getFromNode();
-
+                int nodeId = tl.getFromNode();
                 Real vNode = res.getLatestNodeVoltage(nodeId);
                 if (vNode == null) continue;
 
@@ -960,18 +1001,70 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     private SolveBundle solveWithRectifierBlocks(double timeSec, int step) {
         System.out.printf("[RECT] latest.size=%d%n", latest.size());
 
+        // ================================================================
+        // A) TIME GUARD: Ensure we are not using stale (t-1) train updates
+        // ================================================================
+        // If latest contains per-train updates, require that they match this tick.
+        // Otherwise we may be applying requests from a different time step.
+        if (!latest.isEmpty()) {
+            boolean stale = false;
+            double maxAbsDt = 0.0;
+
+            for (var e : latest.entrySet()) {
+                UpdateTrainPower u = e.getValue();
+                if (u == null) continue;
+                double dt = Math.abs(u.timeSec - timeSec);
+                maxAbsDt = Math.max(maxAbsDt, dt);
+                // Tight tolerance because your ticks are exact seconds in logs.
+                if (dt > 1e-9) {
+                    stale = true;
+                }
+            }
+
+            if (stale) {
+                System.out.printf("[RECT-TIME-WARN] t=%.3f step=%d using stale latest updates (max |u.t - t|=%.6f). " +
+                                "Skip rectifier limiting for this tick.%n",
+                        timeSec, step, maxAbsDt);
+
+                // Minimal behavior: solve once with whatever current model state is (PASS 0),
+                // but DO NOT do regen limiting based on stale metadata.
+                GridResult r0_stale = solver.solve(model, timeSec, step);
+
+                // Return "no braking split" (all zeros) but keep the result.
+                // This prevents mixing old brake/regen allocations with new solve time.
+                Map<String, Double> brkReqMagW0 = new LinkedHashMap<>();
+                Map<String, Double> netMagW0    = new LinkedHashMap<>();
+                Map<String, Double> resMagW0    = new LinkedHashMap<>();
+                for (String id : latest.keySet()) {
+                    brkReqMagW0.put(id, 0.0);
+                    netMagW0.put(id, 0.0);
+                    resMagW0.put(id, 0.0);
+                }
+
+                // B) Optional: also log train voltage here while we're at it (see below)
+                logTrainVoltagesFromResult(timeSec, step, r0_stale);
+
+                return new SolveBundle(r0_stale, brkReqMagW0, netMagW0, resMagW0);
+            }
+        }
+
         // ----------------------------------------------------
         // PASS 0: Lös basfallet med nuvarande train requests
         // ----------------------------------------------------
-//        System.out.printf("[DBG] t=%.1f requested=%s%n", timeSec, requestedPowerW);
         GridResult r0 = solver.solve(model, timeSec, step);
+
+        // ================================================================
+        // B) Train voltage logging using correct node id (no hard-coded 3)
+        // ================================================================
+        // This replaces the buggy "int nodeId = 3" logic you had earlier.
+        logTrainVoltagesFromResult(timeSec, step, r0);
 
         // per-tåg: bromsbegäran (magnitud, W) och faktisk export i basfallet (magnitud, W)
         Map<String, Double> brkReqMagW = new LinkedHashMap<>();
         Map<String, Double> netExport0W = new LinkedHashMap<>();
 
-        double sumExportW = 0.0; // totalt tåg → nät (regen), W (magnitud)
-        double sumMotoringW = 0.0; // totalt nät → tåg (motoring), W (magnitud)
+        double sumExportW = 0.0;    // totalt tåg → nät (regen), W (magnitud)
+        double sumMotoringW = 0.0;  // totalt nät → tåg (motoring), W (magnitud)
 
         // --- Samla info per tåg från PASS 0 ---
         for (var e : latest.entrySet()) {
@@ -979,51 +1072,40 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
             UpdateTrainPower u = e.getValue();
 
             // 1) Begärd bromseffekt (magnitud, W).
-            //    brakingKW > 0  = ren resistiv broms (allt går i resistor, ingen regen)
-            //    brakingKW < 0  = regenerativ bromsbegäran (magnitud = -brakingKW)
             double brkReqMag = 0.0;
             if (u != null) {
                 if (u.brakingKW > 0.0) {
-                    // resistiv broms: begäran till resistor
                     brkReqMag = u.brakingKW * 1000.0;
                 } else if (u.brakingKW < 0.0) {
-                    // regen-begäran: magnitud
                     brkReqMag = -u.brakingKW * 1000.0;
                 }
             }
             brkReqMagW.put(id, brkReqMag);
 
             // 2) Enhetskraft i baslösningen:
-            //    p > 0  = last (nät -> tåg)
-            //    p < 0  = export (tåg -> nät, regen)
             Real pDev = r0.getLatestDevicePower(id);
             double p = (pDev != null) ? pDev.asDouble() : 0.0;
 
-            if (p > 0.0) {
-                sumMotoringW += p;  // positiv = last
-            }
+            if (p > 0.0) sumMotoringW += p;
 
-            double exportMag = (p < 0.0) ? (-p) : 0.0; // magnitud av tåg→nät
+            double exportMag = (p < 0.0) ? (-p) : 0.0;
             netExport0W.put(id, exportMag);
             sumExportW += exportMag;
         }
+
         System.out.printf("[RECT] brkReqMagW.size=%d netExport0W.size=%d%n",
                 brkReqMagW.size(), netExport0W.size());
 
         // --- Substationers absorption i PASS 0 ---
-        // p < 0 => substation tar emot effekt (t.ex. mot AC-sidan)
         double sumSubAbsorbW = 0.0;
         for (Object did : model.getDeviceIds()) {
             Device<Real> d = model.getDevice(String.valueOf(did));
             if (d instanceof Substation) {
                 Real p = r0.getLatestDevicePower(d.getId());
-                if (p != null && p.asDouble() < 0.0) {
-                    sumSubAbsorbW += (-p.asDouble());
-                }
+                if (p != null && p.asDouble() < 0.0) sumSubAbsorbW += (-p.asDouble());
             }
         }
 
-        // Receptivitet = annan förbrukning (motoringtåg) + substationers absorption
         double receptivityW = sumMotoringW + sumSubAbsorbW;
 
         System.out.printf("[RECT] sumExportW=%.1f sumMotoringW=%.1f sumSubAbsorbW=%.1f receptivityW=%.1f%n",
@@ -1031,30 +1113,24 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
 
         // ----------------------------------------------------
         // FALL A: basfallet ryms inom receptiviteten
-        //         -> inga justeringar, använd PASS 0 direkt
         // ----------------------------------------------------
         if (sumExportW <= receptivityW + EPS) {
             Map<String, Double> netMagW = new LinkedHashMap<>();
             Map<String, Double> resMagW = new LinkedHashMap<>();
 
             for (String id : brkReqMagW.keySet()) {
-                double reqMag = brkReqMagW.getOrDefault(id, 0.0);     // W >= 0
-                double netMag = netExport0W.getOrDefault(id, 0.0);    // W >= 0 (tåg -> nät)
-                double resMag = Math.max(0.0, reqMag - netMag);       // W >= 0
+                double reqMag = brkReqMagW.getOrDefault(id, 0.0);
+                double netMag = netExport0W.getOrDefault(id, 0.0);
+                double resMag = Math.max(0.0, reqMag - netMag);
 
                 netMagW.put(id, netMag);
                 resMagW.put(id, resMag);
             }
-
-            // SolveBundle behåller magnituderna (bakåtkompatibelt internt),
-            // även om longtable får negativa värden.
             return new SolveBundle(r0, brkReqMagW, netMagW, resMagW);
         }
 
         // ----------------------------------------------------
-        // FALL B: vi måste strypa regen (sumExportW > receptivityW)
-        //         -> skala ner varje tågs export proportionellt
-        //            och lös igen (PASS 1)
+        // FALL B: vi måste strypa regen
         // ----------------------------------------------------
         double factor = (receptivityW <= EPS || sumExportW <= EPS)
                 ? 0.0
@@ -1069,15 +1145,13 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
             TrainLoad tl = trainDevices.get(id);
             if (tl == null || u == null) continue;
 
-            double exportMag0 = netExport0W.getOrDefault(id, 0.0); // W
-            double allowedExportMag = exportMag0 * factor;         // W
-            double regenKW = -allowedExportMag / 1000.0;           // <0 = regen-komponent
+            double exportMag0 = netExport0W.getOrDefault(id, 0.0);
+            double allowedExportMag = exportMag0 * factor;
+            double regenKW = -allowedExportMag / 1000.0;
 
-            // Behåll motoring/aux som i begäran, ersätt bara regen-komponenten
             tl.setRequestedComponents(u.motoringKW, regenKW, u.auxiliaryKW);
         }
 
-        // Bygg total begärd effekt per tåg efter regen-begränsning (för loggning/debug).
         Map<String, Double> reqW_direct2 = new LinkedHashMap<>();
         for (var e : latest.entrySet()) {
             String id2 = e.getKey();
@@ -1108,7 +1182,9 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         // PASS 1: lös med begränsad regen
         GridResult r1 = solver.solve(model, timeSec, step);
 
-        // Slutlig delning: använd FAKTISK export efter PASS 1
+        // Also log voltages after PASS 1 if you want (optional, noisy):
+        // logTrainVoltagesFromResult(timeSec, step, r1);
+
         Map<String, Double> netMagW_final = new LinkedHashMap<>();
         Map<String, Double> resMagW_final = new LinkedHashMap<>();
 
@@ -1116,9 +1192,9 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
             Real pDev1 = r1.getLatestDevicePower(id);
             double p1 = (pDev1 != null) ? pDev1.asDouble() : 0.0;
 
-            double netMag = (p1 < 0.0) ? (-p1) : 0.0; // W, faktisk tåg→nät efter begränsning
-            double reqMag = brkReqMagW.getOrDefault(id, 0.0);      // W, begärd broms
-            double resMag = Math.max(0.0, reqMag - netMag);        // W, till resistor
+            double netMag = (p1 < 0.0) ? (-p1) : 0.0;
+            double reqMag = brkReqMagW.getOrDefault(id, 0.0);
+            double resMag = Math.max(0.0, reqMag - netMag);
 
             netMagW_final.put(id, netMag);
             resMagW_final.put(id, resMag);
@@ -1127,35 +1203,137 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         return new SolveBundle(r1, brkReqMagW, netMagW_final, resMagW_final);
     }
 
-    private void rebuildDynamicLineTopology() {
+    private void logTrainVoltagesFromResult(double timeSec, int step, GridResult res) {
+        LongTableWriter w = lw();
+        if (w == null) return;
 
-        // 1) Collect NodePos for all nodes that participate in topology (devices + trains)
-        // Assumption: Node has (id, trackId, positionM). Adjust accessor names if needed.
-        List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
+        for (String trainId : trainDevices.keySet()) {
+            TrainLoad tl = trainDevices.get(trainId);
+            if (tl == null) continue;
+
+            int nodeId = tl.getFromNode(); // IMPORTANT: no hard-coded node
+            Real vNode = res.getLatestNodeVoltage(nodeId);
+
+            if (vNode == null) {
+                System.out.printf("[V_V-WARN] t=%.3f train=%s nodeId=%d -> null voltage%n",
+                        timeSec, trainId, nodeId);
+                continue;
+            }
+
+            double v = vNode.asDouble();
+
+            // Debug
+            System.out.printf("[V_V] t=%.3f train=%s nodeId=%d V=%.3f%n",
+                    timeSec, trainId, nodeId, v);
+
+            // Longtable
+            w.signalRow(timeSec, "Train", trainId, "V_V", v, "V", "NET", step, null);
+        }
+    }
+
+    private void rebuildDynamicLineTopology(double timeSec) {
+
+        // Collect candidates per nodeId (we expect exactly one per nodeId).
+        Map<Integer, List<DynamicLineTopologyBuilder.NodePos>> candidatesById = new LinkedHashMap<>();
+        long seq = ++topoSeq;
+        String th = Thread.currentThread().getName();
+        System.out.println("[TOPO-BEGIN] seq=" + seq + " t=" + timeSec + " thread=" + th);
 
         for (Node<Real> n : model.getNodes()) {
 
-            // ---- ADAPT THESE TWO LINES IF YOUR API DIFFERS ----
-            int nodeId = n.getId();
-            int trackId = n.getTrackId();     // <-- adapt if needed
-            int posM = n.getPositionM();   // <-- adapt if needed
-            // ---------------------------------------------------
-
-            // Optional: ignore ground if it has no meaningful track/position
-            // (If your ground node has a trackId/pos that you want to include, remove this.)
+            final int nodeId = n.getId();
             if (nodeId == model.getGroundNodeId()) continue;
 
-            nodePos.add(new DynamicLineTopologyBuilder.NodePos(nodeId, trackId, posM));
+            final int trackId = n.getTrackId();
+            final int posM = n.getPositionM();
+
+            // Raw source log for TRAIN node
+            if (nodeId == 99) {
+                System.out.println("[TOPO-SRC] seq=" + seq + " t=" + timeSec
+                        + " TRAIN raw posM=" + posM + " trackId=" + trackId);
+                System.out.println("[TOPO-SRC] TRAIN node raw posM=" + posM + " trackId=" + trackId);
+                if (lastTrainPosM != null) {
+                    int jump = Math.abs(posM - lastTrainPosM);
+                    if (jump > 500) {
+                        System.out.println("[TOPO-WARN] TRAIN pos jump: " + lastTrainPosM + " -> " + posM + " (Δ=" + jump + " m)");
+                    }
+                }
+            }
+
+            candidatesById
+                    .computeIfAbsent(nodeId, k -> new ArrayList<>())
+                    .add(new DynamicLineTopologyBuilder.NodePos(nodeId, trackId, posM));
+        }
+        System.out.println("[TOPO-END] seq=" + seq + " t=" + timeSec + " thread=" + th);
+
+
+        // Resolve to a unique NodePos per nodeId (dedup).
+        List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>(candidatesById.size());
+
+        for (Map.Entry<Integer, List<DynamicLineTopologyBuilder.NodePos>> e : candidatesById.entrySet()) {
+            int nodeId = e.getKey();
+            List<DynamicLineTopologyBuilder.NodePos> cands = e.getValue();
+
+            if (cands.size() == 1) {
+                nodePos.add(cands.get(0));
+                continue;
+            }
+
+            // Multiple candidates for same nodeId => this is a major red flag.
+            System.out.println("[TOPO-WARN] Duplicate nodeId=" + nodeId + " candidates:");
+            for (DynamicLineTopologyBuilder.NodePos np : cands) {
+                System.out.println("  - nodeId=" + np.nodeId + " trackId=" + np.trackId + " posM=" + np.posM);
+            }
+
+            DynamicLineTopologyBuilder.NodePos chosen;
+
+            if (nodeId == 99) {
+                // Heuristic for TRAIN node:
+                //  - prefer candidate closest to lastTrainPosM (if known)
+                //  - else prefer smallest |posM|
+                if (lastTrainPosM != null) {
+                    chosen = cands.stream()
+                            .min(Comparator.comparingInt(np -> Math.abs(np.posM - lastTrainPosM)))
+                            .orElse(cands.get(0));
+                } else {
+                    chosen = cands.stream()
+                            .min(Comparator.comparingInt(np -> Math.abs(np.posM)))
+                            .orElse(cands.get(0));
+                }
+                System.out.println("[TOPO] Chose TRAIN node candidate: trackId=" + chosen.trackId + " posM=" + chosen.posM);
+            } else {
+                // For non-train nodes: choose the first (stable, deterministic)
+                chosen = cands.get(0);
+                System.out.println("[TOPO] Chose FIRST candidate for nodeId=" + nodeId + ": trackId=" + chosen.trackId + " posM=" + chosen.posM);
+            }
+
+            nodePos.add(chosen);
         }
 
-        // 2) Build dynamic lines
+        // Update lastTrainPosM from the chosen NodePos (not raw iteration order)
+        for (DynamicLineTopologyBuilder.NodePos np : nodePos) {
+            if (np.nodeId == 99) {
+                lastTrainPosM = np.posM;
+                break;
+            }
+        }
+
+        // Optional: dump the final NodePos list (very useful for spotting 6200 vs 3100)
+        System.out.println("[TOPO] Final nodePos (deduped):");
+        nodePos.stream()
+                .sorted(Comparator
+                        .comparingInt((DynamicLineTopologyBuilder.NodePos a) -> a.trackId)
+                        .thenComparingInt(a -> a.posM)
+                        .thenComparingInt(a -> a.nodeId))
+                .forEach(np -> System.out.println("  - nodeId=" + np.nodeId + " trackId=" + np.trackId + " posM=" + np.posM));
+
+        // Build dynamic lines
         List<Device<Real>> newLines = DynamicLineTopologyBuilder.buildDynamicLines(
                 nodePos,
                 this::computeLineResistance
         );
 
-        // 3) Debug print (similar to your original)
-        // We re-create the "byTrack sorted consecutive pairs" view for logging consistency.
+        // Debug print (similar to your original)
         Map<Integer, List<DynamicLineTopologyBuilder.NodePos>> byTrack = new HashMap<>();
         for (DynamicLineTopologyBuilder.NodePos np : nodePos) {
             byTrack.computeIfAbsent(np.trackId, k -> new ArrayList<>()).add(np);
@@ -1188,7 +1366,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
             }
         }
 
-        // 4) Install into model
+        // Install into model
         model.setDynamicLineDevices(newLines);
     }
 

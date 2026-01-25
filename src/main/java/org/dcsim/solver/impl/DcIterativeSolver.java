@@ -235,9 +235,9 @@ public final class DcIterativeSolver {
             for (TrainData tr : net.trains()) {
                 int a = tr.a();                 // index i V
                 double vTrain = V.getEntry(a);
-                if (!Double.isNaN(vTrain) && !Double.isInfinite(vTrain)) {
-                    lw.signalRow(simTimeSec, "Train", tr.id(), "V_V", vTrain, "V", "NET", null, null);
-                }
+//                if (!Double.isNaN(vTrain) && !Double.isInfinite(vTrain)) {
+//                    lw.signalRow(simTimeSec, "Train", tr.id(), "V_V", vTrain, "V", "NET", null, null);
+//                }
                 int nTrain = (int) V.getEntry(a);
                 if (nTrain >= 0 && nTrain < V.getDimension()) {
                     double Vt = V.getEntry(a);  // spänning i tågnoden

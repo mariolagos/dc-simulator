@@ -295,14 +295,16 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
 
         return null;
     }
-
     @Override
     public void setTrainRequestedPower(Map<String, Double> requestedPowerW, double dtSec) {
         lastRequestedPowerW.clear();
-        if (requestedPowerW != null) {
-            lastRequestedPowerW.putAll(requestedPowerW);
-        }
-        if (VERBOSE_ALL) System.out.println("[ADAPT] direct requestedPowerW: " + lastRequestedPowerW);
+        if (requestedPowerW != null) lastRequestedPowerW.putAll(requestedPowerW);
+
+        // Log “applied to solver input”
+        System.out.println(
+                "[ADAPT-REQ] tick.dt=" + dtSec
+                        + " reqW=" + lastRequestedPowerW
+        );
     }
 
 }
