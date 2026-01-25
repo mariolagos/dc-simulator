@@ -635,3 +635,40 @@ We break this into explicit checkpoints:
 ### Scope limitation (explicit)
 - v0.8 guarantees correctness for distance and resistance calculations **within a single track section ordering model**.
 - Multi-branch routing, shortest-path selection, and forced waypoint routing (e.g. Dijkstra-based pathfinding across junctions) are out of scope for v0.8 and will be addressed in a later version.
+
+## v0.8 — Scope guard: code hygiene and refactoring
+
+The v0.8 milestone explicitly **does not aim to reduce overall code size, class count, or architectural complexity**.
+The focus of v0.8 is correctness, determinism, and contract clarity for the stabilized 3S1T baseline.
+
+### No global refactoring rule
+- Cross-cutting refactors (e.g. deduplication across packages, large-scale consolidation, architectural cleanup) are **out of scope** for v0.8.
+- Known issues such as duplicated functionality, dead code, and legacy structures are acknowledged but deferred to **v0.11**.
+
+### Allowed cleanup (strictly local)
+Cleanup is allowed **only** when all of the following conditions are met:
+1. The code is already being touched for a v0.8-scoped task (e.g. contract enforcement, topology validation, solver invariant testing).
+2. The cleanup is **local** to that code area.
+3. Behaviour is protected by:
+    - a new or existing minitest, or
+    - a regression snapshot (e.g. 3S1T baseline).
+
+Examples of allowed cleanup:
+- Removing clearly unused methods or classes within the same package.
+- Eliminating trivial duplication discovered while implementing tests.
+- Renaming variables or methods to clarify units or contracts.
+
+### Quarantine instead of deletion
+- Code that is suspected to be unused but not yet fully proven may be:
+    - moved to a `legacy` / `unused` package, or
+    - explicitly marked as deprecated with a version tag (e.g. `@Deprecated(since = "v0.8", forRemoval = false)`).
+- Permanent removal is deferred until v0.11.
+
+### Backlog policy
+All broader cleanup activities shall be tracked as **coarse-grained backlog items**, not incremental refactors:
+- Dead code removal sweep
+- Deduplication of topology / loader logic
+- Consolidation of result and logging infrastructure
+- Removal of legacy experimental packages
+
+This rule exists to ensure that v0.8 converges, remains reviewable, and does not regress into exploratory refactoring.
