@@ -588,3 +588,50 @@ We break this into explicit checkpoints:
           substations increases (all else equal).
     - With an exaggerated `R_per_m` in `computeLineResistance`, the voltage
       drop should be clearly visible in longtable plots.
+
+## v0.8 — Data and topology contracts (additions)
+
+### Absolute position contract
+- All positions exchanged between components (config, loaders, actors, solver, logging) are **absolute positions in meters**.
+- Relative positions may be derived internally but must not appear at component boundaries.
+- This applies to:
+    - Track definitions
+    - Train run / power profiles
+    - Dynamic topology construction
+    - Solver inputs and outputs
+
+### Track and run data sources
+- The `track` sheet is the **source-of-truth** for track geometry and section ordering.
+- The `run` sheet is the **source-of-truth** for train position and power demand.
+- Both sheets use a `position` column expressed in **absolute meters**.
+- BIS-related columns (`bisKm`, `bisMeter`, `bisPos`) are treated as informational only.
+
+### Dynamic topology construction
+- Dynamic line topology is rebuilt per solve tick based on:
+    - Node type (substation, train)
+    - Track identifier
+    - Absolute position ordering
+- Line resistance is computed as:
+  R_ij = ∫ r_per_meter dx over [min(posA, posB), max(posA, posB)]
+- Direction of travel or kilometer numbering does not affect resistance.
+
+### NetBuilder invariants
+- NetBuilder must include:
+- All substations present in the GridModel
+- All TrainLoad devices present in the GridModel
+- Substations with identical electrical terminals are rejected.
+- Silent skipping of substations or trains is not permitted.
+
+### Solver and logging invariants
+- Solver input is exclusively derived from `DcNet`:
+- `lines`
+- `substations`
+- `trains`
+- If a train exists in `DcNet.trains()`, the solver must emit:
+  Train/<trainId> V_V
+  in longtable output.
+- No hardcoded node identifiers are allowed in solver or logging logic.
+
+### Scope limitation (explicit)
+- v0.8 guarantees correctness for distance and resistance calculations **within a single track section ordering model**.
+- Multi-branch routing, shortest-path selection, and forced waypoint routing (e.g. Dijkstra-based pathfinding across junctions) are out of scope for v0.8 and will be addressed in a later version.

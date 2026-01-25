@@ -370,3 +370,32 @@ introducing additional matrix nodes or changing the solver API.
   - GridModelActor skickar TrainResult(t) (t.ex. V_V, P_net_W) till varje TrainActor
   - TrainActor uppdaterar intern state och logg
 
+## Delta v0.8 — Data contracts and dynamic topology (additions)
+
+### Coordinate and unit contracts (NEW)
+- All positions used as input or output in v0.8 are **absolute positions in meters** (`positionAbsM`).
+- Distance calculations within a track section use:
+  length_m = abs(posB_m - posA_m)
+  Direction (increasing/decreasing km) is irrelevant.
+- `bisKm`, `bisMeter`, `bisPos` are **presentation/label fields only** and must not be used as source-of-truth for distance or resistance calculations.
+- This explicitly avoids ambiguity caused by Excel `km+meter` formatting and locale issues.
+
+### Configuration requirements (clarification)
+- When Excel is used as input, the section/template configuration **must explicitly specify sheet names** for:
+- `track` data (track geometry and section definitions)
+- `run` data (train position and power profiles)
+- `position` columns in both track and run sheets are interpreted as **absolute meters**.
+
+### Dynamic topology invariants (clarification)
+- When dynamic line devices are present, **NetBuilder uses dynamic lines exclusively**.
+- Legacy static `Line` devices are ignored in this case.
+- This behavior is now considered a stable contract.
+
+### Solver and logging fixes (NEW)
+- Removed hardcoded train node index usage in solver/debug logic.
+- Train voltage (`Train/<id> V_V`) is logged for **all trains present in `DcNet.trains()`**.
+- Logging and probe logic must not rely on fixed node indices.
+
+### Substation validation (NEW)
+- Substations must have **distinct electrical terminals**.
+- A substation with identical `fromNode` and `toNode` is rejected at NetBuilder time (fail-fast).
