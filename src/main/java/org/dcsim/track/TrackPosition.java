@@ -1,4 +1,10 @@
 package org.dcsim.track;
+/**
+ * NOTE (v0.8):
+ * This class is NOT the canonical boundary representation of position.
+ * Boundary parsing and validation must go through PositionUtils.
+ * Consolidation planned for v0.11.
+ */
 
 /**
  * TrackPosition represents a coordinate inside one track section: s km+m.

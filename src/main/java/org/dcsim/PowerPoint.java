@@ -147,6 +147,23 @@ public final class PowerPoint {
         return p.km + "+" + p.m;
     }
 
+    public PowerPoint withPositionM(double positionM) {
+        // Keep immutability: return a new instance with one field changed.
+        // If you want stricter contract at boundary, you can also enforce finite here:
+        // if (!Double.isFinite(positionM)) throw new IllegalArgumentException("positionM must be finite");
+        return new PowerPoint(
+                this.timeS,
+                this.powerW,
+                this.voltageV,
+                this.currentA,
+                this.positionM,
+                this.bisKm,
+                this.bisM,
+                this.positionString,
+                this.speedMS
+        );
+    }
+
     /** Parsed BIS helper. */
     private static final class ParsedBis {
         final int km, m;

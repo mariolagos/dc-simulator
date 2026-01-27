@@ -28,6 +28,4 @@ public record TrainData(
     public int b() {
         return b;
     }
-
-
 }

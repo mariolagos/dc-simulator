@@ -3,6 +3,7 @@ package org.dcsim.electric;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import org.dcsim.contracts.ContractChecks;
 import org.dcsim.math.Real;
 import org.dcsim.utils.PositionUtils;
 
@@ -227,6 +228,8 @@ public class GridModelLoader {
                 model.addDevice(train);
             }
         }
+
+        ContractChecks.validateGridModel(model);
 
         return model;
     }

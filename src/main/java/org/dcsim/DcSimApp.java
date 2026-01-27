@@ -12,6 +12,7 @@ import com.typesafe.config.ConfigResolveOptions;
 import org.dcsim.actors.GridModelActor;
 import org.dcsim.actors.SimulationSpeed;
 import org.dcsim.actors.TrainActor;
+import org.dcsim.contracts.ContractChecks;
 import org.dcsim.electric.*;
 import org.dcsim.export.LongFiles;
 import org.dcsim.export.LongTableWriter;
@@ -367,6 +368,10 @@ public final class DcSimApp {
 
         // ---- 7) Bygg modellen från dcsim-config ----
         GridModel<Real> model = GridModelLoader.load(dcsim);
+        // Note: validateGridModel happens inside GridModelLoader.load(dcsim)
+
+        // Build track extents from model nodes
+        var extentByTrack = ContractChecks.extentByTrackFromModel(model);
 
         int anchorNodeId = dcsim.hasPath("grid.anchorNodeId")
                 ? dcsim.getInt("grid.anchorNodeId")
@@ -407,23 +412,16 @@ public final class DcSimApp {
                     int km = skm[1], mInt = skm[2];
                     posM = km * 1000.0 + Math.floor(mInt); // trunkera meter-delen
                 }
-                // 2) speedMS måste finnas
-
-                // Läs position
-                posStr = p.positionString();   // "" om okänd
-                posM   = p.positionM();        // NaN om okänd
-
-                // Om meters saknas men vi har en BIS-sträng → räkna fram lokalt
+                // Om meters saknas men vi har en BIS-sträng → räkna fram lokalt (absolute meters, truncate)
                 if (Double.isNaN(posM) && posStr != null && !posStr.isBlank()) {
-                    int[] skm = PositionUtils.parseFlexible(posStr); // er util
-                    if (skm == null || skm.length < 3)
-                        throw new IllegalStateException("Kunde inte tolka bisPosition \"" + posStr + "\"");
-                    int km = skm[1], mInt = skm[2];
-                    posM = km * 1000.0 + Math.floor(mInt); // trunkera meter-delen
+                    var tp = PositionUtils.parseFlexibleTP(posStr).normalized();
+                    posM = Math.floor(tp.metersInLine()); // truncate
                 }
 
-                dst.add(p); // vi muterar p på plats; lägg kopia om du vill.
+                dst.add(p.withPositionM(posM));
             }
+
+            ContractChecks.validateRunPointsAgainstModelExtent(dst, extentByTrack);
 
             byTplNormalised.put(tplId, dst);
         }

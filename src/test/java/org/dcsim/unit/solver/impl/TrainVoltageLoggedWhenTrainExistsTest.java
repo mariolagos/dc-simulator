@@ -12,12 +12,14 @@ import org.dcsim.solver.build.NetBuilder;
 import org.dcsim.solver.impl.DcIterativeSolver;
 import org.junit.Test;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.*;
+import static testUtils.NetHelpers.findTrainSignal;
 
 public class TrainVoltageLoggedWhenTrainExistsTest {
 
@@ -74,6 +76,7 @@ public class TrainVoltageLoggedWhenTrainExistsTest {
 
         try {
             // Act
+            DcIterativeSolver.setSimTimeSec(0);
             DcIterativeSolver.solveVoltages(net);
         } finally {
             // Always close to flush
@@ -81,12 +84,13 @@ public class TrainVoltageLoggedWhenTrainExistsTest {
             DcIterativeSolver.setLongWriter(null);
         }
 
-        String out = Files.readString(tmp);
+        // Prepare temp output file
+        File out = File.createTempFile("longtable_test_", ".csv");
+        out.deleteOnExit();
 
         // Assert: must contain Train/Train1 V_V row
         assertTrue(
-                "Expected Train/Train1 V_V row in longtable output.\nFILE:\n" + out,
-                out.contains(",Train,Train1,V_V,")
-        );
+                "Expected Train/Train1 V_V row in longtable output.\nFILE:\n" + Files.readString(tmp),
+                findTrainSignal(tmp.toFile(), "Train1", "V_node_V") != null);
     }
 }

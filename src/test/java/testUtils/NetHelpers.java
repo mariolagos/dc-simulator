@@ -5,6 +5,8 @@ import org.dcsim.solver.api.DcNet;
 import org.dcsim.solver.api.SubstationData;
 import org.dcsim.solver.api.TrainData;
 
+import java.io.File;
+
 public class NetHelpers {
 
     static double substationPower(SubstationData ss, RealVector V, double eps) {
@@ -57,4 +59,57 @@ public class NetHelpers {
         // net power injected into the grid by this train
         return Iab * dV;
     }
+
+    public static Double findTrainSignal(File out, String trainId, String signal) throws Exception {
+        try (var stream = java.nio.file.Files.lines(out.toPath())) {
+            return stream
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .filter(s -> !s.startsWith("time_s,")) // header
+                    .map(line -> line.split(",", -1))
+                    .map(arr -> {
+                        for (int i = 0; i < arr.length; i++) arr[i] = arr[i].trim();
+                        return arr;
+                    })
+                    // columns: time_s,project,scenario,base_hash,object_type,object_id,signal,value,unit,stage,iter,note
+                    .filter(arr -> arr.length >= 8)
+                    .filter(arr -> "Train".equals(arr[4]))
+                    .filter(arr -> trainId.equals(arr[5]))
+                    .filter(arr -> signal.equals(arr[6]))
+                    .map(arr -> {
+                        try { return Double.parseDouble(arr[7]); }
+                        catch (NumberFormatException e) { return null; }
+                    })
+                    .filter(java.util.Objects::nonNull)
+                    .findFirst()
+                    .orElse(null);
+        }
+    }
+
+    public static Double findNodeSignal(File out, String nodeId, String signal) throws Exception {
+        try (var stream = java.nio.file.Files.lines(out.toPath())) {
+            return stream
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .filter(s -> !s.startsWith("time_s,")) // header
+                    .map(line -> line.split(",", -1))
+                    .map(arr -> {
+                        for (int i = 0; i < arr.length; i++) arr[i] = arr[i].trim();
+                        return arr;
+                    })
+                    // columns: ...,object_type,object_id,signal,value,...
+                    .filter(arr -> arr.length >= 8)
+                    .filter(arr -> "Node".equals(arr[4]))
+                    .filter(arr -> nodeId.equals(arr[5]))
+                    .filter(arr -> signal.equals(arr[6]))
+                    .map(arr -> {
+                        try { return Double.parseDouble(arr[7]); }
+                        catch (NumberFormatException e) { return null; }
+                    })
+                    .filter(java.util.Objects::nonNull)
+                    .findFirst()
+                    .orElse(null);
+        }
+    }
+
 }

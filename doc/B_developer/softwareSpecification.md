@@ -672,3 +672,6 @@ All broader cleanup activities shall be tracked as **coarse-grained backlog item
 - Removal of legacy experimental packages
 
 This rule exists to ensure that v0.8 converges, remains reviewable, and does not regress into exploratory refactoring.
+
+Multiple historical network definition paths exist. v0.8 defines a canonical build pipeline; alternative paths are
+supported only for compatibility and will be consolidated in v0.11.
