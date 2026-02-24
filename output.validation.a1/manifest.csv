@@ -1,0 +1,3 @@
+case_id,expected_status,expected_code
+A1_unknown_node,NOT_OK,INVALID_NETWORK
+A1_neg_res,NOT_OK,INVALID_PARAMETER

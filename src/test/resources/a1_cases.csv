@@ -1,0 +1,3 @@
+case_id,mutation,expected_status,expected_code,comment
+A1_unknown_node,UNKNOWN_NODE_REF,NOT_OK,INVALID_NETWORK,line refers to missing node name
+A1_neg_res,NEGATIVE_RESISTANCE,NOT_OK,INVALID_PARAMETER,negative resistance

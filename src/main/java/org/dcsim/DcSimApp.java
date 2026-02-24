@@ -3,36 +3,52 @@ package org.dcsim;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.ActorSystem;
 import akka.actor.typed.Behavior;
-import akka.actor.typed.javadsl.*;
+import akka.actor.typed.javadsl.AbstractBehavior;
+import akka.actor.typed.javadsl.ActorContext;
+import akka.actor.typed.javadsl.Behaviors;
+import akka.actor.typed.javadsl.Receive;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
-import com.typesafe.config.ConfigParseOptions;
 import com.typesafe.config.ConfigRenderOptions;
-import com.typesafe.config.ConfigResolveOptions;
 import org.dcsim.actors.GridModelActor;
 import org.dcsim.actors.SimulationSpeed;
 import org.dcsim.actors.TrainActor;
 import org.dcsim.contracts.ContractChecks;
-import org.dcsim.electric.*;
+import org.dcsim.electric.DcElectricSolver;
+import org.dcsim.electric.DcIterativeAdapterSolver;
+import org.dcsim.electric.Device;
+import org.dcsim.electric.ElectricSolver;
+import org.dcsim.electric.GridModel;
+import org.dcsim.electric.GridModelLoader;
+import org.dcsim.electric.Line;
+import org.dcsim.electric.Node;
+import org.dcsim.electric.NodeKind;
+import org.dcsim.electric.Substation;
 import org.dcsim.export.LongFiles;
 import org.dcsim.export.LongTableWriter;
 import org.dcsim.export.ResultCsvWriter;
+import org.dcsim.export.ScenarioMaterializer;
 import org.dcsim.math.Real;
 import org.dcsim.power.PointsPowerProfile;
 import org.dcsim.power.PowerProfile;
 import org.dcsim.power.PowerTemplateParser;
-import org.dcsim.power.TablePowerProfile;
 import org.dcsim.sim.EdgeRef;
 import org.dcsim.sim.TrainAnchorComponent;
 import org.dcsim.solver.impl.DcIterativeSolver;
 import org.dcsim.utils.PositionUtils;
 
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 public final class DcSimApp {
 
@@ -260,6 +276,7 @@ public final class DcSimApp {
     public static void main(String[] args) throws IOException {
         System.out.println("[MAIN] DcSimApp starting");
 
+/*
         // ---- 1) Hämta filen (tillåt att man anger en katalog och leta efter scenario.conf där) ----
         if (args.length != 1) {
             System.err.println("Usage: DcSimApp <path-to-scenario.conf|dir>");
@@ -324,6 +341,13 @@ public final class DcSimApp {
                 (dcsim.hasPath("export")
                         ? dcsim.getConfig("export").root().render(compactPretty)
                         : "<MISSING>"));
+*/
+        Path confFile = DcSimScenarioLoader.resolveConfArg(args[0]);
+        Config scenario = DcSimScenarioLoader.loadScenarioConfig(confFile);
+        Config dcsim = DcSimScenarioLoader.requireDcsim(scenario, confFile);
+
+        DcSimScenarioLoader.applyVerboseAllIfConfigured(scenario);   // flytta ut din verboseAll-logik hit
+        DcSimScenarioLoader.logConfigSummary(dcsim, confFile);        // flytta ut din “[CONF] Loaded from …” hit
 
         // ---- 5) Skriv “effective config" till disk (både .conf och .md) ----
         Path outDir = Paths.get("output");
@@ -344,6 +368,30 @@ public final class DcSimApp {
         final String csvPath  = System.getProperty("dcsim.longtable","output/longtable.csv");
         // overwrite=true is typical for a fresh run; switch to false if you want to append
         final boolean overwrite = true;
+
+        if (scenario.hasPath("dcsim.exportInputs")) {
+
+            //Path outDir = Paths.get(scenario.getString("dcsim.exportInputs"));
+            String trainId = scenario.getString("dcsim.exportTrainId");
+            Path runExcel = Paths.get(scenario.getString("dcsim.exportRunExcel"));
+            Path confDir = confFile.getParent(); // Path
+            Path outDirRaw = Paths.get(dcsim.getString("exportInputs"));
+            outDir = outDirRaw.isAbsolute() ? outDirRaw : confDir.resolve(outDirRaw).normalize();
+
+
+            try {
+                ScenarioMaterializer.materializeScenario(
+                        confFile,
+                        outDir,
+                        runExcel,
+                        trainId);
+            } catch (Exception e) {
+                throw new RuntimeException("Export failed: " + e.getMessage(), e);
+            }
+
+            System.out.println("CSV inputs exported to: " + outDir.toAbsolutePath());
+            return; // stop here, don't run solver
+        }
 
         LongTableWriter longWriter = new LongTableWriter(csvPath, overwrite, project, scenarioId, hash);
         GridModelActor.setLongWriter(longWriter);
@@ -475,7 +523,8 @@ public final class DcSimApp {
         System.out.println("[CONF] Using ElectricSolver: " + solver.getClass().getName());
 
         // robust filbaserat namn (Windows/Unix)
-        String baseName = new File(confFile.getName()).getName();
+        String baseName = confFile.getFileName().toString();
+
         int dot = baseName.lastIndexOf('.');
         String testName = (dot > 0 ? baseName.substring(0, dot) : baseName);
 

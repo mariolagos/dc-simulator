@@ -5,11 +5,15 @@ import org.dcsim.electric.GridModel;
 import org.dcsim.electric.Line;
 import org.dcsim.electric.Node;
 import org.dcsim.utils.PositionUtils;
-import org.dcsim.utils.PositionUtils.TrackPosition;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.ToDoubleFunction;
-import java.util.stream.Collectors;
 
 public final class ContractChecks {
     private ContractChecks() {}
@@ -249,8 +253,8 @@ public final class ContractChecks {
                 throw new IllegalArgumentException("Run references unknown trackId/line=" + track + " at i=" + i);
             }
             if (!ex.contains(m)) {
-                throw new IllegalArgumentException("Run position outside model extent at i=" + i
-                        + ": track=" + track + " posM=" + m + " extent=[" + ex.minM + "," + ex.maxM + "]");
+                throw new IllegalArgumentException("Run position outside model extent at row=" + i + ": time" + t
+                        + " track=" + track + " posM=" + m + " extent=[" + ex.minM + "," + ex.maxM + "]");
             }
 
             double pw = p.power(); // (eller din getter)

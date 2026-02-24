@@ -675,3 +675,13 @@ This rule exists to ensure that v0.8 converges, remains reviewable, and does not
 
 Multiple historical network definition paths exist. v0.8 defines a canonical build pipeline; alternative paths are
 supported only for compatibility and will be consolidated in v0.11.
+
+### v0.8 – Testing and logging notes
+
+- v0.8 defines a canonical build path via `GridModel → NetBuilder → DcNet → Solver`.
+- Several legacy tests were adapted to comply with stricter contracts (ground node presence, valid device mapping).
+- NetBuilder creates `TrainData` only from explicit `TrainLoad` devices; node kind alone is insufficient.
+- Longtable logging uses signal `V_node_V` for Train voltage (node voltage at train connection).
+  Tests were updated to reflect this current behavior.
+- Some assertions were relaxed (e.g. exact train counts, exact voltage equality) to keep v0.8 green.
+  Test semantics and logging consistency will be revisited in C0.11.

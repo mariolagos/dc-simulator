@@ -1,0 +1,2 @@
+id,feed_nodes,return_node,emf,internal_resistance,rectifier_type
+S1,N1;N2,N1,750,0.01,IDEAL
