@@ -690,7 +690,6 @@ supported only for compatibility and will be consolidated in v0.11.
 
 # 📗 softwareSpecification.md — RÅ TEKNISK DELTA
 
-```markdown
 ## Deterministic Output Path Resolution (v0.9)
 
 ### Objective
