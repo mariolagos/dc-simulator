@@ -26,10 +26,13 @@ public class A1SchemaMismatchTest {
 
         try {
             new RunCsvReader(Schemas.RUN_V0_9).read(run.toPath());
-            fail("Expected CsvSchemaException");
-        } catch (CsvSchemaException ex) {
-            assertTrue(ex.getMessage().contains("run.csv schema mismatch"));
-            assertTrue(ex.getMessage().contains("missing="));
+            fail("Expected ValidationInputException");
+        } catch (ValidationInputException ex) {
+            String msg = ex.getMessage();
+            assertTrue(msg.contains("run.csv"));
+            assertTrue(msg.contains("header mismatch"));
+            assertTrue(msg.contains("expected"));
+            assertTrue(msg.contains("got"));
         }
     }
 }

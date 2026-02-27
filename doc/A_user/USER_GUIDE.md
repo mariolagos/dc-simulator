@@ -146,6 +146,132 @@ Legacy output notes from PDF:
 ### 8.2 Terminology
 See `terms.md` for glossary and conventions.
 
+
 ---
+
+## Output Handling (since v0.9)
+
+From version v0.9, dc-simulator stores all simulation results in a deterministic and structured location.
+
+This means:
+
+- Output does not depend on where you launch the simulator.
+- Running from different working directories produces identical result locations.
+- Results from different scenarios do not overwrite each other.
+- Each scenario run can be uniquely identified from its directory structure.
+
+### How Results Are Organized
+
+Simulation results are grouped by:
+
+- Project
+- Scenario
+- Run configuration
+
+This allows you to:
+
+- Compare multiple scenario runs safely.
+- Re-run simulations without accidental overwrites.
+- Archive or post-process results consistently.
+
+You do not need to change your working directory before running the simulator.
+
+## Input File Paths
+
+When specifying file paths in `application.conf`, you may use:
+
+- Absolute paths
+- Paths relative to the location of the configuration file
+
+Example:
+
+```hocon
+dcsim.exportRunExcel = "T1/A-B.xlsx"
+```
+
+If the configuration file is located in:
+
+project/validationTests/3S1T/
+
+the Excel file is resolved relative to that directory.
+
+This makes scenario folders self-contained and portable.
+
+Strict Input Validation
+
+dc-simulator performs strict validation of input files:
+
+Incorrect CSV headers cause immediate failure.
+
+Missing required columns cause immediate failure.
+
+Out-of-range position values cause a clear error message.
+
+Validation errors stop the simulation before computation begins.
+
+This ensures reproducible and reliable simulations.
+
+Java–MATLAB Integration
+
+dc-simulator supports integration with MATLAB via exported result files.
+
+Standard Workflow
+
+Run simulation from Java.
+
+Results are written in structured CSV format.
+
+MATLAB reads result files for analysis and visualization.
+
+The simulator guarantees:
+
+Stable CSV schema.
+
+Deterministic output location.
+
+Consistent long-format result structure.
+
+Long-Format Results
+
+Simulation results are written in long format:
+
+time_s,
+project,
+scenario,
+base_hash,
+object_type,
+object_id,
+signal,
+value,
+unit,
+stage,
+iter,
+note
+
+This format is:
+
+Efficient for large datasets.
+
+Easy to transform into wide format in MATLAB.
+
+Stable across environments.
+
+Example MATLAB Usage
+data = readtable("results/.../longtable.csv");
+plot(data.time_s, data.value);
+
+The output location is consistent regardless of where the Java process was started.
+
+Reproducibility
+
+Simulations are reproducible across environments:
+
+No dependency on working directory.
+
+Explicit input configuration.
+
+Strict schema validation.
+
+Deterministic output structure.
 
 _This USER_GUIDE.md was reconstructed from legacy USER_GUIDE.pdf and normalized for portability._

@@ -276,81 +276,20 @@ public final class DcSimApp {
     public static void main(String[] args) throws IOException {
         System.out.println("[MAIN] DcSimApp starting");
 
-/*
-        // ---- 1) Hämta filen (tillåt att man anger en katalog och leta efter scenario.conf där) ----
-        if (args.length != 1) {
-            System.err.println("Usage: DcSimApp <path-to-scenario.conf|dir>");
-            System.exit(1);
-        }
-        File confArg = new File(args[0]);
-        File confFile = confArg.isDirectory() ? new File(confArg, "scenario.conf") : confArg;
-        if (!confFile.exists()) {
-            System.err.println("[ERROR] Config not found: " + confFile.getAbsolutePath());
-            System.exit(2);
-        }
-
-        // ---- 2) Läs, med fallback till classpath (application.conf/reference.conf), och resolve() ----
-        ConfigParseOptions parseOpts = ConfigParseOptions.defaults().setAllowMissing(false);
-        ConfigResolveOptions resolveOpts = ConfigResolveOptions.defaults()
-                .setAllowUnresolved(false)
-                .setUseSystemEnvironment(true);
-
-        Config scenario = ConfigFactory
-                .parseFileAnySyntax(confFile, parseOpts)
-                .withFallback(ConfigFactory.load())      // classpath fallback
-                .resolve(resolveOpts);
-
-        boolean verboseAll = false;
-        try {
-            if (scenario.hasPath("dcsim.verbose.all")) {
-                verboseAll = scenario.getBoolean("dcsim.verbose.all");
-            } else if (scenario.hasPath("dcsim.verbose") && scenario.getConfig("dcsim.verbose").hasPath("all")) {
-                verboseAll = scenario.getConfig("dcsim.verbose").getBoolean("all");
-            }
-        } catch (Exception ignore) {
-        }
-
-        if (verboseAll) {
-            System.setProperty("dcsim.verbose.all", "true");
-            System.out.println("[CONF] Verbose mode enabled (dcsim.verbose.all=true)");
-        }
-
-        // ---- 3) Säkerställ att 'dcsim' finns och plocka ut den delkonfigurationen ----
-        if (!scenario.hasPath("dcsim")) {
-            System.err.println("[ERROR] Top-level 'dcsim' section is missing in: " + confFile.getAbsolutePath());
-            System.exit(3);
-        }
-        Config dcsim = scenario.getConfig("dcsim");
-
-        // ---- 4) Logga vad som faktiskt lästes (bra vid “<MISSING>") ----
-        ConfigRenderOptions compactPretty = ConfigRenderOptions.concise().setFormatted(true).setJson(false);
-        System.out.println("[CONF] Loaded from: " + confFile.getAbsolutePath());
-        System.out.println("[CONF] dcsim.trains.defaults = " +
-                (dcsim.hasPath("trains.defaults")
-                        ? dcsim.getConfig("trains.defaults").root().render(compactPretty)
-                        : "<MISSING>"));
-        System.out.println("[CONF] dcsim.trains.overrides = " +
-                (dcsim.hasPath("trains.overrides")
-                        ? dcsim.getConfig("trains.overrides").root().render(compactPretty)
-                        : "<MISSING>"));
-        System.out.println("[CONF] dcsim.grid.substations = " +
-                (dcsim.hasPath("grid.substations")
-                        ? dcsim.getConfig("grid").getList("substations").render(compactPretty)
-                        : "<MISSING>"));
-        System.out.println("[CONF] dcsim.export = " +
-                (dcsim.hasPath("export")
-                        ? dcsim.getConfig("export").root().render(compactPretty)
-                        : "<MISSING>"));
-*/
         Path confFile = DcSimScenarioLoader.resolveConfArg(args[0]);
         Config scenario = DcSimScenarioLoader.loadScenarioConfig(confFile);
         Config dcsim = DcSimScenarioLoader.requireDcsim(scenario, confFile);
+        DcSimPaths.OutputRoots roots = DcSimPaths.resolveOutputs(dcsim, confFile);
 
-        DcSimScenarioLoader.applyVerboseAllIfConfigured(scenario);   // flytta ut din verboseAll-logik hit
-        DcSimScenarioLoader.logConfigSummary(dcsim, confFile);        // flytta ut din “[CONF] Loaded from …” hit
+        DcSimScenarioLoader.applyVerboseAllIfConfigured(scenario);
+        DcSimScenarioLoader.logConfigSummary(dcsim, confFile);
 
-        // ---- 5) Skriv “effective config" till disk (både .conf och .md) ----
-        Path outDir = Paths.get("output");
+        // ---- Resolve deterministic output roots (independent of working directory) ----
+        // (paths) OutputRoots roots already resolved above
+
+
+        // ---- Write “effective config" to disk (.conf and .md) ----
+        Path outDir = roots.effectiveDir();
         java.nio.file.Files.createDirectories(outDir);
 
         String effectiveDcsim = "dcsim " + dcsim.root().render(
@@ -360,36 +299,56 @@ public final class DcSimApp {
                         .setFormatted(true)
                         .setJson(false)
         );
+
         LongFiles.bootstrapFromConfig();
 
-        final String project  = System.getProperty("dcsim.project",  "no-project");
-        final String scenarioId = System.getProperty("dcsim.scenario", "no-scenario");
-        final String hash     = System.getProperty("dcsim.hash",     "no-hash");
-        final String csvPath  = System.getProperty("dcsim.longtable","output/longtable.csv");
+        // Prefer config-derived ids (deterministic), fallback to system properties if you still need them
+        final String project = dcsim.hasPath("project")
+                ? dcsim.getString("project")
+                : System.getProperty("dcsim.project", "no-project");
+
+        final String scenarioId = dcsim.hasPath("scenario")
+                ? dcsim.getString("scenario")
+                : System.getProperty("dcsim.scenario", "no-scenario");
+
+        final String hash = dcsim.hasPath("hash")
+                ? dcsim.getString("hash")
+                : System.getProperty("dcsim.hash", "no-hash");
+
+        // longtable path is deterministic under results/<project>/<scenario>/ unless overridden
+        final String csvPath = roots.longtablePath().toString();
+
         // overwrite=true is typical for a fresh run; switch to false if you want to append
         final boolean overwrite = true;
 
-        if (scenario.hasPath("dcsim.exportInputs")) {
+        // ---- Export inputs mode (legacy: dcsim.exportInputs) OR optional new flag dcsim.export.enabled ----
+        boolean exportEnabled = dcsim.hasPath("exportInputs");
+        if (!exportEnabled && dcsim.hasPath("export.enabled")) {
+            exportEnabled = dcsim.getBoolean("export.enabled");
+        }
 
-            //Path outDir = Paths.get(scenario.getString("dcsim.exportInputs"));
-            String trainId = scenario.getString("dcsim.exportTrainId");
-            Path runExcel = Paths.get(scenario.getString("dcsim.exportRunExcel"));
-            Path confDir = confFile.getParent(); // Path
-            Path outDirRaw = Paths.get(dcsim.getString("exportInputs"));
-            outDir = outDirRaw.isAbsolute() ? outDirRaw : confDir.resolve(outDirRaw).normalize();
+        if (exportEnabled) {
+            String trainId = dcsim.getString("exportTrainId");
+            Path confDir = confFile.getParent();
+            if (confDir == null) confDir = Paths.get(".").toAbsolutePath().normalize();
+            Path runExcelRaw = Paths.get(dcsim.getString("exportRunExcel"));
+            Path runExcel = runExcelRaw.isAbsolute() ? runExcelRaw : confDir.resolve(runExcelRaw).normalize();
 
+            Path exportDir = roots.exportDir();
+            java.nio.file.Files.createDirectories(exportDir);
 
             try {
                 ScenarioMaterializer.materializeScenario(
                         confFile,
-                        outDir,
+                        exportDir,
                         runExcel,
-                        trainId);
+                        trainId
+                );
             } catch (Exception e) {
                 throw new RuntimeException("Export failed: " + e.getMessage(), e);
             }
 
-            System.out.println("CSV inputs exported to: " + outDir.toAbsolutePath());
+            System.out.println("CSV inputs exported to: " + exportDir.toAbsolutePath());
             return; // stop here, don't run solver
         }
 
@@ -493,7 +452,7 @@ public final class DcSimApp {
         }
         System.out.println("=== END NODE METADATA ===");
 
-         // ---- 9) Traffic → Train spawns ----
+        // ---- 9) Traffic → Train spawns ----
         List<TrainSpawn> spawns = new ArrayList<>();
         if (dcsim.hasPath("traffic")) {
             var timetable = dcsim.getConfig("traffic.timetable");
@@ -529,7 +488,8 @@ public final class DcSimApp {
         String testName = (dot > 0 ? baseName.substring(0, dot) : baseName);
 
         String outPath = "output/electrical_" + testName + ".csv";
-        new File(outPath).getParentFile().mkdirs();
+        File parent = new File(outPath).getParentFile();
+        if (parent != null) parent.mkdirs();
         try (ResultCsvWriter ignored = new ResultCsvWriter(model, outPath, true)) { /* truncate */ } catch (
                 IOException e) {
             System.err.println("[WARN] Could not prepare CSV file: " + e.getMessage());

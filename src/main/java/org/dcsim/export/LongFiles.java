@@ -6,9 +6,9 @@ import org.longtable.LongFileWriter;
 
 /**
  * LongFiles
- *  - Minimal bootstrap så DcSimApp kan starta longtable-skrivaren från config
- *  - Skapar LongFileWriter (via DcsimSink) och skriver RUN-meta direkt (t0 = 0.0, stage="NET")
- *  - Lämnar resten av systemet orört.
+ * - Minimal bootstrap so DcSimApp can start the longtable writer from config
+ * - Creates LongFileWriter (via DcsimSink) and writes RUN meta directly (t0 = 0.0, stage="NET")
+ * - Leaves the rest of the system untouched.
  */
 public final class LongFiles {
 
@@ -17,33 +17,110 @@ public final class LongFiles {
 
     private LongFiles() {}
 
-    /** Bootstrap från application.conf (eller given Config). Kallas EN gång tidigt i appens livscykel. */
+    /**
+     * Bootstrap from application.conf (or given Config). Called ONCE early in the app's lifecycle.
+     */
     public static void bootstrapFromConfig() {
         bootstrapFromConfig(ConfigFactory.load());
     }
 
     public static void bootstrapFromConfig(Config cfg) {
         if (WRITER != null) return;
+
         synchronized (LOCK) {
             if (WRITER != null) return;
 
-            // Läs parametrar – byt nycklar här om dina paths/keys heter annat
-            String project  = cfg.hasPath("longfile.project")  ? cfg.getString("longfile.project")  : "dc-simulator";
-            String scenario = cfg.hasPath("longfile.scenario") ? cfg.getString("longfile.scenario") : "default";
-            String hash     = cfg.hasPath("longfile.hash")     ? cfg.getString("longfile.hash")     : "nohash";
-            String csvPath  = cfg.hasPath("longfile.path")     ? cfg.getString("longfile.path")     : "output/longtable.csv";
-            boolean overwrite = cfg.hasPath("longfile.overwrite") && cfg.getBoolean("longfile.overwrite");
+            // --- Parameters ---
+            String project = cfg.hasPath("longfile.project")
+                    ? cfg.getString("longfile.project")
+                    : "dc-simulator";
 
-            // Skapa writer via dcsim-adaptern och skriv RUN-meta (t0=0.0, stage="NET")
-            WRITER = LongFileWriter.forDcsim(csvPath, overwrite, project, scenario, hash, 0.0, "NET");
+            String scenario = cfg.hasPath("longfile.scenario")
+                    ? cfg.getString("longfile.scenario")
+                    : "default";
 
-            System.out.println("[LongFiles] LongFileWriter ready at " + csvPath
-                    + " project=" + project + " scenario=" + scenario + " hash=" + hash
+            String hash = cfg.hasPath("longfile.hash")
+                    ? cfg.getString("longfile.hash")
+                    : "nohash";
+
+            boolean overwrite = cfg.hasPath("longfile.overwrite")
+                    && cfg.getBoolean("longfile.overwrite");
+
+            // --- Deterministic path handling ---
+            String pathFromConfig = cfg.hasPath("longfile.path")
+                    ? cfg.getString("longfile.path")
+                    : "longtable.csv";   // no "output/"
+
+            java.nio.file.Path rawPath = java.nio.file.Paths.get(pathFromConfig);
+            java.nio.file.Path finalPath;
+
+            if (rawPath.isAbsolute()) {
+                finalPath = rawPath;
+            } else {
+
+                String resultsRootStr = null;
+
+                if (cfg.hasPath("dcsim.paths.resultsDir"))
+                    resultsRootStr = cfg.getString("dcsim.paths.resultsDir");
+                else if (cfg.hasPath("dcsim.resultsDir"))
+                    resultsRootStr = cfg.getString("dcsim.resultsDir");
+
+                if (resultsRootStr == null || resultsRootStr.trim().isEmpty()) {
+                    throw new IllegalStateException(
+                            "[LongFiles] longfile.path is relative (" + rawPath + ") but no results root configured.");
+                }
+
+                java.nio.file.Path resultsRoot =
+                        java.nio.file.Paths.get(resultsRootStr);
+
+                if (!resultsRoot.isAbsolute()) {
+                    throw new IllegalStateException(
+                            "[LongFiles] results root must be ABSOLUTE. Got: " + resultsRoot);
+                }
+
+                finalPath = resultsRoot
+                        .resolve(project)
+                        .resolve(scenario)
+                        .resolve(rawPath)
+                        .normalize();
+            }
+
+            String csvPath = finalPath.toString();
+
+            WRITER = LongFileWriter.forDcsim(
+                    csvPath,
+                    overwrite,
+                    project,
+                    scenario,
+                    hash,
+                    0.0,
+                    "NET"
+            );
+
+            System.out.println("[LongFiles] LongFileWriter ready at "
+                    + finalPath.toAbsolutePath()
+                    + " project=" + project
+                    + " scenario=" + scenario
+                    + " hash=" + hash
                     + " overwrite=" + overwrite);
         }
     }
 
-    /** Hämta den delade longtable-skrivaren (efter bootstrap). */
+    private static String firstPresentString(Config cfg, String... keys) {
+        for (String k : keys) {
+            if (cfg.hasPath(k)) {
+                try {
+                    String v = cfg.getString(k);
+                    if (v != null) return v;
+                } catch (Exception ignore) {
+                    // ignore non-string types
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Get the shared longtable printer (after bootstrap). */
     public static LongFileWriter writer() {
         LongFileWriter w = WRITER;
         if (w == null) {
@@ -52,7 +129,7 @@ public final class LongFiles {
         return w;
     }
 
-    /** Stäng snyggt (valfritt vid shutdown). */
+    /** Close gracefully (optional on shutdown). */
     public static void closeQuietly() {
         LongFileWriter w = WRITER;
         if (w != null) {

@@ -42,17 +42,14 @@ public final class ValidationTestDataFactory {
     }
 
     // ---- A2: out-of-range position ----
-    public void writeA2_outOfRangeRunCsv(Path runCsv, double pos) throws IOException {
-        CsvSchema runSchema = Schemas.RUN_V0_9;
-        RunCsvWriter writer = new RunCsvWriter(runSchema);
+    public void writeA2_outOfRangeRunCsv(Path runCsv, double badPosM) throws IOException {
+        // Skriv ett schema-korrekt run.csv med en rad där position_m är utanför tillåtet intervall.
+        String header = "time_s,train_id,section,track,position_m,P_req_W\n";
+        String row = "0.0,T1,S1,TRACK1," + badPosM + ",0.0\n";
 
-        List<Map<String, String>> rows = List.of(Map.of(
-                "time_s", "0",
-                "train_id", "T1",
-                "track_id", "A",
-                "position_m", Double.toString(pos),
-                "speed_mps", "0"
-        ));
-        writer.write(runCsv, rows);
+        Path parent = runCsv.getParent();
+        if (parent != null) Files.createDirectories(parent);
+
+        Files.write(runCsv, (header + row).getBytes(StandardCharsets.UTF_8));
     }
 }
