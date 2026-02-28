@@ -16,7 +16,7 @@ public final class DcSimPaths {
 
     /**
      * Resolve output locations deterministically, independent of working directory.
-     * <p>
+     *
      * Rules:
      * - If dcsim.exportInputs is present: exportDir = exportInputs (absolute or confDir-relative)
      * - Else: exportDir = export.root / project / scenario
@@ -27,6 +27,8 @@ public final class DcSimPaths {
     public static OutputRoots resolveOutputs(Config dcsim, Path confFile) {
         Objects.requireNonNull(dcsim, "dcsim");
         Objects.requireNonNull(confFile, "confFile");
+
+        confFile = confFile.toAbsolutePath().normalize();
 
         Path confDir = confFile.getParent();
         if (confDir == null) confDir = Paths.get(".").toAbsolutePath().normalize();
@@ -41,17 +43,12 @@ public final class DcSimPaths {
 
         Path resultsDir = resultsRoot.resolve(project).resolve(scenarioId).normalize();
 
-        // export directory: legacy exportInputs wins, otherwise export.root/project/scenario
-        Path exportDir;
-        if (dcsim.hasPath("exportInputs")) {
-            Path raw = Paths.get(dcsim.getString("exportInputs"));
-            exportDir = resolveMaybeRelativeToConfDir(raw, confDir).normalize();
-        } else {
-            Path exportRoot = dcsim.hasPath("export.root")
-                    ? resolveMaybeRelativeToConfDir(Paths.get(dcsim.getString("export.root")), confDir)
-                    : confDir.resolve("output").resolve("export"); // safe default
-            exportDir = exportRoot.resolve(project).resolve(scenarioId).normalize();
-        }
+        // export directory: deterministic; configured via export.root (optional)
+        Path exportRoot = dcsim.hasPath("export.root")
+                ? resolveMaybeRelativeToConfDir(Paths.get(dcsim.getString("export.root")), confDir)
+                : confDir.resolve("output").resolve("export"); // safe default
+
+        Path exportDir = exportRoot.resolve(project).resolve(scenarioId).normalize();
 
         Path effectiveDir = resultsDir;
 

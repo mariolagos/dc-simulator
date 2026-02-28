@@ -38,6 +38,7 @@ import org.dcsim.utils.PositionUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -49,6 +50,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+
+import static org.dcsim.DcSimApp.Root.resolveInputPath;
 
 public final class DcSimApp {
 
@@ -96,7 +99,45 @@ public final class DcSimApp {
         private final List<EdgeRef> path;
         private final double vMS, pW, Rmin, epsFrac;
 
+        private static Path repoRootFromConfFile(Path confFile) {
+            // Finds ".../<repoRoot>/project/..." and returns <repoRoot>
+            Path abs = confFile.toAbsolutePath().normalize();
+            Path p = abs.getParent(); // directory of the conf file
+            while (p != null) {
+                Path name = p.getFileName();
+                if (name != null && name.toString().equalsIgnoreCase("project")) {
+                    Path repoRoot = p.getParent();
+                    if (repoRoot != null) return repoRoot;
+                }
+                p = p.getParent();
+            }
+            return null;
+        }
 
+        public static Path resolveInputPath(Path confFile, String rawStr) {
+            Path raw = Paths.get(rawStr);
+            if (raw.isAbsolute()) return raw.normalize();
+
+            Path confDir = confFile.toAbsolutePath().normalize().getParent();
+            if (confDir == null) confDir = Paths.get(".").toAbsolutePath().normalize();
+
+            // 1) primary rule: relative to conf dir
+            Path c1 = confDir.resolve(raw).normalize();
+            if (Files.exists(c1)) return c1;
+
+            // 2) legacy: allow "project/..." relative to repo root
+            String rawNorm = rawStr.replace('\\', '/');
+            if (rawNorm.startsWith("project/") || rawNorm.startsWith("./project/")) {
+                Path repoRoot = repoRootFromConfFile(confFile);
+                if (repoRoot != null) {
+                    Path c2 = repoRoot.resolve(raw).normalize();
+                    if (Files.exists(c2)) return c2;
+                }
+            }
+
+            // fallback: confDir resolution (even if it doesn't exist)
+            return c1;
+        }
         public static Behavior<Command> create(
                 GridModel<Real> model,
                 ElectricSolver solver,
@@ -279,14 +320,12 @@ public final class DcSimApp {
         Path confFile = DcSimScenarioLoader.resolveConfArg(args[0]);
         Config scenario = DcSimScenarioLoader.loadScenarioConfig(confFile);
         Config dcsim = DcSimScenarioLoader.requireDcsim(scenario, confFile);
-        DcSimPaths.OutputRoots roots = DcSimPaths.resolveOutputs(dcsim, confFile);
 
         DcSimScenarioLoader.applyVerboseAllIfConfigured(scenario);
         DcSimScenarioLoader.logConfigSummary(dcsim, confFile);
 
         // ---- Resolve deterministic output roots (independent of working directory) ----
-        // (paths) OutputRoots roots already resolved above
-
+        DcSimPaths.OutputRoots roots = DcSimPaths.resolveOutputs(dcsim, confFile);
 
         // ---- Write “effective config" to disk (.conf and .md) ----
         Path outDir = roots.effectiveDir();
@@ -329,11 +368,15 @@ public final class DcSimApp {
 
         if (exportEnabled) {
             String trainId = dcsim.getString("exportTrainId");
-            Path confDir = confFile.getParent();
-            if (confDir == null) confDir = Paths.get(".").toAbsolutePath().normalize();
-            Path runExcelRaw = Paths.get(dcsim.getString("exportRunExcel"));
-            Path runExcel = runExcelRaw.isAbsolute() ? runExcelRaw : confDir.resolve(runExcelRaw).normalize();
 
+            Path confDir = confFile.toAbsolutePath().normalize().getParent();
+            if (confDir == null) confDir = Paths.get(".").toAbsolutePath().normalize();
+
+            Path runExcelRaw = Paths.get(dcsim.getString("exportRunExcel"));
+            Path runExcel = resolveInputPath(confFile, scenario.getString("dcsim.exportRunExcel"));
+            if (!Files.exists(runExcel)) {
+                throw new RuntimeException("Export failed: " + runExcel);
+            }
             Path exportDir = roots.exportDir();
             java.nio.file.Files.createDirectories(exportDir);
 
@@ -488,8 +531,7 @@ public final class DcSimApp {
         String testName = (dot > 0 ? baseName.substring(0, dot) : baseName);
 
         String outPath = "output/electrical_" + testName + ".csv";
-        File parent = new File(outPath).getParentFile();
-        if (parent != null) parent.mkdirs();
+        new File(outPath).getParentFile().mkdirs();
         try (ResultCsvWriter ignored = new ResultCsvWriter(model, outPath, true)) { /* truncate */ } catch (
                 IOException e) {
             System.err.println("[WARN] Could not prepare CSV file: " + e.getMessage());

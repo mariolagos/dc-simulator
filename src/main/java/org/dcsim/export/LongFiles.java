@@ -2,13 +2,16 @@ package org.dcsim.export;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import org.dcsim.DcSimPaths;
 import org.longtable.LongFileWriter;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * LongFiles
- * - Minimal bootstrap so DcSimApp can start the longtable writer from config
- * - Creates LongFileWriter (via DcsimSink) and writes RUN meta directly (t0 = 0.0, stage="NET")
- * - Leaves the rest of the system untouched.
+ *  - Minimal bootstrap so DcSimApp can start the longtable writer from config.
+ *  - Deterministic output: DcSimApp should pass DcSimPaths.OutputRoots.
  */
 public final class LongFiles {
 
@@ -18,118 +21,69 @@ public final class LongFiles {
     private LongFiles() {}
 
     /**
-     * Bootstrap from application.conf (or given Config). Called ONCE early in the app's lifecycle.
+     * Legacy bootstrap (uses ConfigFactory.load()). Prefer bootstrapFromConfig(cfg, roots) from DcSimApp.
      */
     public static void bootstrapFromConfig() {
-        bootstrapFromConfig(ConfigFactory.load());
+        bootstrapFromConfig(ConfigFactory.load(), null);
     }
 
+    /** Legacy bootstrap. Prefer bootstrapFromConfig(cfg, roots) from DcSimApp. */
     public static void bootstrapFromConfig(Config cfg) {
-        if (WRITER != null) return;
+        bootstrapFromConfig(cfg, null);
+    }
 
+    /**
+     * Deterministic bootstrap: resolve longtable path via DcSimPaths.OutputRoots when available.
+     * - If longfile.path is absolute: use as-is.
+     * - If longfile.path is relative and roots != null: resolve under roots.resultsDir().
+     * - If longfile.path missing and roots != null: use roots.longtablePath().
+     * - Otherwise: fallback to "longtable.csv" (may be CWD-dependent; only for legacy/bench use).
+     */
+    public static void bootstrapFromConfig(Config cfg, DcSimPaths.OutputRoots roots) {
+        if (WRITER != null) return;
         synchronized (LOCK) {
             if (WRITER != null) return;
 
-            // --- Parameters ---
-            String project = cfg.hasPath("longfile.project")
-                    ? cfg.getString("longfile.project")
-                    : "dc-simulator";
+            String project = cfg.hasPath("longfile.project") ? cfg.getString("longfile.project") : "dc-simulator";
+            String scenario = cfg.hasPath("longfile.scenario") ? cfg.getString("longfile.scenario") : "default";
+            String hash = cfg.hasPath("longfile.hash") ? cfg.getString("longfile.hash") : "nohash";
+            boolean overwrite = cfg.hasPath("longfile.overwrite") && cfg.getBoolean("longfile.overwrite");
 
-            String scenario = cfg.hasPath("longfile.scenario")
-                    ? cfg.getString("longfile.scenario")
-                    : "default";
-
-            String hash = cfg.hasPath("longfile.hash")
-                    ? cfg.getString("longfile.hash")
-                    : "nohash";
-
-            boolean overwrite = cfg.hasPath("longfile.overwrite")
-                    && cfg.getBoolean("longfile.overwrite");
-
-            // --- Deterministic path handling ---
-            String pathFromConfig = cfg.hasPath("longfile.path")
-                    ? cfg.getString("longfile.path")
-                    : "longtable.csv";   // no "output/"
-
-            java.nio.file.Path rawPath = java.nio.file.Paths.get(pathFromConfig);
-            java.nio.file.Path finalPath;
-
-            if (rawPath.isAbsolute()) {
-                finalPath = rawPath;
+            Path finalPath;
+            if (cfg.hasPath("longfile.path")) {
+                Path raw = Paths.get(cfg.getString("longfile.path"));
+                if (raw.isAbsolute()) {
+                    finalPath = raw;
+                } else if (roots != null) {
+                    finalPath = roots.resultsDir().resolve(raw).normalize();
+                } else {
+                    finalPath = raw.normalize();
+                }
+            } else if (roots != null) {
+                finalPath = roots.longtablePath();
             } else {
-
-                String resultsRootStr = null;
-
-                if (cfg.hasPath("dcsim.paths.resultsDir"))
-                    resultsRootStr = cfg.getString("dcsim.paths.resultsDir");
-                else if (cfg.hasPath("dcsim.resultsDir"))
-                    resultsRootStr = cfg.getString("dcsim.resultsDir");
-
-                if (resultsRootStr == null || resultsRootStr.trim().isEmpty()) {
-                    throw new IllegalStateException(
-                            "[LongFiles] longfile.path is relative (" + rawPath + ") but no results root configured.");
-                }
-
-                java.nio.file.Path resultsRoot =
-                        java.nio.file.Paths.get(resultsRootStr);
-
-                if (!resultsRoot.isAbsolute()) {
-                    throw new IllegalStateException(
-                            "[LongFiles] results root must be ABSOLUTE. Got: " + resultsRoot);
-                }
-
-                finalPath = resultsRoot
-                        .resolve(project)
-                        .resolve(scenario)
-                        .resolve(rawPath)
-                        .normalize();
+                finalPath = Paths.get("longtable.csv").normalize();
             }
 
             String csvPath = finalPath.toString();
+            WRITER = LongFileWriter.forDcsim(csvPath, overwrite, project, scenario, hash, 0.0, "NET");
 
-            WRITER = LongFileWriter.forDcsim(
-                    csvPath,
-                    overwrite,
-                    project,
-                    scenario,
-                    hash,
-                    0.0,
-                    "NET"
-            );
-
-            System.out.println("[LongFiles] LongFileWriter ready at "
-                    + finalPath.toAbsolutePath()
-                    + " project=" + project
-                    + " scenario=" + scenario
-                    + " hash=" + hash
+            System.out.println("[LongFiles] LongFileWriter ready at " + finalPath.toAbsolutePath()
+                    + " project=" + project + " scenario=" + scenario + " hash=" + hash
                     + " overwrite=" + overwrite);
         }
     }
 
-    private static String firstPresentString(Config cfg, String... keys) {
-        for (String k : keys) {
-            if (cfg.hasPath(k)) {
-                try {
-                    String v = cfg.getString(k);
-                    if (v != null) return v;
-                } catch (Exception ignore) {
-                    // ignore non-string types
-                }
-            }
-        }
-        return null;
-    }
-
-    /** Get the shared longtable printer (after bootstrap). */
+    /** Get the shared writer (after bootstrap). */
     public static LongFileWriter writer() {
         LongFileWriter w = WRITER;
         if (w == null) {
-            throw new IllegalStateException("LongFiles not bootstrapped. Call LongFiles.bootstrapFromConfig() early in DcSimApp.");
+            throw new IllegalStateException("LongFiles not bootstrapped. Call LongFiles.bootstrapFromConfig(...) early in DcSimApp.");
         }
         return w;
     }
 
-    /** Close gracefully (optional on shutdown). */
+    /** Close quietly (optional on shutdown). */
     public static void closeQuietly() {
         LongFileWriter w = WRITER;
         if (w != null) {
