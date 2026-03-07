@@ -8,7 +8,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/dc-simulator.testFixtures.iml" filepath="$PROJECT_DIR$/.idea/modules/dc-simulator.testFixtures.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/scala.iml" filepath="$PROJECT_DIR$/.idea/modules/scala.iml" />
       <module fileurl="file://$PROJECT_DIR$/src/test/scala/.idea/modules/scala.scala-build.iml" filepath="$PROJECT_DIR$/src/test/scala/.idea/modules/scala.scala-build.iml" />
-      <module fileurl="file://$PROJECT_DIR$/src/test/scala/.idea/modules/scala.scala-build~1.iml" filepath="$PROJECT_DIR$/src/test/scala/.idea/modules/scala.scala-build~1.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/test/scala/.idea/modules/scala.scala-build~2.iml" filepath="$PROJECT_DIR$/src/test/scala/.idea/modules/scala.scala-build~2.iml" />
     </modules>
   </component>
 </project>

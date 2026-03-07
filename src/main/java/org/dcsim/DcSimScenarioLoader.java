@@ -6,8 +6,9 @@ import com.typesafe.config.ConfigParseOptions;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigResolveOptions;
 
-import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public final class DcSimScenarioLoader {
     private DcSimScenarioLoader() {
@@ -42,14 +43,30 @@ public final class DcSimScenarioLoader {
      * Accepts a file or directory (dir -> scenario.conf). Mirrors DcSimApp behavior.
      */
     public static Path resolveConfArg(String arg) {
-        File confArg = new File(arg);
-        File confFile = confArg.isDirectory() ? new File(confArg, "scenario.conf") : confArg;
-        if (!confFile.exists()) {
-            throw new IllegalArgumentException("Config not found: " + confFile.getAbsolutePath());
-        }
-        return confFile.toPath();
-    }
 
+        Path conf = Paths.get(arg);
+
+        if (!conf.toString().endsWith(".conf") && !conf.toString().endsWith(".hocon")) {
+            throw new IllegalArgumentException("Config must be a .conf or .hocon file: " + conf);
+        }
+
+        // resolve relative paths against CWD
+        if (!conf.isAbsolute()) {
+            conf = Paths.get("").toAbsolutePath().resolve(conf);
+        }
+
+        conf = conf.normalize();
+
+        if (!Files.exists(conf)) {
+            throw new IllegalArgumentException("Config not found: " + conf);
+        }
+
+        if (!Files.isRegularFile(conf)) {
+            throw new IllegalArgumentException("Config is not a file: " + conf);
+        }
+
+        return conf;
+    }
     public static void applyVerboseAllIfConfigured(Config scenario) {
         boolean verboseAll = false;
         try {

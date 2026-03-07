@@ -1,19 +1,37 @@
 package org.dcsim.export;
 
-import org.dcsim.electric.*;
+import org.dcsim.electric.Device;
+import org.dcsim.electric.GridModel;
+import org.dcsim.electric.GridResult;
+import org.dcsim.electric.Line;
+import org.dcsim.electric.Substation;
+import org.dcsim.electric.TrainLoad;
 import org.dcsim.math.Real;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.Flushable;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 
 /**
- * CSV-skrivare: spänningar, effekter, tågtelemetri och aggregat.
+ * CSV printer: voltages, powers, train telemetry and aggregates.
  *
- * Viktigt:
- *  - Endast bas-ID för tåg i kolumnerna: "T1", "T2", ...
- *  - V[T] = buss-spänningen på tågets anslutningsnod (TrainLoad.fromNode).
- *  - P_substations_internal = sum(I^2 * Rint) för stationerna.
+ * Important:
+ * - Only base IDs for trains in the columns: "T1", "T2", ...
+ * - V[T] = bus voltage at the train's connection node (TrainLoad.fromNode).
+ * - P_substations_internal = sum(I^2 * Rint) for the stations.
  */
 public final class ResultCsvWriter implements Closeable, Flushable {
 
@@ -27,14 +45,14 @@ public final class ResultCsvWriter implements Closeable, Flushable {
     private boolean writeHeader = true;
     private int everyNthStep = 1;
 
-    // stabil ordning
+    // stable order
     private final List<Substation> substations = new ArrayList<>();
     private final List<Line>       lines       = new ArrayList<>();
 
-    // bara bas-ID:n (T1, T2, …) i den ordning de lades till
+    // only the base IDs (T1, T2, …) in the order they were added
     private final LinkedHashSet<String> knownTrainIds = new LinkedHashSet<>();
 
-    // per-tick broms (W), nycklad med bas-ID (T1…)
+    // per-tick brake (W), keyed with base ID (T1…)
     private Map<String,Double> lastBrakeReqW = Collections.emptyMap();
     private Map<String,Double> lastBrakeNetW = Collections.emptyMap();
     private Map<String,Double> lastBrakeResW = Collections.emptyMap();
@@ -42,12 +60,21 @@ public final class ResultCsvWriter implements Closeable, Flushable {
     // --- ctors ---
     public ResultCsvWriter(GridModel<Real> model, String path, boolean overwrite) throws IOException {
         this.model = model;
+
+        if (path == null || path.trim().isEmpty()) {
+            throw new IllegalArgumentException("ResultCsvWriter: path is null/empty");
+        }
+
         File f = new File(path);
+
+        // ✅ ALLTID: skapa parent-kataloger om de finns
+        File parent = f.getParentFile();
+        if (parent != null) parent.mkdirs();
+
         if (overwrite) {
-            File parent = f.getParentFile();
-            if (parent != null) parent.mkdirs();
             try (FileOutputStream trunc = new FileOutputStream(f, false)) { /* truncate */ }
         }
+
         this.bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f, true), StandardCharsets.UTF_8));
         this.headerWritten = f.exists() && f.length() > 0 && !overwrite;
         if (!this.headerWritten) {
@@ -56,7 +83,6 @@ public final class ResultCsvWriter implements Closeable, Flushable {
         }
         indexModel();
     }
-
     public ResultCsvWriter(GridModel<Real> model, String path) throws IOException {
         this(model, path, false);
     }
@@ -107,14 +133,16 @@ public final class ResultCsvWriter implements Closeable, Flushable {
         }
     }
 
-    /** Legacy: om bara "net"-broms skickas, skriv den – övriga 0. */
+    /**
+     * Legacy: if only "net" brake is sent, write it – others 0.
+     */
     public void setLatestBrakeW(Map<String, Double> netW) {
         this.lastBrakeReqW = Collections.emptyMap();
         this.lastBrakeNetW = normalizeBrakeMap(netW);
         this.lastBrakeResW = Collections.emptyMap();
     }
 
-    /** Föredragen: full uppdelning. */
+    /** Preferred: full division. */
     public void setLatestBrakeMaps(Map<String, Double> reqW,
                                    Map<String, Double> netW,
                                    Map<String, Double> resW) {
@@ -123,7 +151,8 @@ public final class ResultCsvWriter implements Closeable, Flushable {
         this.lastBrakeResW = normalizeBrakeMap(resW);
     }
 
-    // --- skriv en rad ---
+    // --- 12
+    // write a line ---
     public void append(GridResult res, double timeSec, int step) throws IOException {
         if ((step % everyNthStep) != 0) return;
 

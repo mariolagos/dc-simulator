@@ -38,6 +38,7 @@ import org.dcsim.utils.PositionUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -51,12 +52,6 @@ import java.util.Map;
 import java.util.Set;
 
 public final class DcSimApp {
-
-    private static LongTableWriter LONG_WRITER = null;
-    static final String projectName = "dc-simulator";
-    static final String scenarioName = "3subs1train";
-    static final String baseHash = "8110f7deeaa232a8602fcccbd55f512cebdfc7af"; // TODO: replace with dynamic git hash
-    static final String longPath = "output/longtable.csv";
 
 
     // ----- Root actor that wires everything with backpressure -----
@@ -96,7 +91,45 @@ public final class DcSimApp {
         private final List<EdgeRef> path;
         private final double vMS, pW, Rmin, epsFrac;
 
+        private static Path repoRootFromConfFile(Path confFile) {
+            // Finds ".../<repoRoot>/project/..." and returns <repoRoot>
+            Path abs = confFile.toAbsolutePath().normalize();
+            Path p = abs.getParent(); // directory of the conf file
+            while (p != null) {
+                Path name = p.getFileName();
+                if (name != null && name.toString().equalsIgnoreCase("project")) {
+                    Path repoRoot = p.getParent();
+                    if (repoRoot != null) return repoRoot;
+                }
+                p = p.getParent();
+            }
+            return null;
+        }
 
+        public static Path resolveInputPath(Path confFile, String rawStr) {
+            Path raw = Paths.get(rawStr);
+            if (raw.isAbsolute()) return raw.normalize();
+
+            Path confDir = confFile.toAbsolutePath().normalize().getParent();
+            if (confDir == null) confDir = Paths.get(".").toAbsolutePath().normalize();
+
+            // 1) primary rule: relative to conf dir
+            Path c1 = confDir.resolve(raw).normalize();
+            if (Files.exists(c1)) return c1;
+
+            // 2) legacy: allow "project/..." relative to repo root
+            String rawNorm = rawStr.replace('\\', '/');
+            if (rawNorm.startsWith("project/") || rawNorm.startsWith("./project/")) {
+                Path repoRoot = repoRootFromConfFile(confFile);
+                if (repoRoot != null) {
+                    Path c2 = repoRoot.resolve(raw).normalize();
+                    if (Files.exists(c2)) return c2;
+                }
+            }
+
+            // fallback: confDir resolution (even if it doesn't exist)
+            return c1;
+        }
         public static Behavior<Command> create(
                 GridModel<Real> model,
                 ElectricSolver solver,
@@ -276,81 +309,19 @@ public final class DcSimApp {
     public static void main(String[] args) throws IOException {
         System.out.println("[MAIN] DcSimApp starting");
 
-/*
-        // ---- 1) Hämta filen (tillåt att man anger en katalog och leta efter scenario.conf där) ----
-        if (args.length != 1) {
-            System.err.println("Usage: DcSimApp <path-to-scenario.conf|dir>");
-            System.exit(1);
-        }
-        File confArg = new File(args[0]);
-        File confFile = confArg.isDirectory() ? new File(confArg, "scenario.conf") : confArg;
-        if (!confFile.exists()) {
-            System.err.println("[ERROR] Config not found: " + confFile.getAbsolutePath());
-            System.exit(2);
-        }
-
-        // ---- 2) Läs, med fallback till classpath (application.conf/reference.conf), och resolve() ----
-        ConfigParseOptions parseOpts = ConfigParseOptions.defaults().setAllowMissing(false);
-        ConfigResolveOptions resolveOpts = ConfigResolveOptions.defaults()
-                .setAllowUnresolved(false)
-                .setUseSystemEnvironment(true);
-
-        Config scenario = ConfigFactory
-                .parseFileAnySyntax(confFile, parseOpts)
-                .withFallback(ConfigFactory.load())      // classpath fallback
-                .resolve(resolveOpts);
-
-        boolean verboseAll = false;
-        try {
-            if (scenario.hasPath("dcsim.verbose.all")) {
-                verboseAll = scenario.getBoolean("dcsim.verbose.all");
-            } else if (scenario.hasPath("dcsim.verbose") && scenario.getConfig("dcsim.verbose").hasPath("all")) {
-                verboseAll = scenario.getConfig("dcsim.verbose").getBoolean("all");
-            }
-        } catch (Exception ignore) {
-        }
-
-        if (verboseAll) {
-            System.setProperty("dcsim.verbose.all", "true");
-            System.out.println("[CONF] Verbose mode enabled (dcsim.verbose.all=true)");
-        }
-
-        // ---- 3) Säkerställ att 'dcsim' finns och plocka ut den delkonfigurationen ----
-        if (!scenario.hasPath("dcsim")) {
-            System.err.println("[ERROR] Top-level 'dcsim' section is missing in: " + confFile.getAbsolutePath());
-            System.exit(3);
-        }
-        Config dcsim = scenario.getConfig("dcsim");
-
-        // ---- 4) Logga vad som faktiskt lästes (bra vid “<MISSING>") ----
-        ConfigRenderOptions compactPretty = ConfigRenderOptions.concise().setFormatted(true).setJson(false);
-        System.out.println("[CONF] Loaded from: " + confFile.getAbsolutePath());
-        System.out.println("[CONF] dcsim.trains.defaults = " +
-                (dcsim.hasPath("trains.defaults")
-                        ? dcsim.getConfig("trains.defaults").root().render(compactPretty)
-                        : "<MISSING>"));
-        System.out.println("[CONF] dcsim.trains.overrides = " +
-                (dcsim.hasPath("trains.overrides")
-                        ? dcsim.getConfig("trains.overrides").root().render(compactPretty)
-                        : "<MISSING>"));
-        System.out.println("[CONF] dcsim.grid.substations = " +
-                (dcsim.hasPath("grid.substations")
-                        ? dcsim.getConfig("grid").getList("substations").render(compactPretty)
-                        : "<MISSING>"));
-        System.out.println("[CONF] dcsim.export = " +
-                (dcsim.hasPath("export")
-                        ? dcsim.getConfig("export").root().render(compactPretty)
-                        : "<MISSING>"));
-*/
-        Path confFile = DcSimScenarioLoader.resolveConfArg(args[0]);
+        Path confFile = RunLayoutFactory.resolveConfArg(args[0]);
         Config scenario = DcSimScenarioLoader.loadScenarioConfig(confFile);
         Config dcsim = DcSimScenarioLoader.requireDcsim(scenario, confFile);
 
-        DcSimScenarioLoader.applyVerboseAllIfConfigured(scenario);   // flytta ut din verboseAll-logik hit
-        DcSimScenarioLoader.logConfigSummary(dcsim, confFile);        // flytta ut din “[CONF] Loaded from …” hit
+        DcSimScenarioLoader.applyVerboseAllIfConfigured(scenario);
+        DcSimScenarioLoader.logConfigSummary(dcsim, confFile);
 
-        // ---- 5) Skriv “effective config" till disk (både .conf och .md) ----
-        Path outDir = Paths.get("output");
+        // ---- Derive deterministic run layout from CLI (conf + optional output root) ----
+        RunLayout layout = RunLayoutFactory.fromCliArgs(args[0], args.length >= 2 ? args[1] : null);
+
+        // ---- Write “effective config" to disk (.conf and .md) ----
+        // Put effective config under results/ so it follows the chosen output root
+        Path outDir = layout.resultsDir();
         java.nio.file.Files.createDirectories(outDir);
 
         String effectiveDcsim = "dcsim " + dcsim.root().render(
@@ -360,47 +331,91 @@ public final class DcSimApp {
                         .setFormatted(true)
                         .setJson(false)
         );
-        LongFiles.bootstrapFromConfig();
 
-        final String project  = System.getProperty("dcsim.project",  "no-project");
-        final String scenarioId = System.getProperty("dcsim.scenario", "no-scenario");
-        final String hash     = System.getProperty("dcsim.hash",     "no-hash");
-        final String csvPath  = System.getProperty("dcsim.longtable","output/longtable.csv");
+        // TODO (optional): update LongFiles to accept an explicit absolute path, then do:
+        // LongFiles.bootstrapFromConfig(dcsim, layout.resultsDir().resolve("longtable.csv"));
+        // For now keep legacy init if needed:
+        Path resultsDir = layout.outputRoot().resolve("results").normalize();
+        Files.createDirectories(resultsDir);
+
+        String csvPath = layout.resultsDir().resolve("longtable.csv").toString();
+
+        // ---- IDs derived from config path ----
+        final String project = layout.projectId();
+        final String scenarioId = layout.scenarioId();
+
+        // hash is optional; keep config/system property if you still use it
+        final String hash = dcsim.hasPath("hash")
+                ? dcsim.getString("hash")
+                : System.getProperty("dcsim.hash", "no-hash");
+
+        // Deterministic longtable path under results/
         // overwrite=true is typical for a fresh run; switch to false if you want to append
         final boolean overwrite = true;
 
-        if (scenario.hasPath("dcsim.exportInputs")) {
+        // ---- Export inputs mode ----
+        // Export is enabled only via explicit flag (do not auto-enable just because exportInputs exists)
+        boolean exportEnabled = dcsim.hasPath("export.enabled") && dcsim.getBoolean("export.enabled");
 
-            //Path outDir = Paths.get(scenario.getString("dcsim.exportInputs"));
-            String trainId = scenario.getString("dcsim.exportTrainId");
-            Path runExcel = Paths.get(scenario.getString("dcsim.exportRunExcel"));
-            Path confDir = confFile.getParent(); // Path
-            Path outDirRaw = Paths.get(dcsim.getString("exportInputs"));
-            outDir = outDirRaw.isAbsolute() ? outDirRaw : confDir.resolve(outDirRaw).normalize();
+        if (exportEnabled) {
+            String trainId = dcsim.getString("exportTrainId");
 
+            // Resolve exportRunExcel relative to the scenario inputDir (NOT confDir, NOT CWD)
+            Path runExcelRaw = Paths.get(dcsim.getString("exportRunExcel"));
+
+            Path runExcel;
+
+            if (runExcelRaw.isAbsolute()) {
+                runExcel = runExcelRaw.normalize();
+            } else {
+
+                Path cwd = Paths.get("").toAbsolutePath().normalize();
+
+                String s = runExcelRaw.toString().replace('\\', '/');
+
+                if (s.startsWith("project/") || s.startsWith("output/")) {
+                    runExcel = cwd.resolve(runExcelRaw).normalize();
+                } else {
+                    runExcel = layout.inputDir().resolve(runExcelRaw).normalize();
+                }
+            }
+            if (!Files.exists(runExcel)) {
+                throw new RuntimeException("Export failed: runExcel not found: " + runExcel);
+            }
+            Path exportDir = layout.exportDir();
+            java.nio.file.Files.createDirectories(exportDir);
 
             try {
                 ScenarioMaterializer.materializeScenario(
                         confFile,
-                        outDir,
+                        exportDir,
                         runExcel,
-                        trainId);
+                        trainId
+                );
             } catch (Exception e) {
                 throw new RuntimeException("Export failed: " + e.getMessage(), e);
             }
 
-            System.out.println("CSV inputs exported to: " + outDir.toAbsolutePath());
+            System.out.println("CSV inputs exported to: " + exportDir.toAbsolutePath());
             return; // stop here, don't run solver
         }
-
+        System.out.println("[MODE] exportEnabled=" + exportEnabled);
+        System.out.println("[LAYOUT] configFile=" + layout.configFile());
+        System.out.println("[LAYOUT] inputDir=" + layout.inputDir());
+        System.out.println("[LAYOUT] outputRoot=" + layout.outputRoot());
+        System.out.println("[LAYOUT] exportDir=" + layout.exportDir());
+        System.out.println("[LAYOUT] resultsDir=" + layout.resultsDir());
+        System.out.println("[LONGCSV] csvPath=" + csvPath);
         LongTableWriter longWriter = new LongTableWriter(csvPath, overwrite, project, scenarioId, hash);
+        System.out.println("[LONGCSV] created=" + Files.exists(Path.of(csvPath)));
         GridModelActor.setLongWriter(longWriter);
+
         TrainActor.setLongWriter(longWriter);
 
         java.nio.file.Files.writeString(outDir.resolve("effective_dcsim.conf"), effectiveDcsim);
         String effectiveMd = "# Effective dcsim config\n\n```hocon\n" + effectiveDcsim + "\n```\n";
         java.nio.file.Files.writeString(outDir.resolve("effective_dcsim.md"), effectiveMd);
-        System.out.println("[CONF] Wrote effective config to output/effective_dcsim.conf and .md");
+        System.out.println("[CONF] Wrote effective config to: " + outDir.resolve("effective_dcsim.conf") + " and .md");
 
         // ---- 6) Plocka sim-parametrar ----
         Config sim = dcsim.getConfig("simulationControl");
@@ -493,7 +508,7 @@ public final class DcSimApp {
         }
         System.out.println("=== END NODE METADATA ===");
 
-         // ---- 9) Traffic → Train spawns ----
+        // ---- 9) Traffic → Train spawns ----
         List<TrainSpawn> spawns = new ArrayList<>();
         if (dcsim.hasPath("traffic")) {
             var timetable = dcsim.getConfig("traffic.timetable");
@@ -528,20 +543,14 @@ public final class DcSimApp {
         int dot = baseName.lastIndexOf('.');
         String testName = (dot > 0 ? baseName.substring(0, dot) : baseName);
 
-        String outPath = "output/electrical_" + testName + ".csv";
+        String outPath = resultsDir.resolve("electrical_" + testName + ".csv").toString();
         new File(outPath).getParentFile().mkdirs();
         try (ResultCsvWriter ignored = new ResultCsvWriter(model, outPath, true)) { /* truncate */ } catch (
                 IOException e) {
             System.err.println("[WARN] Could not prepare CSV file: " + e.getMessage());
         }
-
-        LONG_WRITER = new LongTableWriter(longPath, true, projectName, scenarioName, baseHash);
-        System.out.println("[LongCSV] writing to " + longPath);
-
-
-        // Registrera i solvern (statiskt)
-        DcIterativeSolver.setLongWriter(LONG_WRITER);
-
+        // Use the same longtable writer for the iterative solver as well
+        DcIterativeSolver.setLongWriter(longWriter);
         // ---- 11) Bygg path från modellen (linjer) ----
         List<EdgeRef> raw = new ArrayList<>();
         for (Object o : (java.util.Collection<?>) model.getDevices()) {
@@ -572,6 +581,15 @@ public final class DcSimApp {
                 scenario // <— injicera
         );
 
+        try {
+            system.getWhenTerminated().toCompletableFuture().join();
+        } finally {
+            try {
+                longWriter.close();
+            } catch (Exception ignore) {
+            }
+            LongFiles.closeQuietly(); // om du fortfarande använder LongFiles någonstans
+        }
         LongFiles.closeQuietly();
 
     }

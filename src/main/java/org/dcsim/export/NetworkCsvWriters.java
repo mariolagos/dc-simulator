@@ -34,7 +34,10 @@ public final class NetworkCsvWriters {
     }
 
     public static void writeNodes(GridModel<Real> model, Path file) throws IOException {
+        ensureParent(file);
         try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8, CREATE, TRUNCATE_EXISTING, WRITE)) {
+            Path parent = file.getParent();
+            if (parent != null) Files.createDirectories(parent);
             w.write("name,section,track,position_m\n");
             for (Node<Real> n : model.getNodes()) {
                 // section=1 for nodes (run.csv drives section/track from excel)
@@ -46,8 +49,10 @@ public final class NetworkCsvWriters {
     public static void writeLines(GridModel<Real> model, Path file) throws IOException {
         @SuppressWarnings("unchecked")
         Collection<Device<Real>> devices = (Collection<Device<Real>>) (Collection<?>) model.getDevices();
+        ensureParent(file);
 
         try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8, CREATE, TRUNCATE_EXISTING, WRITE)) {
+
             w.write("from_node,to_node,length_m,resistance_ohm\n");
             for (Device<Real> d : devices) {
                 if (d instanceof Line ln) {
@@ -63,6 +68,7 @@ public final class NetworkCsvWriters {
     public static void writeSubstations(GridModel<Real> model, Path file) throws IOException {
         @SuppressWarnings("unchecked")
         Collection<Device<Real>> devices = (Collection<Device<Real>>) (Collection<?>) model.getDevices();
+        ensureParent(file);
 
         try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8, CREATE, TRUNCATE_EXISTING, WRITE)) {
             w.write("id,feed_nodes,return_node,emf,internal_resistance,rectifier_type\n");
@@ -78,5 +84,10 @@ public final class NetworkCsvWriters {
                 }
             }
         }
+    }
+
+    private static void ensureParent(Path file) throws IOException {
+        Path parent = file.getParent();
+        if (parent != null) Files.createDirectories(parent);
     }
 }

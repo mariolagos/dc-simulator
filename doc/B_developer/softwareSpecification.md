@@ -685,3 +685,188 @@ supported only for compatibility and will be consolidated in v0.11.
   Tests were updated to reflect this current behavior.
 - Some assertions were relaxed (e.g. exact train counts, exact voltage equality) to keep v0.8 green.
   Test semantics and logging consistency will be revisited in C0.11.
+
+---
+
+# 📗 softwareSpecification.md — RÅ TEKNISK DELTA
+
+## Deterministic Output Path Resolution (v0.9)
+
+### Objective
+
+Ensure that all simulation output paths are independent of the process working directory and are resolved deterministically.
+
+### Requirements
+
+1. Output directories must not depend on `user.dir`.
+2. All relative configuration paths must be resolved relative to the configuration file location.
+3. Output roots must be computed centrally.
+4. Export writers must receive absolute `Path` objects.
+5. Fail-fast behavior must be enforced for invalid path configurations.
+
+### Input Path Resolution
+
+Relative input paths (e.g. `exportRunExcel`, `exportInputs`, templates, legs) shall be resolved against:
+<directory of application.conf> ```
+
+Absolute paths shall be used as-is.
+
+Output Path Resolution
+
+All simulation outputs shall be resolved via a central path resolution mechanism.
+
+Writers must not:
+
+Construct relative paths internally.
+
+Use hard-coded directories such as "output" or "results".
+
+Depend on the current working directory.
+
+Validation Requirements
+
+The simulator shall:
+
+Perform strict CSV schema validation.
+
+Throw ValidationInputException for:
+
+Header mismatch.
+
+Missing required columns.
+
+Invalid domain values (e.g. out-of-range position).
+
+Validation must occur before numerical simulation begins.
+
+Java–MATLAB Interface Stability
+
+The long-format result schema shall remain stable:
+
+time_s
+project
+scenario
+base_hash
+object_type
+object_id
+signal
+value
+unit
+stage
+iter
+note
+
+Changes to this schema require version increment and documentation update.
+
+Non-Functional Requirements
+
+Deterministic behavior across environments.
+
+Reproducible results independent of working directory.
+
+No silent fallback to relative output directories.
+
+Fail-fast behavior for invalid configuration.
+
+Architectural Constraints
+
+Path resolution logic must be centralized.
+
+Export layer must be path-agnostic.
+
+No direct Paths.get("output") or similar literals allowed in simulation entry points.
+
+---
+
+Nu är det ren Markdown, inga artefakter.
+
+Vill du att vi även:
+
+- skriver en kort CHANGELOG-entry?
+- eller formulerar en minimal DEV_GUIDE-delta för arkitekturen?
+
+### Export contract
+
+`exports/` defines the **backend-neutral scenario contract** used by all execution engines.
+
+Typical contents:
+
+- `nodes.csv`
+- `lines.csv`
+- `substations.csv`
+- `run.csv`
+- optional metadata (effective configuration)
+
+Both `DcSimApp` and `DcMatlabApp` consume the same exported scenario.
+
+### Responsibilities
+
+| Component   | Responsibility                                                      |
+|-------------|---------------------------------------------------------------------|
+| DcExpApp    | Transform configuration into deterministic exported scenario inputs |
+| DcSimApp    | Execute Java solver and produce long-format simulation output       |
+| DcMatlabApp | Execute MATLAB-based solver and produce wide-format output          |
+| DcRepApp    | Generate reports from solver outputs                                |
+
+### Design goals
+
+- deterministic and reproducible inputs (`exports/`)
+- interchangeable solver backends
+- clear separation between configuration, execution, and reporting
+- shared reporting layer independent of execution backend
+
+### Run layout and shared workspace
+
+All applications (`DcExpApp`, `DcSimApp`, `DcMatlabApp`, `DcRepApp`) use the same deterministic run layout derived from
+CLI arguments.
+
+The layout is produced by **RunLayoutFactory** and shared across all components.
+
+### CLI
+
+dcsim <conf> [outputRoot]
+
+- `conf` – path to the scenario configuration file
+- `outputRoot` – optional directory where generated artifacts are written
+
+### Derived layout
+
+inputDir = directory containing conf
+outputRoot = (arg[1] if provided) else inputDir/dc
+exportDir = outputRoot/exports
+resultsDir = outputRoot/results
+
+### Directory structure
+
+Local run (no output argument):
+
+project/myProject/
+scenario.conf
+dc/
+exports/
+results/
+
+Explicit output root:
+
+project/myProject/
+scenario.conf
+
+C:/distribution/
+exports/
+results/
+
+### Usage across components
+
+| Component   | Reads              | Writes                  |
+|-------------|--------------------|-------------------------|
+| DcExpApp    | `conf`, `inputDir` | `exportDir`             |
+| DcSimApp    | `exportDir`        | `resultsDir` (longfile) |
+| DcMatlabApp | `exportDir`        | `resultsDir` (widefile) |
+| DcRepApp    | `resultsDir`       | reports                 |
+
+### Design goals
+
+- deterministic path resolution
+- strict separation between inputs and generated artifacts
+- identical layout across all applications
+- backend-independent exported scenario contract
