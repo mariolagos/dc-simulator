@@ -275,3 +275,178 @@ Strict schema validation.
 Deterministic output structure.
 
 _This USER_GUIDE.md was reconstructed from legacy USER_GUIDE.pdf and normalized for portability._
+
+## CLI arguments and deterministic run layout
+
+dc-simulator takes **two command-line arguments**:
+
+1. `conf` (string, required)  
+   Path to the scenario configuration file.
+
+2. `output` (string, optional)  
+   Root directory for generated artifacts. If omitted, the simulator creates a local workspace under the scenario input
+   directory.
+
+These arguments are used to derive:
+
+- `projectId`
+- `scenarioId`
+- `configFile`
+- `inputDir`
+- `outputRoot`
+- `exportDir`
+- `resultsDir`
+
+### Definitions
+
+- **projectId**  
+  A stable identifier derived from the directory containing the scenario configuration file.
+
+- **scenarioId**  
+  A stable identifier derived from the configuration file name without extension.
+
+- **configFile**  
+  The resolved absolute path to the scenario configuration file.
+
+- **inputDir**  
+  The directory containing the scenario inputs (config, templates, Excel profiles, etc.).
+
+- **outputRoot**  
+  Root directory for all generated dc-simulator artifacts.
+
+- **exportDir**  
+  Directory containing exported CSV inputs:
+
+      exportDir = outputRoot/exports
+
+- **resultsDir**  
+  Directory containing solver outputs:
+
+      resultsDir = outputRoot/results
+
+### Output root resolution
+
+If the optional `output` argument is omitted:
+
+    outputRoot = inputDir/dc
+
+If the optional `output` argument is provided:
+
+    outputRoot = <resolved output argument>
+
+### Notes
+
+- Arguments may be **absolute** or **relative** paths.
+- Relative paths are resolved against the **current working directory (CWD)**.
+- This layout ensures that all generated artifacts are kept under a single deterministic root.
+
+### Examples
+
+#### Example A — Absolute config path (output omitted)
+
+Command:
+
+- `dcsim "T:/gemensamt/A/B/C/x.conf"`
+
+Derived layout:
+
+- `projectId = "C"`
+- `scenarioId = "x"`
+- `configFile = "T:/gemensamt/A/B/C/x.conf"`
+- `inputDir = "T:/gemensamt/A/B/C"`
+- `outputRoot = "T:/gemensamt/A/B/C/dc"`
+- `exportDir = "T:/gemensamt/A/B/C/dc/exports"`
+- `resultsDir = "T:/gemensamt/A/B/C/dc/results"`
+
+#### Example B — Absolute config path + explicit output root
+
+Command:
+
+- `dcsim "C:/A/B/C/x.conf" "C:/distribution"`
+
+Derived layout:
+
+- `projectId = "C"`
+- `scenarioId = "x"`
+- `configFile = "C:/A/B/C/x.conf"`
+- `inputDir = "C:/A/B/C"`
+- `outputRoot = "C:/distribution"`
+- `exportDir = "C:/distribution/exports"`
+- `resultsDir = "C:/distribution/results"`
+
+#### Example C — CWD-relative config path (output omitted)
+
+Assume CWD is `D:/tools/dc-simulator`.
+
+Command:
+
+- `dcsim "myProject/myFirstScenario.conf"`
+
+Derived layout:
+
+- `projectId = "myProject"`
+- `scenarioId = "myFirstScenario"`
+- `configFile = "D:/tools/dc-simulator/project/myProject/myFirstScenario.conf"`
+- `inputDir = "D:/tools/dc-simulator/project/myProject"`
+- `outputRoot = "D:/tools/dc-simulator/project/myProject/dc"`
+- `exportDir = "D:/tools/dc-simulator/project/myProject/dc/exports"`
+- `resultsDir = "D:/tools/dc-simulator/project/myProject/dc/results"`
+
+### Recommended usage
+
+- Keep **inputs** (scenario configs, templates, Excel profiles) under `project/**`.
+- Keep all generated dc-simulator artifacts under a single deterministic root:
+  - `inputDir/dc` for local runs
+  - an explicit output root for distribution or pipeline runs
+- For reproducible and shareable runs, prefer an explicit output root.
+- If generated files appear outside `outputRoot`, treat that as a path-resolution defect.
+
+```mermaid 
+---
+title: Working flow
+---
+flowchart LR
+  DcSimApp
+  DcExpApp
+  Matlab
+  DcRepApp
+  conf
+  longfile
+  widefile
+  DcRepApp
+  reports
+  conf --> DcSimApp
+  conf --> DcExpApp
+  DcSimApp --> longfile
+  longfile --> DcRepApp
+  DcRepApp --> reports
+  DcExpApp --> Matlab
+  Matlab --> widefile
+  widefile --> DcRepApp
+```
+
+```mermaid 
+---
+title: Working flow
+---
+flowchart LR
+  DcSimApp
+  DcExpApp
+  Matlab
+  DcRepApp
+  conf
+  longfile
+  widefile
+  DcRepApp
+  reports
+  runfile
+  conf --> DcExpApp
+  DcExpApp --> DcSimApp
+  DcSimApp ---> runfile
+  longfile --> DcRepApp
+  DcRepApp --> reports
+  DcExpApp --> runfile
+  runfile --> Matlab
+  Matlab --> widefile
+  widefile --> DcRepApp
+```
