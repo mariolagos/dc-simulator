@@ -30,14 +30,8 @@ public class A1SchemaMismatchTest {
         } catch (ValidationInputException ex) {
             String msg = ex.getMessage();
             assertTrue(msg.contains("run.csv"));
-<<<<<<< HEAD
-            assertTrue(msg.contains("header mismatch"));
-            assertTrue(msg.contains("expected"));
-            assertTrue(msg.contains("got"));
-=======
             assertTrue(msg.toLowerCase().contains("header"));
             assertTrue(msg.toLowerCase().contains("mismatch") || msg.toLowerCase().contains("missing"));
->>>>>>> test(validation): align A1/A2 with ValidationInputException and domain validation semantics
         }
     }
 }
