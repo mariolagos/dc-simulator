@@ -41,20 +41,6 @@ public final class ValidationTestDataFactory {
         Files.writeString(runCsv, "t,id\n0,T1\n", StandardCharsets.UTF_8);
     }
 
-    // ---- A2: out-of-range position ----
-<<<<<<< HEAD
-    public void writeA2_outOfRangeRunCsv(Path runCsv, double badPosM) throws IOException {
-        // Skriv ett schema-korrekt run.csv med en rad där position_m är utanför tillåtet intervall.
-        String header = "time_s,train_id,section,track,position_m,P_req_W\n";
-        String row = "0.0,T1,S1,TRACK1," + badPosM + ",0.0\n";
-
-        Path parent = runCsv.getParent();
-        if (parent != null) Files.createDirectories(parent);
-
-        Files.write(runCsv, (header + row).getBytes(StandardCharsets.UTF_8));
-    }
-}
-=======
     public void writeA2_outOfRangeRunCsv(java.nio.file.Path runCsv, double badPosM) throws java.io.IOException {
         String header = "time_s,train_id,section,track,position_m,P_req_W\n";
         String row = "0.0,T1,S1,TRACK1," + badPosM + ",0.0\n";
@@ -63,5 +49,5 @@ public final class ValidationTestDataFactory {
         if (parent != null) java.nio.file.Files.createDirectories(parent);
 
         java.nio.file.Files.write(runCsv, (header + row).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-    }}
->>>>>>> test(validation): align A1/A2 with ValidationInputException and domain validation semantics
+    }
+}

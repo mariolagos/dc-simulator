@@ -30,7 +30,7 @@ public class RunLayoutFactoryTest {
         assertEquals(dir.toPath().toAbsolutePath().normalize(), layout.inputDir());
 
         // output omitted => outputRoot = inputDir
-        assertEquals(layout.inputDir(), layout.outputRoot());
+        assertEquals(layout.inputDir().resolve("dc").normalize(), layout.outputRoot());
         assertEquals(layout.outputRoot().resolve("exports").normalize(), layout.exportDir());
         assertEquals(layout.outputRoot().resolve("results").normalize(), layout.resultsDir());
     }
@@ -74,6 +74,7 @@ public class RunLayoutFactoryTest {
         assertEquals("myFirstScenario", layout.scenarioId());
         assertEquals(conf.toPath().toAbsolutePath().normalize(), layout.configFile());
         assertEquals(base.toPath().toAbsolutePath().normalize(), layout.inputDir());
-        assertEquals(layout.inputDir(), layout.outputRoot());
-    }
+        assertEquals(layout.inputDir().resolve("dc").normalize(), layout.outputRoot());
+        assertEquals(layout.outputRoot().resolve("exports").normalize(), layout.exportDir());
+        assertEquals(layout.outputRoot().resolve("results").normalize(), layout.resultsDir());    }
 }
