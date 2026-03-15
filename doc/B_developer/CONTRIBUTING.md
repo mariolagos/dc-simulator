@@ -51,3 +51,98 @@ Run only the most critical test classes for a fast sanity check:
 - [ ] Docs updated if behavior changed.
 - [ ] Test names stable; NetBuilder/Devices path used.
 - [ ] Verbosity **off** by default (opt-in via `-Ddcsim.verbose=true`).
+- 
+# Delta v0.9
+
+## Development Workflow
+
+Development in `dc-simulator` follows an **issue → branch → PR** workflow.
+
+Each change should be tracked by a GitHub issue and implemented in a dedicated feature branch.
+
+### 1. Create or pick an Issue
+
+All development work starts from a GitHub issue.
+
+Examples:
+
+- `#4 Explicit supply/return network model`
+- `#5 Refactor simulation pipeline`
+
+### 2. Create a branch
+
+Branch names should reference the issue number.
+
+Format:
+
+
+issue-<number>-short-description
+
+
+Examples:
+
+
+issue-4-explicit-supply-return
+issue-5-refactor-pipeline
+
+
+Create the branch:
+
+```bash
+git checkout main
+git pull
+git checkout -b issue-5-refactor-pipeline
+3. Commit changes in small steps
+
+Prefer small, focused commits.
+
+Example commit messages:
+
+Extract SimulationSolver interface (#5)
+Move report writing to reporting package (#5)
+Refactor DcSimApp composition root (#5)
+
+Rule of thumb:
+
+If a commit message needs two issue numbers, the commit is probably too large.
+
+4. Push the branch
+git push -u origin issue-5-refactor-pipeline
+5. Open a Pull Request
+
+Create a PR from the branch to main.
+
+PR description example:
+
+Refactor simulation pipeline.
+
+Changes:
+- extract scenario loading
+- introduce solver interface
+- separate reporting from application entry point
+
+Closes #5
+
+If the PR does not fully complete the issue:
+
+Part of #5
+6. Merge
+
+When the PR is merged and contains:
+
+Closes #<issue>
+
+GitHub automatically closes the issue.
+
+Project rules
+
+One issue = one branch
+
+Keep commits small and focused
+
+main must always remain buildable
+
+Prefer clear commit messages describing intent
+
+Typical development cycle
+Issue → Branch → Commits → Push → PR → Merge → Issue closed
