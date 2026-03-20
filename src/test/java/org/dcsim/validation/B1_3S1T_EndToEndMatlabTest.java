@@ -1,6 +1,10 @@
 package org.dcsim.validation;
 
+import org.dcsim.DcSimScenarioLoader;
+import org.dcsim.ScenarioLoader;
+import org.dcsim.SimulationInputModel;
 import org.dcsim.export.RunCsvWriter;
+import org.dcsim.math.Real;
 import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
@@ -33,20 +37,23 @@ public class B1_3S1T_EndToEndMatlabTest {
         File temp = tmp.newFolder("work");
         Path tempRoot = temp.toPath();
 
-        ValidationTestDataFactory factory = new ValidationTestDataFactory();
-        ValidationScenarioLoader loader = new ValidationScenarioLoader(factory);
-        ScenarioWorkdir wd = loader.materialize("3S1T", scenarioRoot, tempRoot);
+        Path confFile = scenarioRoot.resolve("3S1T").resolve("application.conf");
 
+        ScenarioLoader<Real> loader = new DcSimScenarioLoader();
+        SimulationInputModel<Real> input = loader.load(confFile, tempRoot);
+
+        Path workdir = input.getOutputRoot();
+        Path runCsv = input.getRunCsv();
         // Normalize run rows and write back (recommended for determinism)
-        List<Map<String, String>> runRows = new RunCsvReader(Schemas.RUN_V0_9).read(wd.runCsv());
+        List<Map<String, String>> runRows = new RunCsvReader(Schemas.RUN_V0_9).read(input.getRunCsv());
         List<Map<String, String>> normalized =
                 new RunInputNormalizer(RunInputNormalizer.Mode.SORT_ON_READ).normalizeAndValidate(runRows);
-        new RunCsvWriter(Schemas.RUN_V0_9).write(wd.runCsv(), normalized);
+        new RunCsvWriter(Schemas.RUN_V0_9).write(input.getRunCsv(), normalized);
 
         // Run MATLAB
         String matlabExe = System.getProperty("matlab.exe", "matlab");
         MatlabRunner matlab = new ProcessMatlabRunner(matlabExe, null);
-        matlab.run(wd.workdir());
+        matlab.run(workdir);
 
         // Validate output (invariants)
         ResultsCsvValidator v = new ResultsCsvValidator();
@@ -58,8 +65,7 @@ public class B1_3S1T_EndToEndMatlabTest {
                 new HashSet<String>(Arrays.asList("OK", "INFEASIBLE", "ERROR"))
         );
 
-        v.validate(wd.workdir().resolve(ValidationFiles.RESULTS_TRAIN_CSV), rules);
-        v.validate(wd.workdir().resolve(ValidationFiles.RESULTS_SUBSTATION_CSV), rules);
-        v.validate(wd.workdir().resolve(ValidationFiles.RESULTS_LINE_CSV), rules);
-    }
+        v.validate(workdir.resolve(ValidationFiles.RESULTS_TRAIN_CSV), rules);
+        v.validate(workdir.resolve(ValidationFiles.RESULTS_SUBSTATION_CSV), rules);
+        v.validate(workdir.resolve(ValidationFiles.RESULTS_LINE_CSV), rules);    }
 }

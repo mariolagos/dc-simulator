@@ -1,3 +1,6 @@
+# Effective dcsim config
+
+```hocon
 dcsim dcsim {
     paths {
         longtable="${dcsim.projects.root}/${dcsim.run.project}/${dcsim.run.scenario}/longtable.csv"
@@ -16,8 +19,8 @@ export {
     csvEveryNthStep=1
     enabled=false
 }
-exportInputs="validationTests/3S1T"
-exportRunExcel="project/validationTests/templates/T1/A-B.xlsx"
+exportInputs="validationTests/1S5T"
+exportRunExcel="project/validationTests/3S1T/T1/A-B.xlsx"
 exportTrainId=T1
 grid {
     anchorNodeId=99
@@ -26,20 +29,13 @@ grid {
         {
             from=1
             id=L0
-            lengthM=1500
+            lengthM=3000
             rPerKm=0.03
             to=2
         },
         {
             from=2
             id=L1
-            lengthM=1500
-            rPerKm=0.03
-            to=3
-        },
-        {
-            from=3
-            id=L2
             lengthM=100
             rPerKm=0.03
             to=99
@@ -59,11 +55,6 @@ grid {
         {
             id=2
             name=N1
-            position="1 1+500"
-        },
-        {
-            id=3
-            name=N2
             position="1 3+000"
         },
         {
@@ -78,20 +69,6 @@ grid {
             id=SS0
             internalResistance=0.1
             nodeId=1
-            rectifierType=DIODE
-        },
-        {
-            emf=900
-            id=SS1
-            internalResistance=0.1
-            nodeId=2
-            rectifierType=DIODE
-        },
-        {
-            emf=900
-            id=SS2
-            internalResistance=0.1
-            nodeId=3
             rectifierType=DIODE
         }
     ]
@@ -154,7 +131,7 @@ projects {
     root=project
 }
 run {
-    project="3S1T"
+    project="1S5T"
     scenario=scenario1
 }
 simulationControl {
@@ -200,6 +177,30 @@ traffic {
                 departure="00:00:00"
                 id=Train1
                 templateId=T1
+            },
+            {
+                count=1
+                departure="00:00:10"
+                id=Train2
+                templateId=T1
+            },
+            {
+                count=1
+                departure="00:00:20"
+                id=Train3
+                templateId=T1
+            },
+            {
+                count=1
+                departure="00:00:30"
+                id=Train4
+                templateId=T1
+            },
+            {
+                count=1
+                departure="00:00:40"
+                id=Train5
+                templateId=T1
             }
         ]
     }
@@ -221,3 +222,5 @@ trains {
 verbose {
     all=true
 }
+
+```

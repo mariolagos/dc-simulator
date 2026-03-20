@@ -235,6 +235,7 @@ public final class AppRunner {
         }
 
         private Behavior<Command> onKick() {
+            System.out.println("[ROOT] step=" + step);
             if (nowSec >= endAtSec - 1e-9) {
                 grid.tell(new GridModelActor.SimulationFinished());
                 return Behaviors.stopped();
@@ -307,295 +308,126 @@ public final class AppRunner {
     }
 
     public static void run(String[] args) throws IOException {
-        System.out.println("[MAIN] DcSimApp starting");
+        System.out.println("[MAIN] AppRunner starting");
 
         Path confFile = RunLayoutFactory.resolveConfArg(args[0]);
+        Path outputRoot = (args.length >= 2) ? Paths.get(args[1]) : null;
+
+        ScenarioLoader<Real> loader = new DcSimScenarioLoader();
+        SimulationInputModel<Real> input = loader.load(confFile, outputRoot);
+
+        if (input.isExportOnly()) {
+            return;
+        }
+
+        if (!input.shouldRunSolver()) {
+            return;
+        }
+
+        // Legacy config access kept temporarily until runtime is fully separated
         Config scenario = DcSimScenarioLoader.loadScenarioConfig(confFile);
         Config dcsim = DcSimScenarioLoader.requireDcsim(scenario, confFile);
 
-        DcSimScenarioLoader.applyVerboseAllIfConfigured(scenario);
-        DcSimScenarioLoader.logConfigSummary(dcsim, confFile);
-
-        // ---- Derive deterministic run layout from CLI (conf + optional output root) ----
-        RunLayout layout = RunLayoutFactory.fromCliArgs(args[0], args.length >= 2 ? args[1] : null);
-
-        // ---- Write “effective config" to disk (.conf and .md) ----
-        // Put effective config under results/ so it follows the chosen output root
-        Path outDir = layout.resultsDir();
-        java.nio.file.Files.createDirectories(outDir);
-
-        String effectiveDcsim = "dcsim " + dcsim.root().render(
-                ConfigRenderOptions.defaults()
-                        .setComments(false)
-                        .setOriginComments(false)
-                        .setFormatted(true)
-                        .setJson(false)
-        );
-
-        // TODO (optional): update LongFiles to accept an explicit absolute path, then do:
-        // LongFiles.bootstrapFromConfig(dcsim, layout.resultsDir().resolve("longtable.csv"));
-        // For now keep legacy init if needed:
-        Path resultsDir = layout.outputRoot().resolve("results").normalize();
-        Files.createDirectories(resultsDir);
-
-        String csvPath = layout.resultsDir().resolve("longtable.csv").toString();
-
-        // ---- IDs derived from config path ----
-        final String project = layout.projectId();
-        final String scenarioId = layout.scenarioId();
-
-        // hash is optional; keep config/system property if you still use it
+        final String project = input.getProjectId();
+        final String scenarioId = input.getScenarioId();
         final String hash = dcsim.hasPath("hash")
                 ? dcsim.getString("hash")
                 : System.getProperty("dcsim.hash", "no-hash");
-
-        // Deterministic longtable path under results/
-        // overwrite=true is typical for a fresh run; switch to false if you want to append
         final boolean overwrite = true;
 
-        // ---- Export inputs mode ----
-        // Export is enabled only via explicit flag (do not auto-enable just because exportInputs exists)
-        boolean exportEnabled = dcsim.hasPath("export.enabled") && dcsim.getBoolean("export.enabled");
-
-        if (exportEnabled) {
-            String trainId = dcsim.getString("exportTrainId");
-
-            // Resolve exportRunExcel relative to the scenario inputDir (NOT confDir, NOT CWD)
-            Path runExcelRaw = Paths.get(dcsim.getString("exportRunExcel"));
-
-            Path runExcel;
-
-            if (runExcelRaw.isAbsolute()) {
-                runExcel = runExcelRaw.normalize();
-            } else {
-
-                Path cwd = Paths.get("").toAbsolutePath().normalize();
-
-                String s = runExcelRaw.toString().replace('\\', '/');
-
-                if (s.startsWith("project/") || s.startsWith("output/")) {
-                    runExcel = cwd.resolve(runExcelRaw).normalize();
-                } else {
-                    runExcel = layout.inputDir().resolve(runExcelRaw).normalize();
-                }
-            }
-            if (!Files.exists(runExcel)) {
-                throw new RuntimeException("Export failed: runExcel not found: " + runExcel);
-            }
-            Path exportDir = layout.exportDir();
-            java.nio.file.Files.createDirectories(exportDir);
-
-            try {
-                ScenarioMaterializer.materializeScenario(
-                        confFile,
-                        exportDir,
-                        runExcel,
-                        trainId
-                );
-            } catch (Exception e) {
-                throw new RuntimeException("Export failed: " + e.getMessage(), e);
-            }
-
-            System.out.println("CSV inputs exported to: " + exportDir.toAbsolutePath());
-            return; // stop here, don't run solver
-        }
-        System.out.println("[MODE] exportEnabled=" + exportEnabled);
-        System.out.println("[LAYOUT] configFile=" + layout.configFile());
-        System.out.println("[LAYOUT] inputDir=" + layout.inputDir());
-        System.out.println("[LAYOUT] outputRoot=" + layout.outputRoot());
-        System.out.println("[LAYOUT] exportDir=" + layout.exportDir());
-        System.out.println("[LAYOUT] resultsDir=" + layout.resultsDir());
-        System.out.println("[LONGCSV] csvPath=" + csvPath);
+//        String csvPath = input.getResultsDir().resolve("longtable.csv").toString();
+        String csvPath = input.longTablePath().toString();
+        String outPath = input.electricalCsvPath(confFile.getFileName().toString()).toString();
         LongTableWriter longWriter = new LongTableWriter(csvPath, overwrite, project, scenarioId, hash);
-        System.out.println("[LONGCSV] created=" + Files.exists(Path.of(csvPath)));
         GridModelActor.setLongWriter(longWriter);
-
         TrainActor.setLongWriter(longWriter);
 
-        java.nio.file.Files.writeString(outDir.resolve("effective_dcsim.conf"), effectiveDcsim);
-        String effectiveMd = "# Effective dcsim config\n\n```hocon\n" + effectiveDcsim + "\n```\n";
-        java.nio.file.Files.writeString(outDir.resolve("effective_dcsim.md"), effectiveMd);
-        System.out.println("[CONF] Wrote effective config to: " + outDir.resolve("effective_dcsim.conf") + " and .md");
-
-        // ---- 6) Plocka sim-parametrar ----
-        Config sim = dcsim.getConfig("simulationControl");
-        double tickSec = sim.hasPath("tickDurationSec") ? sim.getDouble("tickDurationSec")
-                : sim.getDouble("tickDuration");
-        int startSec = sim.hasPath("simulationStart") ? parseHmsToSeconds(sim.getString("simulationStart")) : 0;
-        int endSec = sim.hasPath("simulationEnd") ? parseHmsToSeconds(sim.getString("simulationEnd"))
-                : Integer.MAX_VALUE;
-        SimulationSpeed speed = sim.hasPath("simulationSpeed")
-                ? SimulationSpeed.valueOf(sim.getString("simulationSpeed").trim().toUpperCase(Locale.ROOT))
-                : SimulationSpeed.FAST;
-        int stopAfterSteps = sim.hasPath("stopAfterSteps") ? sim.getInt("stopAfterSteps") : -1;
-
-        // ---- 7) Bygg modellen från dcsim-config ----
-        GridModel<Real> model = GridModelLoader.load(dcsim);
-        // Note: validateGridModel happens inside GridModelLoader.load(dcsim)
-
-        // Build track extents from model nodes
-        var extentByTrack = ContractChecks.extentByTrackFromModel(model);
-
-        int anchorNodeId = dcsim.hasPath("grid.anchorNodeId")
-                ? dcsim.getInt("grid.anchorNodeId")
-                : firstNonGroundNonBus(model);
-
-        Node<Real> anchor = model.getNodeById(anchorNodeId);
-        anchor.setNodeKind(NodeKind.TRAIN);
-
-        // ---- 8) Power-profiler ----
-        Map<String, List<PowerPoint>> byTpl = dcsim.hasPath("powerProfiles")
-                ? PowerTemplateParser.parse(dcsim.getConfig("powerProfiles"))
-                : Collections.emptyMap();
-        Map<String, PowerProfile> profileByTemplate = new HashMap<>();
-
-        // --- Normaliseringspass: byTpl -> byTplNormalised ---
-        // - positionM sätts via PositionUtils.parseFlexible(bisPosition)
-        // - speedMS måste finnas; annars kastas IllegalStateException
-        Map<String, List<PowerPoint>> byTplNormalised = new LinkedHashMap<>();
-
-        for (var e : byTpl.entrySet()) {
-            final String tplId = e.getKey();
-            final List<PowerPoint> src = e.getValue();
-            final List<PowerPoint> dst = new ArrayList<>(src.size());
-
-            for (int i = 0; i < src.size(); i++) {
-                PowerPoint p = src.get(i);
-
-                // 1) positionM via parseFlexible (vi antar att den returnerar int[]{section, km, m})
-                // Läs position
-                String posStr = p.positionString();   // "" om okänd
-                double posM   = p.positionM();        // NaN om okänd
-
-                // Om meters saknas men vi har en BIS-sträng → räkna fram lokalt
-                if (Double.isNaN(posM) && posStr != null && !posStr.isBlank()) {
-                    int[] skm = PositionUtils.parseFlexible(posStr); // er util
-                    if (skm == null || skm.length < 3)
-                        throw new IllegalStateException("Kunde inte tolka bisPosition \"" + posStr + "\"");
-                    int km = skm[1], mInt = skm[2];
-                    posM = km * 1000.0 + Math.floor(mInt); // trunkera meter-delen
-                }
-                // Om meters saknas men vi har en BIS-sträng → räkna fram lokalt (absolute meters, truncate)
-                if (Double.isNaN(posM) && posStr != null && !posStr.isBlank()) {
-                    var tp = PositionUtils.parseFlexibleTP(posStr).normalized();
-                    posM = Math.floor(tp.metersInLine()); // truncate
-                }
-
-                dst.add(p.withPositionM(posM));
-            }
-
-            ContractChecks.validateRunPointsAgainstModelExtent(dst, extentByTrack);
-
-            byTplNormalised.put(tplId, dst);
-        }
-
-        // använd den normaliserade mappen för profiler
-        for (var e : byTplNormalised.entrySet()) {
-            profileByTemplate.put(e.getKey(), new PointsPowerProfile(e.getValue()));
-        }
-        boolean sameModel = dcsim.hasPath("powerProfiles.motoringAndAuxiliariesInSameModel")
-                && dcsim.getBoolean("powerProfiles.motoringAndAuxiliariesInSameModel");
-        double auxKW = dcsim.hasPath("powerProfiles.auxiliaryPower")
-                ? dcsim.getDouble("powerProfiles.auxiliaryPower") : 0.0;
-
-        System.out.println("=== NODE METADATA AT START ===");
-        for (Node<Real> n : model.getNodes()) {
-            System.out.println("[NODE0] id=" + n.getId()
-                    + " label=\"" + n.getPosition() + "\""
-                    + " kind=" + n.getNodeKind()
-                    + " trackId=" + n.getTrackId()
-                    + " posM=" + n.getPositionM());
-        }
-        System.out.println("=== END NODE METADATA ===");
-
-        // ---- 9) Traffic → Train spawns ----
-        List<TrainSpawn> spawns = new ArrayList<>();
-        if (dcsim.hasPath("traffic")) {
-            var timetable = dcsim.getConfig("traffic.timetable");
-            var trainsConf = timetable.getConfigList("trains");
-            for (Config tr : trainsConf) {
-                String idBase = tr.getString("id");
-                String tpl = tr.getString("templateId");
-                int dep0Abs = parseHmsToSeconds(tr.getString("departure"));
-                Integer headway = optHmsToSeconds(tr, "headway");
-                int count = tr.hasPath("count") ? tr.getInt("count") : 1;
-                String sig = tr.hasPath("signature") ? tr.getString("signature") : "";
-
-                PowerProfile prof = profileByTemplate.get(tpl);
-
-                for (int k = 0; k < count; k++) {
-                    int depKAbs = dep0Abs + ((headway != null) ? k * headway : 0);
-                    int depRel = Math.max(0, depKAbs - startSec);
-                    String tid = (count == 1) ? idBase : uniqId(idBase, sig, k + 1);
-                    spawns.add(new TrainSpawn(tid, prof, depRel, sameModel, auxKW));
-                }
-            }
-        }
-
-        // ---- 10) Solver + CSV path ----
-//        DcElectricSolver solver = new DcElectricSolver();
         ElectricSolver solver = new DcIterativeAdapterSolver();
         System.out.println("[CONF] Using ElectricSolver: " + solver.getClass().getName());
 
-        // robust filbaserat namn (Windows/Unix)
-        String baseName = confFile.getFileName().toString();
+//        String baseName = confFile.getFileName().toString();
+//        int dot = baseName.lastIndexOf('.');
+//        String testName = (dot > 0 ? baseName.substring(0, dot) : baseName);
 
-        int dot = baseName.lastIndexOf('.');
-        String testName = (dot > 0 ? baseName.substring(0, dot) : baseName);
-
-        String outPath = resultsDir.resolve("electrical_" + testName + ".csv").toString();
+//        String outPath = input.getResultsDir().resolve("electrical_" + testName + ".csv").toString();
         new File(outPath).getParentFile().mkdirs();
-        try (ResultCsvWriter ignored = new ResultCsvWriter(model, outPath, true)) { /* truncate */ } catch (
-                IOException e) {
+
+        try (ResultCsvWriter ignored = new ResultCsvWriter(input.getGridModel(), outPath, true)) {
+            // truncate/create file
+        } catch (IOException e) {
             System.err.println("[WARN] Could not prepare CSV file: " + e.getMessage());
         }
-        // Use the same longtable writer for the iterative solver as well
+
         DcIterativeSolver.setLongWriter(longWriter);
-        // ---- 11) Bygg path från modellen (linjer) ----
+
+        // ---- Legacy runtime parameters kept local for now ----
+        int anchorNodeId = dcsim.hasPath("grid.anchorNodeId")
+                ? dcsim.getInt("grid.anchorNodeId")
+                : firstNonGroundNonBus(input.getGridModel());
+
         List<EdgeRef> raw = new ArrayList<>();
-        for (Object o : (java.util.Collection<?>) model.getDevices()) {
+        for (Object o : (java.util.Collection<?>) input.getGridModel().getDevices()) {
             Device<?> d = (Device<?>) o;
             if (d instanceof Line ln) {
                 int from = ln.getFromNode();
                 int to = ln.getToNode();
-                double Lm = ln.getLength();
-                double R = ln.getResistance().asDouble();
-                raw.add(new EdgeRef(from, to, R, Lm));
+                double lm = ln.getLength();
+                double r = ln.getResistance().asDouble();
+                raw.add(new EdgeRef(from, to, r, lm));
             }
         }
         List<EdgeRef> path = linearizePath(raw, findPathStart(raw));
 
-        // ---- 12) Ankare-parametrar (från conf) ----
         double vMS = readSpeedMS(dcsim);
         double pW = dcsim.hasPath("train.pW") ? dcsim.getDouble("train.pW") : 150_000.0;
-        double Rmin = dcsim.hasPath("train.Rmin") ? dcsim.getDouble("train.Rmin") : 1e-6;
+        double rMin = dcsim.hasPath("train.Rmin") ? dcsim.getDouble("train.Rmin") : 1e-6;
         double epsFrac = dcsim.hasPath("train.epsFrac") ? dcsim.getDouble("train.epsFrac") : 1e-3;
 
-        // ---- 13) Start Akka — INJICERA HELA SCENARIO-KONFIGEN ----
-        // Viktigt: nu kommer GridModelActor att läsa rätt värden via ctx.getSystem().settings().config()
         ActorSystem<Root.Command> system = ActorSystem.create(
-                Root.create(model, solver, outPath, tickSec, startSec, endSec,
-                        spawns, speed, stopAfterSteps, anchorNodeId,
-                        path, vMS, pW, Rmin, epsFrac),
+                Root.create(
+                        input.getGridModel(),
+                        solver,
+                        outPath,
+                        input.getTickSec(),
+                        (int) input.getStartSec(),
+                        (int) input.getEndSec(),
+                        convertSpawns(input.getSpawns()),
+                        input.getSimulationSpeed(),
+                        input.getStopAfterSteps(),
+                        anchorNodeId,
+                        path,
+                        vMS, pW, rMin, epsFrac
+                ),
                 "SimulatorSystem",
-                scenario // <— injicera
+                scenario
         );
 
         try {
             system.getWhenTerminated().toCompletableFuture().join();
         } finally {
             try {
+                System.out.println("[ROOT] TERMINATING");
                 longWriter.close();
             } catch (Exception ignore) {
             }
-            LongFiles.closeQuietly(); // om du fortfarande använder LongFiles någonstans
+            LongFiles.closeQuietly();
         }
-        LongFiles.closeQuietly();
-
     }
-
     // ---- Utilities ----
 
+    private static List<TrainSpawn> convertSpawns(List<SimulationInputModel.TrainSpawn> src) {
+        List<TrainSpawn> out = new ArrayList<>();
+        for (SimulationInputModel.TrainSpawn s : src) {
+            out.add(new TrainSpawn(
+                    s.trainId(),
+                    s.profile(),
+                    s.departureSec(),
+                    s.sameModel(),
+                    s.auxKW()
+            ));
+        }
+        return out;
+    }
     private static int parseHmsToSeconds(String s) {
         String[] p = s.trim().split(":");
         int h = Integer.parseInt(p[0]);

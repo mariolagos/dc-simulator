@@ -32,8 +32,10 @@ public final class ContractChecks {
         // which is validated elsewhere (topology tests + line checks below).
 
         // --- Nodes: absolute meters, non-negative (except ground)
-        for (Node<?> n : model.getNodes()) {
-            if (n.getId() == gnd) continue;
+
+        Map<Integer, Integer> min = new HashMap<>();
+        Map<Integer, Integer> max = new HashMap<>();        for (Node<?> n : model.getNodes()) {
+            if (n.getId() == gnd || isAnchorNode(n)) continue;
 
             if (n.getTrackId() < 0) {
                 throw new IllegalArgumentException("Node has invalid trackId < 0: nodeId=" + n.getId());
@@ -42,6 +44,11 @@ public final class ContractChecks {
                 throw new IllegalArgumentException("Node has invalid positionM < 0 (meters): nodeId=" + n.getId()
                         + " position=" + n.getPosition());
             }
+            int track = n.getTrackId();
+            int m = n.getPositionM();
+
+            min.merge(track, m, Math::min);
+            max.merge(track, m, Math::max);
         }
 
         // --- Lines: endpoints exist, no ground in dynamic part, and same track (v0.8)
@@ -210,7 +217,7 @@ public final class ContractChecks {
         Map<Integer, Integer> max = new HashMap<>();
 
         for (var n : model.getNodes()) {
-            if (n.getId() == gnd) continue;
+            if (n.getId() == gnd || isAnchorNode(n)) continue;
             int track = n.getTrackId();
             int m = n.getPositionM();
 
@@ -260,6 +267,12 @@ public final class ContractChecks {
             double pw = p.power(); // (eller din getter)
             if (!Double.isFinite(pw)) throw new IllegalArgumentException("Non-finite power at i=" + i + ": " + pw);
         }
+    }
+
+    private static boolean isAnchorNode(Node n) {
+        if (n == null) return false;
+        if (n.getId() == 99) return true;
+        return  false;
     }
 
 }

@@ -1,3 +1,6 @@
+# Effective dcsim config
+
+```hocon
 dcsim dcsim {
     paths {
         longtable="${dcsim.projects.root}/${dcsim.run.project}/${dcsim.run.scenario}/longtable.csv"
@@ -16,7 +19,7 @@ export {
     csvEveryNthStep=1
     enabled=false
 }
-exportInputs="validationTests/3S1T"
+exportInputs="validationTests/3S2T"
 exportRunExcel="project/validationTests/templates/T1/A-B.xlsx"
 exportTrainId=T1
 grid {
@@ -154,7 +157,7 @@ projects {
     root=project
 }
 run {
-    project="3S1T"
+    project="3S2T"
     scenario=scenario1
 }
 simulationControl {
@@ -200,6 +203,12 @@ traffic {
                 departure="00:00:00"
                 id=Train1
                 templateId=T1
+            },
+            {
+                count=1
+                departure="00:00:50"
+                id=Train2
+                templateId=T1
             }
         ]
     }
@@ -221,3 +230,5 @@ trains {
 verbose {
     all=true
 }
+
+```

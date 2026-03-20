@@ -667,8 +667,14 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         try {
             sb = solveWithRectifierBlocks(timeSec, tick.step);
         } catch (Exception ex) {
-            getContext().getLog().error("Solve failed at t={}s step={}: {}", timeSec, tick.step, ex.toString());
-            return this;
+            getContext().getLog().error(
+                    "Solve failed at t={}s step={}: {}",
+                    timeSec, tick.step, ex.toString()
+            );
+
+            getContext().getSystem().terminate();
+
+            throw new RuntimeException("Solver failed", ex); // 👈 viktigt
         }
 
         GridResult res = sb.res;

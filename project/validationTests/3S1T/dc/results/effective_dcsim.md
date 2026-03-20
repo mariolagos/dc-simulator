@@ -20,7 +20,7 @@ export {
     enabled=false
 }
 exportInputs="validationTests/3S1T"
-exportRunExcel="project/validationTests/3S1T/T1/A-B.xlsx"
+exportRunExcel="project/validationTests/templates/T1/A-B.xlsx"
 exportTrainId=T1
 grid {
     anchorNodeId=99
@@ -141,7 +141,7 @@ powerProfiles {
     motoringAndAuxiliariesInSameModel=false
     templates=[
         {
-            folder="project/3subs1train/T1"
+            folder="project/validationTests/3S1T/T1"
             id=T1
             legs=[
                 {
@@ -157,7 +157,7 @@ projects {
     root=project
 }
 run {
-    project="3subs1train"
+    project="3S1T"
     scenario=scenario1
 }
 simulationControl {
