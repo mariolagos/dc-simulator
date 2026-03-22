@@ -1,0 +1,2 @@
+test_id,expected_status,expected_error_code,expected_behaviour
+A1.2,REJECTED,ERR_INVALID_CSV_FORMAT,Execution is rejected with parse/format error

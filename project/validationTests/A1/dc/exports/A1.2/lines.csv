@@ -1,0 +1,2 @@
+section_id,track_id,from_node_id,to_node_id,length_m,resistance_ohm_per_m
+S1,T1,N1,N2,1000.0,0.05

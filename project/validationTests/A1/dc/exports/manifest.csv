@@ -1,0 +1,6 @@
+test_id,section,test_case,expected_behaviour,expected_error_code,case_dir
+A1.1,A1,Missing input file,Execution is rejected with clear missing file error,ERR_MISSING_FILE,A1.1
+A1.2,A1,Invalid CSV format,Execution is rejected with parse/format error,ERR_INVALID_CSV_FORMAT,A1.2
+A1.3,A1,Missing required field,Execution is rejected with field-level error,ERR_MISSING_REQUIRED_FIELD,A1.3
+A1.4,A1,Invalid cross-file reference,Execution is rejected with reference error,ERR_INVALID_REFERENCE,A1.4
+A1.5,A1,Deterministic failure response,Same failure is returned on each run,ERR_INVALID_REFERENCE,A1.5

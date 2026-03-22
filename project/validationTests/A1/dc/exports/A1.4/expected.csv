@@ -1,0 +1,2 @@
+test_id,expected_status,expected_error_code,expected_behaviour
+A1.4,REJECTED,ERR_INVALID_REFERENCE,Execution is rejected with reference error

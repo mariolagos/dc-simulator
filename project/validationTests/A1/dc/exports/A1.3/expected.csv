@@ -1,0 +1,2 @@
+test_id,expected_status,expected_error_code,expected_behaviour
+A1.3,REJECTED,ERR_MISSING_REQUIRED_FIELD,Execution is rejected with field-level error
