@@ -1,0 +1,2 @@
+test_id,expected_status,expected_error_code,expected_behaviour
+A2.5,REJECTED,ERR_DISCONNECTED_NETWORK,Same failure is returned on each run

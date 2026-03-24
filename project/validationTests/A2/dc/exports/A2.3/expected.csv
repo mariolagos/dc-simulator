@@ -1,0 +1,2 @@
+test_id,expected_status,expected_error_code,expected_behaviour
+A2.3,REJECTED,ERR_DISCONNECTED_NETWORK,Execution fails with disconnected network error

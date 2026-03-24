@@ -1,0 +1,5 @@
+node_id,section_id,track_id,position_m
+N1,S1,T1,0.0
+N2,S1,T1,500.0
+N3,S1,T1,1000.0
+N99,S1,T1,2000.0

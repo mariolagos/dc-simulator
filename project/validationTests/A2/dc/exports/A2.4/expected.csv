@@ -1,0 +1,2 @@
+test_id,expected_status,expected_error_code,expected_behaviour
+A2.4,REJECTED,ERR_INCONSISTENT_NETWORK_MODEL,Execution fails with model consistency error

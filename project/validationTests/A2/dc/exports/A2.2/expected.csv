@@ -1,0 +1,2 @@
+test_id,expected_status,expected_error_code,expected_behaviour
+A2.2,REJECTED,ERR_INVALID_TOPOLOGY,Execution fails with topology-related solver error

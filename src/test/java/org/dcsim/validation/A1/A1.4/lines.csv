@@ -1,0 +1,2 @@
+line_id,from_node_id,to_node_id,length_m,resistance_ohm
+L1,N1,N999,1000.0,0.05

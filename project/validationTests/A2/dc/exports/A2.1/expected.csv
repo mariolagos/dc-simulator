@@ -1,0 +1,2 @@
+test_id,expected_status,expected_error_code,expected_behaviour
+A2.1,REJECTED,ERR_SOLVER_SINGULAR_MATRIX,Execution fails with deterministic solver error

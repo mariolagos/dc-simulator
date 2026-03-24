@@ -1,0 +1,6 @@
+test_id,section,test_case,expected_behaviour,expected_error_code,case_dir
+A2.1,A2,Singular matrix case,Execution fails with deterministic solver error,ERR_SOLVER_SINGULAR_MATRIX,A2.1
+A2.2,A2,Incorrect node connectivity,Execution fails with topology-related solver error,ERR_INVALID_TOPOLOGY,A2.2
+A2.3,A2,Disconnected network,Execution fails with disconnected network error,ERR_DISCONNECTED_NETWORK,A2.3
+A2.4,A2,Inconsistent network model,Execution fails with model consistency error,ERR_INCONSISTENT_NETWORK_MODEL,A2.4
+A2.5,A2,Deterministic solver failure response,Same failure is returned on each run,ERR_DISCONNECTED_NETWORK,A2.5

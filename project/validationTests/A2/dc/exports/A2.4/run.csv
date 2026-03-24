@@ -1,0 +1,2 @@
+time_s,train_id,from_node_id,to_node_id,position_m,P_req_W
+0.0,Train1,N3,N1,250.0,100000.0

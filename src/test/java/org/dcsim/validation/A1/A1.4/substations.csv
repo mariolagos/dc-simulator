@@ -1,0 +1,2 @@
+substation_id,node_id,emf_V,internal_resistance_ohm
+SS1,N1,750.0,0.01
