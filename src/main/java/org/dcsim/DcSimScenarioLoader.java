@@ -396,6 +396,10 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
     }
 
     private static List<EdgeRef> linearizePath(List<EdgeRef> edges, int startNodeId) {
+        // TODO (#4):
+        // Current implementation assumes a single contiguous path.
+        // C1 has multiple parallel tracks and implicit return network.
+        // Proper solution requires explicit feeding/return topology.
         List<EdgeRef> remaining = new ArrayList<>(edges);
         List<EdgeRef> out = new ArrayList<>();
         int cur = startNodeId;
