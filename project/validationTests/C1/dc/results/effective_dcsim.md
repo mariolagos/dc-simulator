@@ -1,0 +1,448 @@
+# Effective dcsim config
+
+```hocon
+dcsim dcsim {
+    paths {
+        longtable="${dcsim.projects.root}/${dcsim.run.project}/${dcsim.run.scenario}/longtable.csv"
+        "pivots_dir"="${dcsim.projects.root}/${dcsim.run.project}/${dcsim.run.scenario}/pivots"
+    }
+}
+electrics {
+    substations {
+        defaults {
+            allowBackfeed=false
+            maxCurrentA=0
+        }
+    }
+}
+export {
+    csvEveryNthStep=1
+    enabled=false
+}
+exportInputs="validationTests/C1"
+exportRunExcel="project/validationTests/C1/templates/T1/A-B.xlsx"
+exportTrainId=T1
+grid {
+    anchorNodeId=99
+    groundNodeId=0
+    lines=[
+        {
+            from=1
+            id="L_F1_2"
+            lengthM=1300
+            rPerKm=0.02
+            to=2
+        },
+        {
+            from=2
+            id="L_F2_3"
+            lengthM=1100
+            rPerKm=0.02
+            to=3
+        },
+        {
+            from=3
+            id="L_F3_4"
+            lengthM=1200
+            rPerKm=0.02
+            to=4
+        },
+        {
+            from=4
+            id="L_F4_5"
+            lengthM=1200
+            rPerKm=0.02
+            to=5
+        },
+        {
+            from=6
+            id="L_R6_7"
+            lengthM=1300
+            rPerKm=0.015
+            to=7
+        },
+        {
+            from=7
+            id="L_R7_8"
+            lengthM=1100
+            rPerKm=0.015
+            to=8
+        },
+        {
+            from=8
+            id="L_R8_9"
+            lengthM=1200
+            rPerKm=0.015
+            to=9
+        },
+        {
+            from=9
+            id="L_R9_10"
+            lengthM=1200
+            rPerKm=0.015
+            to=10
+        }
+    ]
+    nodes=[
+        {
+            id=0
+            name=GND
+            position="1 0+100"
+        },
+        {
+            id=1
+            name=F1
+            position="1 0+000"
+        },
+        {
+            id=2
+            name=F2
+            position="1 1+200"
+        },
+        {
+            id=3
+            name=F3
+            position="1 2+300"
+        },
+        {
+            id=4
+            name=F4
+            position="1 3+500"
+        },
+        {
+            id=5
+            name=F5
+            position="1 4+700"
+        },
+        {
+            id=6
+            name=R1
+            position="1 0+000"
+        },
+        {
+            id=7
+            name=R2
+            position="1 1+200"
+        },
+        {
+            id=8
+            name=R3
+            position="1 2+300"
+        },
+        {
+            id=9
+            name=R4
+            position="1 3+500"
+        },
+        {
+            id=10
+            name=R5
+            position="1 4+700"
+        },
+        {
+            id=99
+            name=ANCHOR
+            position="1 4+700"
+        }
+    ]
+    substations=[
+        {
+            emf=780
+            id=SS0
+            internalResistance=0.1
+            nodeId=1
+            rectifierType=DIODE
+        },
+        {
+            emf=780
+            id=SS1
+            internalResistance=0.1
+            nodeId=2
+            rectifierType=DIODE
+        },
+        {
+            emf=780
+            id=SS2
+            internalResistance=0.1
+            nodeId=3
+            rectifierType=DIODE
+        },
+        {
+            emf=780
+            id=SS3
+            internalResistance=0.1
+            nodeId=4
+            rectifierType=DIODE
+        },
+        {
+            emf=780
+            id=SS4
+            internalResistance=0.1
+            nodeId=5
+            rectifierType=DIODE
+        },
+        {
+            emf=780
+            id=SS0
+            internalResistance=0.1
+            nodeId=6
+            rectifierType=DIODE
+        },
+        {
+            emf=780
+            id=SS1
+            internalResistance=0.1
+            nodeId=7
+            rectifierType=DIODE
+        },
+        {
+            emf=780
+            id=SS2
+            internalResistance=0.1
+            nodeId=8
+            rectifierType=DIODE
+        },
+        {
+            emf=780
+            id=SS3
+            internalResistance=0.1
+            nodeId=9
+            rectifierType=DIODE
+        },
+        {
+            emf=780
+            id=SS4
+            internalResistance=0.1
+            nodeId=10
+            rectifierType=DIODE
+        }
+    ]
+    trains=[
+        {
+            fromNode=2
+            id=Train1
+            toNode=0
+        }
+    ]
+}
+hash=C1
+pivot {
+    columns {
+        I="I_A"
+        P="P_W"
+        "P_loss"="P_loss_W"
+        V="V_V"
+        VA="V_A_V"
+        VB="V_B_V"
+        hash="hash_tag"
+        id=id
+        kind=kind
+        pos="pos_m"
+        project=project
+        req="req_W"
+        scenario=scenario
+        speed="speed_mps"
+        time="time_s"
+    }
+    format {
+        decimals=6
+        locale=US
+    }
+    units {
+        current=A
+        energy=J
+        power=W
+        voltage=V
+    }
+}
+powerProfiles {
+    auxiliaryPower=0
+    motoringAndAuxiliariesInSameModel=false
+    templates=[
+        {
+            folder="project/validationTests/C1/templates/T1"
+            id=T1
+            legs=[
+                {
+                    file="A-B.xlsx"
+                    fromStation=A
+                    toStation=B
+                }
+            ]
+        },
+        {
+            folder="project/validationTests/C1/templates/T2"
+            id=T2
+            legs=[
+                {
+                    file="B-A.xlsx"
+                    fromStation=B
+                    toStation=A
+                }
+            ]
+        },
+        {
+            folder="project/validationTests/C1/templates/T3"
+            id=T3
+            legs=[
+                {
+                    file="A-B.xlsx"
+                    fromStation=A
+                    toStation=B
+                }
+            ]
+        },
+        {
+            folder="project/validationTests/C1/templates/T4"
+            id=T4
+            legs=[
+                {
+                    file="B-A.xlsx"
+                    fromStation=B
+                    toStation=A
+                }
+            ]
+        }
+    ]
+}
+projects {
+    root=project
+}
+run {
+    project="1S5T"
+    scenario=scenario1
+}
+simulationControl {
+    simulationEnd="00:05:00"
+    simulationSpeed=FAST
+    simulationStart="00:00:00"
+    tickDurationSec=1
+}
+track {
+    stations=[
+        {
+            abbreviation=A
+            name=A
+            position="1 0+000"
+        },
+        {
+            abbreviation=B
+            name=B
+            position="1 1+203"
+        },
+        {
+            abbreviation=C
+            name=C
+            position="1 2+011"
+        },
+        {
+            abbreviation=D
+            name=D
+            position="1 2+914"
+        },
+        {
+            abbreviation=E
+            name=E
+            position="1 4+653"
+        }
+    ]
+}
+traffic {
+    templates {
+        T1 {
+            stops=[
+                {
+                    departure="00:00:00"
+                    signature=A
+                },
+                {
+                    arrival="00:08:35"
+                    signature=B
+                }
+            ]
+        }
+        T2 {
+            stops=[
+                {
+                    departure="00:00:00"
+                    signature=B
+                },
+                {
+                    arrival="00:09:32"
+                    signature=A
+                }
+            ]
+        }
+        T3 {
+            stops=[
+                {
+                    departure="00:00:00"
+                    signature=A
+                },
+                {
+                    arrival="00:08:32"
+                    signature=B
+                }
+            ]
+        }
+        T4 {
+            stops=[
+                {
+                    departure="00:00:00"
+                    signature=B
+                },
+                {
+                    arrival="00:09:31"
+                    signature=A
+                }
+            ]
+        }
+    }
+    timetable {
+        trains=[
+            {
+                count=1
+                departure="00:00:00"
+                id=Train1
+                templateId=T1
+            },
+            {
+                count=1
+                departure="00:01:30"
+                id=Train2
+                templateId=T2
+            },
+            {
+                count=1
+                departure="00:03:00"
+                id=Train3
+                templateId=T3
+            },
+            {
+                count=1
+                departure="00:04:30"
+                id=Train4
+                templateId=T4
+            }
+        ]
+    }
+}
+train {
+    Rmin=5.0E-6
+    epsFrac=1.0E-4
+    pW=0
+    vMS=25
+}
+trains {
+    defaults {
+        cutoffVoltage=600
+        maxCurrentA=1.0E30
+        maxVoltage=1000
+        minVoltage=500
+    }
+}
+verbose {
+    all=true
+}
+
+```

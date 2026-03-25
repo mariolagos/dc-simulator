@@ -38,10 +38,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-public final class DcSimScenarioLoader  implements ScenarioLoader<Real>{
+public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
 
     @Override
-    public SimulationInputModel<Real> load(Path confFile, Path outputRoot)  throws IOException {
+    public SimulationInputModel<Real> load(Path confFile, Path outputRoot) throws IOException {
         try {
             confFile = confFile.toAbsolutePath().normalize();
 
@@ -140,6 +140,12 @@ public final class DcSimScenarioLoader  implements ScenarioLoader<Real>{
             int stopAfterSteps = sim.hasPath("stopAfterSteps") ? sim.getInt("stopAfterSteps") : -1;
 
             GridModel<Real> model = GridModelLoader.load(dcsim);
+
+            List<TrackPoint> trackPoints = buildTrackPoints(model);
+
+            if (model == null) {
+                throw new RuntimeException("GridModelLoader returned null — check grid configuration");
+            }
             var extentByTrack = ContractChecks.extentByTrackFromModel(model);
 
             System.out.println("=== MODEL EXTENTS ===");
@@ -176,14 +182,25 @@ public final class DcSimScenarioLoader  implements ScenarioLoader<Real>{
                     String posStr = p.positionString();
                     double posM = p.positionM();
 
+                    System.out.println("TPL=" + tplId + " RAW posM=" + posM + " posStr=[" + posStr + "]");
+
                     if (Double.isNaN(posM) && posStr != null && !posStr.isBlank()) {
-                        var tp = PositionUtils.parseFlexibleTP(posStr).normalized();
-                        posM = Math.floor(tp.metersInLine());
+                        try {
+                            posM = Double.parseDouble(posStr.trim().replace(',', '.'));
+                        } catch (NumberFormatException ex) {
+                            var tp = PositionUtils.parseFlexibleTP(posStr).normalized();
+                            posM = Math.floor(tp.metersInLine());
+                        }
                     }
+
+                    if (!Double.isNaN(posM)) {
+                        posM = interpolateAbsolutePositionM(posM, trackPoints);
+                    }
+
+                    System.out.println("PROJECTED posM=" + posM);
 
                     dst.add(p.withPositionM(posM));
                 }
-
                 ContractChecks.validateRunPointsAgainstModelExtent(dst, extentByTrack);
                 byTplNormalised.put(tplId, dst);
             }
@@ -279,6 +296,78 @@ public final class DcSimScenarioLoader  implements ScenarioLoader<Real>{
 
     // --- utility methods from AppRunner ---
 
+    private static List<TrackPoint> buildTrackPoints(GridModel<Real> model) {
+        List<TrackPoint> pts = new ArrayList<>();
+
+        double acc = 0.0;
+
+        for (Device<Real> device : model.getLines()) {
+            Line line = (Line) device;
+            double len = line.getLength();
+
+            // startpunkt
+            pts.add(new TrackPoint(acc, (int) (acc / 1000), acc % 1000));
+
+            acc += len;
+
+            // endpoint
+            pts.add(new TrackPoint(acc, (int) (acc / 1000), acc % 1000));
+        }
+
+        return pts;
+    }
+
+    private static double interpolateAbsolutePositionM(
+            double runPosM,
+            List<TrackPoint> trackPoints
+    ) {
+        if (trackPoints == null || trackPoints.isEmpty()) {
+            throw new IllegalArgumentException("trackPoints is empty");
+        }
+
+        // Clamp on boundaries
+        if (runPosM <= trackPoints.get(0).positionM) {
+            return trackPoints.get(0).bisKm * 1000.0 + trackPoints.get(0).bisMeter;
+        }
+        if (runPosM >= trackPoints.get(trackPoints.size() - 1).positionM) {
+            TrackPoint last = trackPoints.get(trackPoints.size() - 1);
+            return last.bisKm * 1000.0 + last.bisMeter;
+        }
+
+        for (int i = 0; i < trackPoints.size() - 1; i++) {
+            TrackPoint a = trackPoints.get(i);
+            TrackPoint b = trackPoints.get(i + 1);
+
+            if (runPosM >= a.positionM && runPosM <= b.positionM) {
+                double span = b.positionM - a.positionM;
+                if (span <= 0.0) {
+                    return a.bisKm * 1000.0 + a.bisMeter;
+                }
+
+                double t = (runPosM - a.positionM) / span;
+
+                double aAbsM = a.bisKm * 1000.0 + a.bisMeter;
+                double bAbsM = b.bisKm * 1000.0 + b.bisMeter;
+
+                return aAbsM + t * (bAbsM - aAbsM);
+            }
+        }
+
+        throw new IllegalStateException("Could not interpolate runPosM=" + runPosM);
+    }
+
+    private static final class TrackPoint {
+        final double positionM; // track.position [m]
+        final int bisKm;        // track.bisKm
+        final double bisMeter;  // track.bisMeter
+
+        TrackPoint(double positionM, int bisKm, double bisMeter) {
+            this.positionM = positionM;
+            this.bisKm = bisKm;
+            this.bisMeter = bisMeter;
+        }
+    }
+
     private static int parseHmsToSeconds(String s) {
         String[] p = s.trim().split(":");
         int h = Integer.parseInt(p[0]);
@@ -316,8 +405,16 @@ public final class DcSimScenarioLoader  implements ScenarioLoader<Real>{
             boolean flip = false;
             for (int k = 0; k < remaining.size(); k++) {
                 EdgeRef e = remaining.get(k);
-                if (e.i == cur) { hit = k; flip = false; break; }
-                if (e.j == cur) { hit = k; flip = true; break; }
+                if (e.i == cur) {
+                    hit = k;
+                    flip = false;
+                    break;
+                }
+                if (e.j == cur) {
+                    hit = k;
+                    flip = true;
+                    break;
+                }
             }
             if (hit < 0) throw new IllegalStateException("Path not contiguous from node " + cur);
 
@@ -408,6 +505,7 @@ public final class DcSimScenarioLoader  implements ScenarioLoader<Real>{
 
         return conf;
     }
+
     public static void applyVerboseAllIfConfigured(Config scenario) {
         boolean verboseAll = false;
         try {
