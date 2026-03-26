@@ -26,8 +26,8 @@ public final class RunCsvFromExcel {
     // Required output keys for RunCsvWriter schema (headers):
     private static final String K_TIME = "time_s";
     private static final String K_TRAIN = "train_id";
-    private static final String K_SECTION = "section";
-    private static final String K_TRACK = "track";
+//    private static final String K_SECTION = "section";
+//    private static final String K_TRACK = "track";
     private static final String K_POS = "position_m";
     private static final String K_P = "P_req_W";
 
@@ -125,13 +125,13 @@ writer.write(outRunCsv, rows);
 
             double motKW = numericOrZero(r.getCell(cMot));
             double brkKW = numericOrZero(r.getCell(cBrk));
-            double pReqW = (motKW - brkKW) * 1000.0;
+            double pReqW = (motKW + brkKW) * 1000.0;
 
             Map<String, String> row = new LinkedHashMap<>();
             row.put(K_TIME, fmt(timeS));
             row.put(K_TRAIN, trainId);
-            row.put(K_SECTION, section);
-            row.put(K_TRACK, track);
+//            row.put(K_SECTION, section);
+//            row.put(K_TRACK, track);
             row.put(K_POS, fmt(posM));
             row.put(K_P, fmt(pReqW));
             out.add(row);

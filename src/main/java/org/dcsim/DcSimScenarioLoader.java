@@ -141,12 +141,11 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
 
             GridModel<Real> model = GridModelLoader.load(dcsim);
 
-            List<TrackPoint> trackPoints = buildTrackPoints(model);
-
             if (model == null) {
                 throw new RuntimeException("GridModelLoader returned null — check grid configuration");
             }
-            var extentByTrack = ContractChecks.extentByTrackFromModel(model);
+
+            List<TrackPoint> trackPoints = buildTrackPoints(model);            var extentByTrack = ContractChecks.extentByTrackFromModel(model);
 
             System.out.println("=== MODEL EXTENTS ===");
             extentByTrack.forEach((track, ext) ->

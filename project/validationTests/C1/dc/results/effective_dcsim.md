@@ -53,34 +53,6 @@ grid {
             lengthM=1200
             rPerKm=0.02
             to=5
-        },
-        {
-            from=6
-            id="L_R6_7"
-            lengthM=1300
-            rPerKm=0.015
-            to=7
-        },
-        {
-            from=7
-            id="L_R7_8"
-            lengthM=1100
-            rPerKm=0.015
-            to=8
-        },
-        {
-            from=8
-            id="L_R8_9"
-            lengthM=1200
-            rPerKm=0.015
-            to=9
-        },
-        {
-            from=9
-            id="L_R9_10"
-            lengthM=1200
-            rPerKm=0.015
-            to=10
         }
     ]
     nodes=[
@@ -97,7 +69,7 @@ grid {
         {
             id=2
             name=F2
-            position="1 1+200"
+            position="1 2+200"
         },
         {
             id=3
@@ -112,31 +84,6 @@ grid {
         {
             id=5
             name=F5
-            position="1 4+700"
-        },
-        {
-            id=6
-            name=R1
-            position="1 0+000"
-        },
-        {
-            id=7
-            name=R2
-            position="1 1+200"
-        },
-        {
-            id=8
-            name=R3
-            position="1 2+300"
-        },
-        {
-            id=9
-            name=R4
-            position="1 3+500"
-        },
-        {
-            id=10
-            name=R5
             position="1 4+700"
         },
         {
@@ -179,41 +126,6 @@ grid {
             id=SS4
             internalResistance=0.1
             nodeId=5
-            rectifierType=DIODE
-        },
-        {
-            emf=780
-            id=SS0
-            internalResistance=0.1
-            nodeId=6
-            rectifierType=DIODE
-        },
-        {
-            emf=780
-            id=SS1
-            internalResistance=0.1
-            nodeId=7
-            rectifierType=DIODE
-        },
-        {
-            emf=780
-            id=SS2
-            internalResistance=0.1
-            nodeId=8
-            rectifierType=DIODE
-        },
-        {
-            emf=780
-            id=SS3
-            internalResistance=0.1
-            nodeId=9
-            rectifierType=DIODE
-        },
-        {
-            emf=780
-            id=SS4
-            internalResistance=0.1
-            nodeId=10
             rectifierType=DIODE
         }
     ]
@@ -323,7 +235,7 @@ track {
         {
             abbreviation=A
             name=A
-            position="1 0+000"
+            position="1 0+100"
         },
         {
             abbreviation=B

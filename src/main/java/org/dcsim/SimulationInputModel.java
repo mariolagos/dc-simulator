@@ -62,11 +62,17 @@ public final class SimulationInputModel<F extends FieldElement<F>> {
 //        this.speed = b.speed;
         this.stopAfterSteps = b.stopAfterSteps;
 
-        this.gridModel = Objects.requireNonNull(b.gridModel, "gridModel");
-        this.powerProfiles = Objects.requireNonNull(b.powerProfiles, "powerProfiles");
-        this.spawns = List.copyOf(b.spawns);
         this.exportOnly = b.exportOnly;
-    }
+
+        if (b.exportOnly) {
+            this.gridModel = b.gridModel;
+            this.powerProfiles = (b.powerProfiles != null) ? b.powerProfiles : new PowerProfiles();
+        } else {
+            this.gridModel = Objects.requireNonNull(b.gridModel, "gridModel");
+            this.powerProfiles = Objects.requireNonNull(b.powerProfiles, "powerProfiles");
+        }
+
+        this.spawns = List.copyOf(b.spawns);    }
 
     public static <F extends FieldElement<F>> Builder<F> builder() {
         return new Builder<>();

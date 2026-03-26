@@ -28,8 +28,6 @@ public final class CsvSchema {
                 List.of(
                         "time_s",
                         "train_id",
-                        "section",
-                        "track",
                         "position_m",
                         "P_req_W"
                 )
