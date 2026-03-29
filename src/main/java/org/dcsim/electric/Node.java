@@ -15,6 +15,7 @@ public class Node<T extends FieldElement<T>> {
     private final int id;
     private final Real voltage;
     private final String position;
+    private String name;
 
     // v0.8 additions (MFE)
     private NodeKind nodeKind;     // SUBSTATION / TRAIN / GROUND
@@ -37,6 +38,18 @@ public class Node<T extends FieldElement<T>> {
         this.description = description;
     }
 
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getNameOrDefault() {
+        return name != null && !name.isBlank() ? name : "N" + id;
+    }
 
     public int getId() {
         return id;

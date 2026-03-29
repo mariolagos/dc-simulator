@@ -121,6 +121,9 @@ public class GridModelLoader {
                 node.setTrackId(secPos[0]);
                 node.setPositionM(secPos[1]);
             }
+            if (nodeConf.hasPath("name")) {
+                node.setName(nodeConf.getString("name"));
+            }
             model.addNode(node);
         }
 

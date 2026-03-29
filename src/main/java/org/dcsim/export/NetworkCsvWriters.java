@@ -13,7 +13,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
@@ -38,10 +40,10 @@ public final class NetworkCsvWriters {
         try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8, CREATE, TRUNCATE_EXISTING, WRITE)) {
             Path parent = file.getParent();
             if (parent != null) Files.createDirectories(parent);
-            w.write("name,section,track,position_m\n");
+
+            w.write("node_id,position_m\n");
             for (Node<Real> n : model.getNodes()) {
-                // section=1 for nodes (run.csv drives section/track from excel)
-                w.write(normName(nodeName(n.getId())) + ",1," + n.getTrackId() + "," + n.getPositionM() + "\n");
+                w.write(n.getNameOrDefault() + "," + n.getPositionM() + "\n");
             }
         }
     }
@@ -51,20 +53,34 @@ public final class NetworkCsvWriters {
         Collection<Device<Real>> devices = (Collection<Device<Real>>) (Collection<?>) model.getDevices();
         ensureParent(file);
 
-        try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8, CREATE, TRUNCATE_EXISTING, WRITE)) {
+        Map<Integer, String> nodeNames = new HashMap<>();
+        for (Node<Real> n : model.getNodes()) {
+            nodeNames.put(n.getId(), n.getNameOrDefault());
+        }
 
-            w.write("from_node,to_node,length_m,resistance_ohm\n");
+        try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8, CREATE, TRUNCATE_EXISTING, WRITE)) {
+            w.write("from_node,to_node,resistance_ohm\n");
+
             for (Device<Real> d : devices) {
                 if (d instanceof Line ln) {
-                    w.write(normName(nodeName(ln.getFromNode())) + "," +
-                            normName(nodeName(ln.getToNode())) + "," +
-                            ln.getLength() + "," +
+                    String fromNode = nodeNames.get(ln.getFromNode());
+                    String toNode = nodeNames.get(ln.getToNode());
+
+                    if (fromNode == null || toNode == null) {
+                        throw new IllegalStateException(
+                                "Missing node name for line " + ln.getId() +
+                                        " from=" + ln.getFromNode() +
+                                        " to=" + ln.getToNode()
+                        );
+                    }
+
+                    w.write(fromNode + "," +
+                            toNode + "," +
                             ln.getResistance().asDouble() + "\n");
                 }
             }
         }
     }
-
     public static void writeSubstations(GridModel<Real> model, Path file) throws IOException {
         @SuppressWarnings("unchecked")
         Collection<Device<Real>> devices = (Collection<Device<Real>>) (Collection<?>) model.getDevices();
