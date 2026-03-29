@@ -93,7 +93,6 @@ public final class SimulationInputModel<F extends FieldElement<F>> {
         private double startSec;
         private double endSec;
         private double tickSec;
-//        private double speed = 1.0;
         private int stopAfterSteps = -1;
         private SimulationSpeed simulationSpeed = SimulationSpeed.FAST;
 
@@ -161,11 +160,6 @@ public final class SimulationInputModel<F extends FieldElement<F>> {
             this.tickSec = tickSec;
             return this;
         }
-
-//        public Builder<F> speed(double speed) {
-//            this.speed = speed;
-//            return this;
-//        }
 
         public Builder<F> stopAfterSteps(int stopAfterSteps) {
             this.stopAfterSteps = stopAfterSteps;
@@ -263,10 +257,6 @@ public final class SimulationInputModel<F extends FieldElement<F>> {
     public double getTickSec() {
         return tickSec;
     }
-
-//    public double getSpeed() {
-//        return speed;
-//    }
 
     public int getStopAfterSteps() {
         return stopAfterSteps;

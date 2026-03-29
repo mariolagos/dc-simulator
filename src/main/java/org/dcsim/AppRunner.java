@@ -8,33 +8,24 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigRenderOptions;
 import org.dcsim.actors.GridModelActor;
 import org.dcsim.actors.SimulationSpeed;
 import org.dcsim.actors.TrainActor;
-import org.dcsim.contracts.ContractChecks;
 import org.dcsim.electric.DcElectricSolver;
 import org.dcsim.electric.DcIterativeAdapterSolver;
 import org.dcsim.electric.Device;
 import org.dcsim.electric.ElectricSolver;
 import org.dcsim.electric.GridModel;
-import org.dcsim.electric.GridModelLoader;
 import org.dcsim.electric.Line;
-import org.dcsim.electric.Node;
-import org.dcsim.electric.NodeKind;
 import org.dcsim.electric.Substation;
 import org.dcsim.export.LongFiles;
 import org.dcsim.export.LongTableWriter;
 import org.dcsim.export.ResultCsvWriter;
-import org.dcsim.export.ScenarioMaterializer;
 import org.dcsim.math.Real;
-import org.dcsim.power.PointsPowerProfile;
 import org.dcsim.power.PowerProfile;
-import org.dcsim.power.PowerTemplateParser;
 import org.dcsim.sim.EdgeRef;
 import org.dcsim.sim.TrainAnchorComponent;
 import org.dcsim.solver.impl.DcIterativeSolver;
-import org.dcsim.utils.PositionUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,17 +33,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 public final class AppRunner {
 
+    static final boolean DEBUG_VERBOSITY = false;
 
     // ----- Root actor that wires everything with backpressure -----
     public static final class Root extends AbstractBehavior<Root.Command> {
@@ -130,6 +120,7 @@ public final class AppRunner {
             // fallback: confDir resolution (even if it doesn't exist)
             return c1;
         }
+
         public static Behavior<Command> create(
                 GridModel<Real> model,
                 ElectricSolver solver,
@@ -205,8 +196,11 @@ public final class AppRunner {
 
             // Grid actor
             this.grid = ctx.spawn(GridModelActor.create(model, solver, csvOut, anchorNodeId), "grid");
-            System.out.println("[GMA] anchorNodeId=" + anchorNodeId
-                    + " label=" + model.getNodeById(anchorNodeId).getPosition());
+
+            if (DEBUG_VERBOSITY) {
+                System.out.println("[GMA] anchorNodeId=" + anchorNodeId
+                        + " label=" + model.getNodeById(anchorNodeId).getPosition());
+            }
 
 
             // Train actors — men ankare installeras inte här!
@@ -235,7 +229,7 @@ public final class AppRunner {
         }
 
         private Behavior<Command> onKick() {
-            System.out.println("[ROOT] step=" + step);
+            if (DEBUG_VERBOSITY) System.out.println("[ROOT] step=" + step);
             if (nowSec >= endAtSec - 1e-9) {
                 grid.tell(new GridModelActor.SimulationFinished());
                 return Behaviors.stopped();
@@ -308,7 +302,7 @@ public final class AppRunner {
     }
 
     public static void run(String[] args) throws IOException {
-        System.out.println("[MAIN] AppRunner starting");
+        if (DEBUG_VERBOSITY) System.out.println("[MAIN] AppRunner starting");
 
         Path confFile = RunLayoutFactory.resolveConfArg(args[0]);
         Path outputRoot = (args.length >= 2) ? Paths.get(args[1]) : null;
@@ -335,7 +329,6 @@ public final class AppRunner {
                 : System.getProperty("dcsim.hash", "no-hash");
         final boolean overwrite = true;
 
-//        String csvPath = input.getResultsDir().resolve("longtable.csv").toString();
         String csvPath = input.longTablePath().toString();
         String outPath = input.electricalCsvPath(confFile.getFileName().toString()).toString();
         LongTableWriter longWriter = new LongTableWriter(csvPath, overwrite, project, scenarioId, hash);
@@ -343,13 +336,8 @@ public final class AppRunner {
         TrainActor.setLongWriter(longWriter);
 
         ElectricSolver solver = new DcIterativeAdapterSolver();
-        System.out.println("[CONF] Using ElectricSolver: " + solver.getClass().getName());
+        if (DEBUG_VERBOSITY) System.out.println("[CONF] Using ElectricSolver: " + solver.getClass().getName());
 
-//        String baseName = confFile.getFileName().toString();
-//        int dot = baseName.lastIndexOf('.');
-//        String testName = (dot > 0 ? baseName.substring(0, dot) : baseName);
-
-//        String outPath = input.getResultsDir().resolve("electrical_" + testName + ".csv").toString();
         new File(outPath).getParentFile().mkdirs();
 
         try (ResultCsvWriter ignored = new ResultCsvWriter(input.getGridModel(), outPath, true)) {
@@ -406,7 +394,7 @@ public final class AppRunner {
             system.getWhenTerminated().toCompletableFuture().join();
         } finally {
             try {
-                System.out.println("[ROOT] TERMINATING");
+                if (DEBUG_VERBOSITY) System.out.println("[ROOT] TERMINATING");
                 longWriter.close();
             } catch (Exception ignore) {
             }
@@ -428,6 +416,7 @@ public final class AppRunner {
         }
         return out;
     }
+
     private static int parseHmsToSeconds(String s) {
         String[] p = s.trim().split(":");
         int h = Integer.parseInt(p[0]);

@@ -21,7 +21,13 @@ public class RunCsvPositionsMatchModelExtentTest {
     @Test
     public void loader_builds_model_with_valid_track_extents() throws Exception {
 
-        Path confFile = Path.of("project/validationTests/3S1T/application.conf");
+        Path original = Path.of("project/validationTests/3S1T/application.conf");
+        String text = Files.readString(original);
+        text = text.replaceAll("enabled\\s*=\\s*true", "enabled = false");;
+
+        Path confFile = Files.createTempFile("3S1T-loader-", ".conf");
+        Files.writeString(confFile, text);
+
         Path outputRoot = Files.createTempDirectory("junit");
 
         ScenarioLoader<Real> loader = new DcSimScenarioLoader();

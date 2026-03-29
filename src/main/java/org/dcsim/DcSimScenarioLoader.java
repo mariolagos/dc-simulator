@@ -6,7 +6,6 @@ import com.typesafe.config.ConfigParseOptions;
 import com.typesafe.config.ConfigRenderOptions;
 import com.typesafe.config.ConfigResolveOptions;
 import org.dcsim.actors.SimulationSpeed;
-import org.dcsim.config.PowerProfiles;
 import org.dcsim.contracts.ContractChecks;
 import org.dcsim.electric.Device;
 import org.dcsim.electric.GridModel;
@@ -19,9 +18,7 @@ import org.dcsim.export.ScenarioMaterializer;
 import org.dcsim.math.Real;
 import org.dcsim.power.PointsPowerProfile;
 import org.dcsim.power.PowerProfile;
-import org.dcsim.power.PowerTemplateParser;
 import org.dcsim.sim.EdgeRef;
-import org.dcsim.utils.PositionUtils;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -29,16 +26,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
+
+    static final boolean DEBUG_VERBOSITY = false;
 
     @Override
     public SimulationInputModel<Real> load(Path confFile, Path outputRoot) throws IOException {
@@ -61,13 +58,23 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
             Files.createDirectories(layout.resultsDir());
             Files.createDirectories(layout.exportDir());
 
-
             String projectId = layout.projectId();
             String scenarioId = layout.scenarioId();
 
-            String hash = dcsim.hasPath("hash")
-                    ? dcsim.getString("hash")
-                    : System.getProperty("dcsim.hash", "no-hash");
+            Config sim = dcsim.getConfig("simulationControl");
+            double tickSec = sim.hasPath("tickDurationSec")
+                    ? sim.getDouble("tickDurationSec")
+                    : sim.getDouble("tickDuration");
+            int startSec = sim.hasPath("simulationStart")
+                    ? ScenarioHelpers.parseHmsToSeconds(sim.getString("simulationStart"))
+                    : 0;
+            int endSec = sim.hasPath("simulationEnd")
+                    ? ScenarioHelpers.parseHmsToSeconds(sim.getString("simulationEnd"))
+                    : Integer.MAX_VALUE;
+            SimulationSpeed speed = sim.hasPath("simulationSpeed")
+                    ? SimulationSpeed.valueOf(sim.getString("simulationSpeed").trim().toUpperCase(Locale.ROOT))
+                    : SimulationSpeed.FAST;
+            int stopAfterSteps = sim.hasPath("stopAfterSteps") ? sim.getInt("stopAfterSteps") : -1;
 
             boolean exportEnabled = dcsim.hasPath("export.enabled") && dcsim.getBoolean("export.enabled");
 
@@ -100,7 +107,8 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
                         trainId
                 );
 
-                System.out.println("CSV inputs exported to: " + layout.exportDir().toAbsolutePath());
+                if (DEBUG_VERBOSITY)
+                    System.out.println("CSV inputs exported to: " + layout.exportDir().toAbsolutePath());
 
                 return SimulationInputModel.<Real>builder()
                         .projectId(projectId)
@@ -112,7 +120,10 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
                         .resultsDir(layout.resultsDir())
                         .reportsDir(layout.outputRoot().resolve("reports"))
                         .runCsv(runCsv)
+                        .simulationSpeed(speed)
                         .exportOnly(true)
+                        .powerProfiles(ScenarioHelpers.emptyPowerProfiles())
+                        .spawns(List.of())
                         .build();
             }
 
@@ -128,37 +139,34 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
             String effectiveMd = "# Effective dcsim config\n\n```hocon\n" + effectiveDcsim + "\n```\n";
             Files.writeString(layout.resultsDir().resolve("effective_dcsim.md"), effectiveMd);
 
-            Config sim = dcsim.getConfig("simulationControl");
-            double tickSec = sim.hasPath("tickDurationSec") ? sim.getDouble("tickDurationSec")
-                    : sim.getDouble("tickDuration");
-            int startSec = sim.hasPath("simulationStart") ? parseHmsToSeconds(sim.getString("simulationStart")) : 0;
-            int endSec = sim.hasPath("simulationEnd") ? parseHmsToSeconds(sim.getString("simulationEnd"))
-                    : Integer.MAX_VALUE;
-            SimulationSpeed speed = sim.hasPath("simulationSpeed")
-                    ? SimulationSpeed.valueOf(sim.getString("simulationSpeed").trim().toUpperCase(Locale.ROOT))
-                    : SimulationSpeed.FAST;
-            int stopAfterSteps = sim.hasPath("stopAfterSteps") ? sim.getInt("stopAfterSteps") : -1;
-
             GridModel<Real> model = GridModelLoader.load(dcsim);
-
             if (model == null) {
                 throw new RuntimeException("GridModelLoader returned null — check grid configuration");
             }
 
-            List<TrackPoint> trackPoints = buildTrackPoints(model);            var extentByTrack = ContractChecks.extentByTrackFromModel(model);
+            List<ScenarioHelpers.TrackPoint> trackPoints = buildTrackPoints(model);
+            if (DEBUG_VERBOSITY) {
+                System.out.println("=== TRACK POINTS ===");
+                for (int i = 0; i < trackPoints.size(); i++) {
+                    var p = trackPoints.get(i);
+                    System.out.println(i + ": pos=" + p.positionM +
+                            " abs=" + p.absolutePositionM());
+                }
+            }
+            var extentByTrack = ContractChecks.extentByTrackFromModel(model);
 
-            System.out.println("=== MODEL EXTENTS ===");
-            extentByTrack.forEach((track, ext) ->
-                    System.out.println("track=" + track + " extent=[" + ext.minM() + "," + ext.maxM() + "]")
-            );
+            if (DEBUG_VERBOSITY) {
+                System.out.println("=== MODEL EXTENTS ===");
+                extentByTrack.forEach((track, ext) ->
+                        System.out.println("track=" + track + " extent=[" + ext.minM() + "," + ext.maxM() + "]")
+                );
 
-            System.out.println("=== LINES ===");
-            model.getLines().forEach(line ->
-                    System.out.println(
-                            "track=" + line.getId()
-                                    + " length=" + ((Line) line).getLength()
-                    )
-            );
+                System.out.println("=== LINES ===");
+
+                model.getLines().forEach(line ->
+                        System.out.println("track=" + line.getId() + " length=" + ((Line) line).getLength())
+                );
+            }
 
             int anchorNodeId = dcsim.hasPath("grid.anchorNodeId")
                     ? dcsim.getInt("grid.anchorNodeId")
@@ -167,79 +175,14 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
             Node<Real> anchor = model.getNodeById(anchorNodeId);
             anchor.setNodeKind(NodeKind.TRAIN);
 
-            Map<String, List<PowerPoint>> byTpl = dcsim.hasPath("powerProfiles")
-                    ? PowerTemplateParser.parse(dcsim.getConfig("powerProfiles"))
-                    : Collections.emptyMap();
+            Map<String, List<PowerPoint>> byTplNormalised =
+                    ScenarioHelpers.getNormalisedTemplates(dcsim, extentByTrack, trackPoints);
 
-            Map<String, List<PowerPoint>> byTplNormalised = new LinkedHashMap<>();
-            for (var e : byTpl.entrySet()) {
-                final String tplId = e.getKey();
-                final List<PowerPoint> src = e.getValue();
-                final List<PowerPoint> dst = new ArrayList<>(src.size());
+            Map<String, PowerProfile> profileByTemplate =
+                    ScenarioHelpers.getProfilesByTemplate(byTplNormalised);
 
-                for (PowerPoint p : src) {
-                    String posStr = p.positionString();
-                    double posM = p.positionM();
-
-                    System.out.println("TPL=" + tplId + " RAW posM=" + posM + " posStr=[" + posStr + "]");
-
-                    if (Double.isNaN(posM) && posStr != null && !posStr.isBlank()) {
-                        try {
-                            posM = Double.parseDouble(posStr.trim().replace(',', '.'));
-                        } catch (NumberFormatException ex) {
-                            var tp = PositionUtils.parseFlexibleTP(posStr).normalized();
-                            posM = Math.floor(tp.metersInLine());
-                        }
-                    }
-
-                    if (!Double.isNaN(posM)) {
-                        posM = interpolateAbsolutePositionM(posM, trackPoints);
-                    }
-
-                    System.out.println("PROJECTED posM=" + posM);
-
-                    dst.add(p.withPositionM(posM));
-                }
-                ContractChecks.validateRunPointsAgainstModelExtent(dst, extentByTrack);
-                byTplNormalised.put(tplId, dst);
-            }
-
-            Map<String, PowerProfile> profileByTemplate = new HashMap<>();
-            for (var e : byTplNormalised.entrySet()) {
-                profileByTemplate.put(e.getKey(), new PointsPowerProfile(e.getValue()));
-            }
-
-            boolean sameModel = dcsim.hasPath("powerProfiles.motoringAndAuxiliariesInSameModel")
-                    && dcsim.getBoolean("powerProfiles.motoringAndAuxiliariesInSameModel");
-            double auxKW = dcsim.hasPath("powerProfiles.auxiliaryPower")
-                    ? dcsim.getDouble("powerProfiles.auxiliaryPower") : 0.0;
-
-            List<SimulationInputModel.TrainSpawn> spawns = new ArrayList<>();
-            if (dcsim.hasPath("traffic")) {
-                var timetable = dcsim.getConfig("traffic.timetable");
-                var trainsConf = timetable.getConfigList("trains");
-
-                for (Config tr : trainsConf) {
-                    String idBase = tr.getString("id");
-                    String tpl = tr.getString("templateId");
-                    int dep0Abs = parseHmsToSeconds(tr.getString("departure"));
-                    Integer headway = optHmsToSeconds(tr, "headway");
-                    int count = tr.hasPath("count") ? tr.getInt("count") : 1;
-                    String sig = tr.hasPath("signature") ? tr.getString("signature") : "";
-
-                    PowerProfile prof = profileByTemplate.get(tpl);
-
-                    for (int k = 0; k < count; k++) {
-                        int depKAbs = dep0Abs + ((headway != null) ? k * headway : 0);
-                        int depRel = Math.max(0, depKAbs - startSec);
-                        String tid = (count == 1) ? idBase : uniqId(idBase, sig, k + 1);
-
-                        spawns.add(new SimulationInputModel.TrainSpawn(
-                                tid, prof, depRel, sameModel, auxKW
-                        ));
-                    }
-                }
-            }
+            List<SimulationInputModel.TrainSpawn> spawns =
+                    ScenarioHelpers.getTrainSpawns(dcsim, profileByTemplate, startSec);
 
             List<EdgeRef> raw = new ArrayList<>();
             for (Object o : (Collection<?>) model.getDevices()) {
@@ -254,19 +197,10 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
                 }
             }
 
-            List<EdgeRef> path = linearizePath(raw, findPathStart(raw));
-
-            double vMS = readSpeedMS(dcsim);
-            double pW = dcsim.hasPath("train.pW") ? dcsim.getDouble("train.pW") : 150_000.0;
-            double rMin = dcsim.hasPath("train.Rmin") ? dcsim.getDouble("train.Rmin") : 1e-6;
-            double epsFrac = dcsim.hasPath("train.epsFrac") ? dcsim.getDouble("train.epsFrac") : 1e-3;
-
-            String longTablePath = layout.resultsDir().resolve("longtable.csv").toString();
-
-            String baseName = confFile.getFileName().toString();
-            int dot = baseName.lastIndexOf('.');
-            String testName = (dot > 0 ? baseName.substring(0, dot) : baseName);
-            String solverCsvPath = layout.resultsDir().resolve("electrical_" + testName + ".csv").toString();
+            // TODO (#4): Current implementation assumes a single contiguous path.
+            // C1 has multiple parallel tracks and implicit return network.
+            // Proper solution requires explicit feeding/return topology.
+            // List<EdgeRef> path = linearizePath(raw, findPathStart(raw));
 
             return SimulationInputModel.<Real>builder()
                     .projectId(projectId)
@@ -284,104 +218,105 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
                     .stopAfterSteps(stopAfterSteps)
                     .gridModel(model)
                     .runCsv(runCsv)
-                    .powerProfiles(new PowerProfiles())
+                    .powerProfiles(ScenarioHelpers.emptyPowerProfiles())
                     .spawns(spawns)
                     .exportOnly(false)
                     .build();
+
         } catch (Exception e) {
             throw new RuntimeException("Failed to load simulation input", e);
         }
     }
 
+    private static List<SimulationInputModel.TrainSpawn> getTrainSpawns(Map<String, List<PowerPoint>> byTplNormalised, Config dcsim, int startSec) {
+        Map<String, PowerProfile> profileByTemplate = new HashMap<>();
+        for (var e : byTplNormalised.entrySet()) {
+            profileByTemplate.put(e.getKey(), new PointsPowerProfile(e.getValue()));
+        }
+
+        boolean sameModel = dcsim.hasPath("powerProfiles.motoringAndAuxiliariesInSameModel")
+                && dcsim.getBoolean("powerProfiles.motoringAndAuxiliariesInSameModel");
+        double auxKW = dcsim.hasPath("powerProfiles.auxiliaryPower")
+                ? dcsim.getDouble("powerProfiles.auxiliaryPower") : 0.0;
+
+        List<SimulationInputModel.TrainSpawn> spawns = new ArrayList<>();
+        if (dcsim.hasPath("traffic")) {
+            var timetable = dcsim.getConfig("traffic.timetable");
+            var trainsConf = timetable.getConfigList("trains");
+
+            for (Config tr : trainsConf) {
+                String idBase = tr.getString("id");
+                String tpl = tr.getString("templateId");
+                int dep0Abs = ScenarioHelpers.parseHmsToSeconds(tr.getString("departure"));
+                Integer headway = ScenarioHelpers.optHmsToSeconds(tr, "headway");
+                int count = tr.hasPath("count") ? tr.getInt("count") : 1;
+                String sig = tr.hasPath("signature") ? tr.getString("signature") : "";
+
+                PowerProfile prof = profileByTemplate.get(tpl);
+
+                for (int k = 0; k < count; k++) {
+                    int depKAbs = dep0Abs + ((headway != null) ? k * headway : 0);
+                    int depRel = Math.max(0, depKAbs - startSec);
+                    String tid = (count == 1) ? idBase : ScenarioHelpers.uniqId(idBase, sig, k + 1);
+
+                    spawns.add(new SimulationInputModel.TrainSpawn(
+                            tid, prof, depRel, sameModel, auxKW
+                    ));
+                }
+            }
+        }
+        return spawns;
+    }
+
     // --- utility methods from AppRunner ---
 
-    private static List<TrackPoint> buildTrackPoints(GridModel<Real> model) {
-        List<TrackPoint> pts = new ArrayList<>();
+//    public static List<ScenarioHelpers.TrackPoint> buildTrackPoints(GridModel<Real> model) {
+//        List<ScenarioHelpers.TrackPoint> pts = new ArrayList<>();
+//
+//        double acc = 0.0;
+//
+//        for (Device<Real> device : model.getLines()) {
+//            Line line = (Line) device;
+//            double len = line.getLength();
+//
+//            // startpunkt
+//            pts.add(new ScenarioHelpers.TrackPoint(acc, (int) (acc / 1000), acc % 1000));
+//
+//            acc += len;
+//
+//            // endpoint
+//            pts.add(new ScenarioHelpers.TrackPoint(acc, (int) (acc / 1000), acc % 1000));
+//        }
+//
+//        return pts;
+//    }
 
+    public static List<ScenarioHelpers.TrackPoint> buildTrackPoints(GridModel<Real> model) {
+        List<ScenarioHelpers.TrackPoint> pts = new ArrayList<>();
         double acc = 0.0;
+
+        addTrackPointIfNew(pts, acc);
 
         for (Device<Real> device : model.getLines()) {
             Line line = (Line) device;
-            double len = line.getLength();
-
-            // startpunkt
-            pts.add(new TrackPoint(acc, (int) (acc / 1000), acc % 1000));
-
-            acc += len;
-
-            // endpoint
-            pts.add(new TrackPoint(acc, (int) (acc / 1000), acc % 1000));
+            acc += line.getLength();
+            addTrackPointIfNew(pts, acc);
         }
 
         return pts;
     }
 
-    private static double interpolateAbsolutePositionM(
-            double runPosM,
-            List<TrackPoint> trackPoints
-    ) {
-        if (trackPoints == null || trackPoints.isEmpty()) {
-            throw new IllegalArgumentException("trackPoints is empty");
-        }
-
-        // Clamp on boundaries
-        if (runPosM <= trackPoints.get(0).positionM) {
-            return trackPoints.get(0).bisKm * 1000.0 + trackPoints.get(0).bisMeter;
-        }
-        if (runPosM >= trackPoints.get(trackPoints.size() - 1).positionM) {
-            TrackPoint last = trackPoints.get(trackPoints.size() - 1);
-            return last.bisKm * 1000.0 + last.bisMeter;
-        }
-
-        for (int i = 0; i < trackPoints.size() - 1; i++) {
-            TrackPoint a = trackPoints.get(i);
-            TrackPoint b = trackPoints.get(i + 1);
-
-            if (runPosM >= a.positionM && runPosM <= b.positionM) {
-                double span = b.positionM - a.positionM;
-                if (span <= 0.0) {
-                    return a.bisKm * 1000.0 + a.bisMeter;
-                }
-
-                double t = (runPosM - a.positionM) / span;
-
-                double aAbsM = a.bisKm * 1000.0 + a.bisMeter;
-                double bAbsM = b.bisKm * 1000.0 + b.bisMeter;
-
-                return aAbsM + t * (bAbsM - aAbsM);
+    private static void addTrackPointIfNew(List<ScenarioHelpers.TrackPoint> pts, double acc) {
+        if (!pts.isEmpty()) {
+            ScenarioHelpers.TrackPoint last = pts.get(pts.size() - 1);
+            if (Math.abs(last.positionM - acc) < 1e-9) {
+                return;
             }
         }
 
-        throw new IllegalStateException("Could not interpolate runPosM=" + runPosM);
-    }
-
-    private static final class TrackPoint {
-        final double positionM; // track.position [m]
-        final int bisKm;        // track.bisKm
-        final double bisMeter;  // track.bisMeter
-
-        TrackPoint(double positionM, int bisKm, double bisMeter) {
-            this.positionM = positionM;
-            this.bisKm = bisKm;
-            this.bisMeter = bisMeter;
-        }
-    }
-
-    private static int parseHmsToSeconds(String s) {
-        String[] p = s.trim().split(":");
-        int h = Integer.parseInt(p[0]);
-        int m = Integer.parseInt(p[1]);
-        int sec = (p.length == 3) ? Integer.parseInt(p[2]) : 0;
-        return h * 3600 + m * 60 + sec;
-    }
-
-    private static Integer optHmsToSeconds(Config cfg, String key) {
-        return cfg.hasPath(key) ? parseHmsToSeconds(cfg.getString(key)) : null;
-    }
-
-    private static String uniqId(String base, String signature, int ord) {
-        if (signature != null && !signature.isBlank()) return base + "_" + signature + ord;
-        return base + "_" + ord;
+        int bisKm = (int) Math.floor(acc / 1000.0);
+        double bisMeter = acc - bisKm * 1000.0;
+        pts.add(new ScenarioHelpers.TrackPoint(acc, bisKm, bisMeter));
     }
 
     private static int findPathStart(List<EdgeRef> edges) {
@@ -529,24 +464,26 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
     public static void logConfigSummary(Config dcsim, Path confFile) {
         // ---- 4) Logga vad som faktiskt lästes (bra vid “<MISSING>") ----
         ConfigRenderOptions compactPretty = ConfigRenderOptions.concise().setFormatted(true).setJson(false);
-        System.out.println("[CONF] Loaded from: " + confFile.toAbsolutePath());
-        System.out.println("[CONF] dcsim.trains.defaults = " +
-                (dcsim.hasPath("trains.defaults")
-                        ? dcsim.getConfig("trains.defaults").root().render(compactPretty)
-                        : "<MISSING>"));
-        System.out.println("[CONF] dcsim.trains.overrides = " +
-                (dcsim.hasPath("trains.overrides")
-                        ? dcsim.getConfig("trains.overrides").root().render(compactPretty)
-                        : "<MISSING>"));
-        System.out.println("[CONF] dcsim.grid.substations = " +
-                (dcsim.hasPath("grid.substations")
-                        ? dcsim.getConfig("grid").getList("substations").render(compactPretty)
-                        : "<MISSING>"));
-        System.out.println("[CONF] dcsim.export = " +
-                (dcsim.hasPath("export")
-                        ? dcsim.getConfig("export").root().render(compactPretty)
-                        : "<MISSING>"));
 
+        if (DEBUG_VERBOSITY) {
+            System.out.println("[CONF] Loaded from: " + confFile.toAbsolutePath());
+            System.out.println("[CONF] dcsim.trains.defaults = " +
+                    (dcsim.hasPath("trains.defaults")
+                            ? dcsim.getConfig("trains.defaults").root().render(compactPretty)
+                            : "<MISSING>"));
+            System.out.println("[CONF] dcsim.trains.overrides = " +
+                    (dcsim.hasPath("trains.overrides")
+                            ? dcsim.getConfig("trains.overrides").root().render(compactPretty)
+                            : "<MISSING>"));
+            System.out.println("[CONF] dcsim.grid.substations = " +
+                    (dcsim.hasPath("grid.substations")
+                            ? dcsim.getConfig("grid").getList("substations").render(compactPretty)
+                            : "<MISSING>"));
+            System.out.println("[CONF] dcsim.export = " +
+                    (dcsim.hasPath("export")
+                            ? dcsim.getConfig("export").root().render(compactPretty)
+                            : "<MISSING>"));
+        }
     }
 
 }
