@@ -1247,7 +1247,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
 
         for (Node<Real> n : model.getNodes()) {
 
-            final int nodeId = n.getId();
+            final int nodeId = n.get_internal_id();
             if (nodeId == model.getGroundNodeId()) continue;
 
             final int trackId = n.getTrackId();

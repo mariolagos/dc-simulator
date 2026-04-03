@@ -78,8 +78,8 @@ public class SolverDeterminism3S1TTest {
     private static List<Device<Real>> buildDynLines(GridModel<Real> model) {
         List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
         for (Node<Real> n : model.getNodes()) {
-            if (n.getId() == model.getGroundNodeId()) continue;
-            nodePos.add(new DynamicLineTopologyBuilder.NodePos(n.getId(), n.getTrackId(), n.getPositionM()));
+            if (n.get_internal_id() == model.getGroundNodeId()) continue;
+            nodePos.add(new DynamicLineTopologyBuilder.NodePos(n.get_internal_id(), n.getTrackId(), n.getPositionM()));
         }
 
         return DynamicLineTopologyBuilder.buildDynamicLines(

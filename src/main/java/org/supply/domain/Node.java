@@ -1,8 +1,11 @@
-package org.dcsim.electric;
+package org.supply.domain;
 
+import org.dcsim.electric.Device;
+import org.dcsim.electric.NodeKind;
 import org.dcsim.math.FieldElement;
 import org.dcsim.math.Real;
-import org.dcsim.utils.PositionUtils;
+import org.supply.mapping.PositionUtils;
+
 
 import java.util.List;
 import java.util.Objects;
@@ -11,12 +14,11 @@ import java.util.Objects;
  * A Node represents a point in the electric network with a voltage.
  * Devices are connected to nodes and inject/extract current based on voltage.
  */
-@Deprecated
 public class Node<T extends FieldElement<T>> {
     private String description; // Optional descriptive text
 
     private final int internal_id;
-    private String node_id;
+    private final String node_id;
     private final int section_id;
     private Real voltage;
     private final String position;
@@ -42,51 +44,30 @@ public class Node<T extends FieldElement<T>> {
         this.voltage = Real.ZERO;
     }
 
+    // ?? Deprecated constructor 1
     @Deprecated
     public Node(int internal_id, Real voltage, String position) {
+
         this(
                 internal_id,
                 "legacy_" + internal_id,
-                legacySectionId(position),
-                legacyPositionM(position),
+                PositionUtils.parseFlexible(position)[0],
+                PositionUtils.parseFlexible(position)[1],
                 position
         );
     }
 
+    // ?? Deprecated constructor 2
     @Deprecated
     public Node(int internal_id, Real voltage, String position, String description) {
+
         this(
                 internal_id,
                 description != null ? description : "legacy_" + internal_id,
-                legacySectionId(position),
-                legacyPositionM(position),
+                PositionUtils.parseFlexible(position)[0],
+                PositionUtils.parseFlexible(position)[1],
                 position
         );
-    }
-
-    private static int legacySectionId(String position) {
-        try {
-            return PositionUtils.parseFlexible(position)[0];
-        } catch (Exception e) {
-            return 0;
-        }
-    }
-
-    private static int legacyPositionM(String position) {
-        try {
-            return PositionUtils.parseFlexible(position)[1];
-        } catch (Exception e) {
-            return 0;
-        }
-    }
-    @Deprecated
-    public void setName(String name) {
-        this.node_id = name;
-    }
-
-    @Deprecated
-    public String getName() {
-        return this.node_id;
     }
 
     public String getNode_id() {

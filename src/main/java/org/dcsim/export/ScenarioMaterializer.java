@@ -33,11 +33,15 @@ public final class ScenarioMaterializer {
 
         Config scenario = DcSimScenarioLoader.loadScenarioConfig(scenarioConf);
         Config dcsim = DcSimScenarioLoader.requireDcsim(scenario, scenarioConf);
-        GridModel<Real> model = GridModelLoader.load(dcsim);
+        GridModelLoader loader = new GridModelLoader();
+        GridModel<Real> model = loader.load(dcsim);
 
-        NetworkCsvWriters.writeNodes(model, outDir.resolve("nodes.csv"));
-        NetworkCsvWriters.writeLines(model, outDir.resolve("lines.csv"));
-        NetworkCsvWriters.writeSubstations(model, outDir.resolve("substations.csv"));
+        System.out.println("MODEL nodes=" + model.getNodes().size());
+        System.out.println("MODEL devices=" + model.getDevices().size());
+        System.out.println("MODEL lines=" + model.getLines().size());
+
+        NetworkInputCsvWriter networkWriter = new NetworkInputCsvWriter();
+        networkWriter.writeAll(dcsim, model, outDir);
 
         List<Path> runExcels = new ArrayList<>();
         List<String> trainIds = new ArrayList<>();

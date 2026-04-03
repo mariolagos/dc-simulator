@@ -16,8 +16,6 @@ import org.dcsim.solver.impl.DcDebug;
 
 import java.util.*;
 
-import static org.dcsim.solver.impl.DcDebug.VERBOSE;
-
 /**
  * Translates a production {@code GridModel<Real>} into a compact-indexed {@link DcNet}.
  * Responsibilities:
@@ -50,7 +48,7 @@ public final class NetBuilder {
         final Map<Integer, Integer> idxById = new HashMap<>(n * 2);
 
         for (int i = 0; i < n; i++) {
-            int id = modelNodes.get(i).getId();
+            int id = modelNodes.get(i).get_internal_id();
             nodeIds.add(id);
             idxById.put(id, i);
         }

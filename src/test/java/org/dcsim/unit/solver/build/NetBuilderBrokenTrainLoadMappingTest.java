@@ -6,7 +6,6 @@ import org.dcsim.electric.Node;
 import org.dcsim.electric.TrainLoad;
 import org.dcsim.math.Real;
 import org.dcsim.solver.api.DcNet;
-import org.dcsim.solver.api.TrainData;
 import org.dcsim.solver.build.NetBuilder;
 import org.junit.Test;
 
@@ -27,7 +26,7 @@ public class NetBuilderBrokenTrainLoadMappingTest {
         // --- Arrange: mock Node so NetBuilder can read getId()
         @SuppressWarnings("unchecked")
         Node<Real> gndNode = mock(Node.class);
-        when(gndNode.getId()).thenReturn(GND);
+        when(gndNode.get_internal_id()).thenReturn(GND);
 
         // --- Arrange: mock TrainLoad (NetBuilder uses instanceof TrainLoad, works with mocks)
         TrainLoad tr = mock(TrainLoad.class);

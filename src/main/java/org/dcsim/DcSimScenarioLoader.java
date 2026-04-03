@@ -139,7 +139,9 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
             String effectiveMd = "# Effective dcsim config\n\n```hocon\n" + effectiveDcsim + "\n```\n";
             Files.writeString(layout.resultsDir().resolve("effective_dcsim.md"), effectiveMd);
 
-            GridModel<Real> model = GridModelLoader.load(dcsim);
+            GridModelLoader loader = new GridModelLoader();
+            GridModel<Real> model = loader.load(dcsim);
+
             if (model == null) {
                 throw new RuntimeException("GridModelLoader returned null — check grid configuration");
             }
@@ -292,20 +294,30 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
 //    }
 
     public static List<ScenarioHelpers.TrackPoint> buildTrackPoints(GridModel<Real> model) {
-        List<ScenarioHelpers.TrackPoint> pts = new ArrayList<>();
-        double acc = 0.0;
+        Map<Integer, ContractChecks.TrackExtent> extentByTrack =
+                ContractChecks.extentByTrackFromModel(model);
 
-        addTrackPointIfNew(pts, acc);
-
-        for (Device<Real> device : model.getLines()) {
-            Line line = (Line) device;
-            acc += line.getLength();
-            addTrackPointIfNew(pts, acc);
+        if (extentByTrack.isEmpty()) {
+            throw new IllegalArgumentException("No track extents found in model");
         }
+
+        // C1 / current implementation assumes one logical track profile.
+        // Use the smallest track id deterministically.
+        Integer trackId = extentByTrack.keySet().stream()
+                .sorted()
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No track id found"));
+
+        ContractChecks.TrackExtent extent = extentByTrack.get(trackId);
+        int minM = extent.minM();
+        int maxM = extent.maxM();
+
+        List<ScenarioHelpers.TrackPoint> pts = new ArrayList<>();
+        addTrackPointIfNew(pts, minM);
+        addTrackPointIfNew(pts, maxM);
 
         return pts;
     }
-
     private static void addTrackPointIfNew(List<ScenarioHelpers.TrackPoint> pts, double acc) {
         if (!pts.isEmpty()) {
             ScenarioHelpers.TrackPoint last = pts.get(pts.size() - 1);

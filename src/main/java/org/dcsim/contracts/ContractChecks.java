@@ -35,13 +35,13 @@ public final class ContractChecks {
 
         Map<Integer, Integer> min = new HashMap<>();
         Map<Integer, Integer> max = new HashMap<>();        for (Node<?> n : model.getNodes()) {
-            if (n.getId() == gnd || isAnchorNode(n)) continue;
+            if (n.get_internal_id() == gnd || isAnchorNode(n)) continue;
 
             if (n.getTrackId() < 0) {
-                throw new IllegalArgumentException("Node has invalid trackId < 0: nodeId=" + n.getId());
+                throw new IllegalArgumentException("Node has invalid trackId < 0: nodeId=" + n.get_internal_id());
             }
             if (n.getPositionM() < 0) {
-                throw new IllegalArgumentException("Node has invalid positionM < 0 (meters): nodeId=" + n.getId()
+                throw new IllegalArgumentException("Node has invalid positionM < 0 (meters): nodeId=" + n.get_internal_id()
                         + " position=" + n.getPosition());
             }
             int track = n.getTrackId();
@@ -217,7 +217,7 @@ public final class ContractChecks {
         Map<Integer, Integer> max = new HashMap<>();
 
         for (var n : model.getNodes()) {
-            if (n.getId() == gnd || isAnchorNode(n)) continue;
+            if (n.get_internal_id() == gnd || isAnchorNode(n)) continue;
             int track = n.getTrackId();
             int m = n.getPositionM();
 
@@ -271,7 +271,7 @@ public final class ContractChecks {
 
     private static boolean isAnchorNode(Node n) {
         if (n == null) return false;
-        if (n.getId() == 99) return true;
+        if (n.get_internal_id() == 99) return true;
         return  false;
     }
 

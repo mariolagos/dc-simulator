@@ -31,10 +31,9 @@ public final class RunCsvFromExcel {
     // Required output keys for RunCsvWriter schema (headers):
     private static final String K_TIME = "time_s";
     private static final String K_TRAIN = "train_id";
-//    private static final String K_SECTION = "section";
-//    private static final String K_TRACK = "track";
+    private static final String K_TRACK = "track";
     private static final String K_POS = "position_m";
-    private static final String K_P = "P_req_W";
+    private static final String K_P = "p_req_W";
 
     private record RunPoint(double timeS, double positionM, double pReqW) {
     }
@@ -167,6 +166,7 @@ public final class RunCsvFromExcel {
             Map<String, String> row = new LinkedHashMap<>();
             row.put(K_TIME, fmt(p.timeS()));
             row.put(K_TRAIN, trainId);
+            row.put(K_TRACK, "1");
             row.put(K_POS, fmt(p.positionM()));
             row.put(K_P, fmt(p.pReqW()));
             out.add(row);
@@ -219,6 +219,7 @@ public final class RunCsvFromExcel {
             Map<String, String> row = new LinkedHashMap<>();
             row.put(K_TIME, fmt(timeS));
             row.put(K_TRAIN, trainId);
+            row.put(K_TRACK, "1");
             row.put(K_POS, fmt(posM));
             row.put(K_P, fmt(pReqW));
             out.add(row);

@@ -29,9 +29,9 @@ public final class CsvSchema {
                         "time_s",
                         "train_id",
 //                        "section",
-//                        "track",
+                        "track",
                         "position_m",
-                        "P_req_W"
+                        "p_req_W"
                 )
         );
     }

@@ -1,13 +1,13 @@
-package org.dcsim.electric;
+package org.supply.domain;
 
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
+import org.dcsim.electric.Device;
 import org.dcsim.math.Real;
 
 import java.util.Map;
 import java.util.Objects;
 
-@Deprecated
 public class Line implements Device<Real> {
 
     // --- Internal / solver-facing ---

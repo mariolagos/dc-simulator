@@ -76,7 +76,7 @@ public class GridModel<F extends FieldElement<F>> {
     // -------- Nodes --------
     public void addNode(Node<F> node) {
         nodes.add(node);
-        nodesById.put(node.getId(), node);
+        nodesById.put(node.get_internal_id(), node);
     }
     public Node<F> getNodeById(int id) {
         Node<F> n = nodesById.get(id);
@@ -89,7 +89,7 @@ public class GridModel<F extends FieldElement<F>> {
         return n;
     }
     public Optional<Node<F>> findNode(int id) { return Optional.ofNullable(nodesById.get(id)); }
-    public List<Integer> getNodeIds() { return nodes.stream().map(Node::getId).collect(Collectors.toList()); }
+    public List<Integer> getNodeIds() { return nodes.stream().map(Node::get_internal_id).collect(Collectors.toList()); }
     public List<Node<F>> getNodes() { return Collections.unmodifiableList(nodes); }
 
     // -------- Devices --------
@@ -305,6 +305,6 @@ public class GridModel<F extends FieldElement<F>> {
     }
 
     public void setGroundNodeId(Node grd) {
-        groundNodeId = grd.getId();
+        groundNodeId = grd.get_internal_id();
     }
 }

@@ -1,6 +1,0 @@
-id,feed_nodes,return_node,emf,internal_resistance,rectifier_type
-SS0,N1,N0,780.0,0.1,DIODE
-SS1,N2,N0,780.0,0.1,DIODE
-SS2,N3,N0,780.0,0.1,DIODE
-SS3,N4,N0,780.0,0.1,DIODE
-SS4,N5,N0,780.0,0.1,DIODE
