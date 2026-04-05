@@ -60,7 +60,8 @@ public class DynamicTopology3S1TAnchorOnSubstationTest {
                 .resolve();
 
         @SuppressWarnings("unchecked")
-        GridModel<Real> model = (GridModel<Real>) GridModelLoader.load(cfg);
+                GridModelLoader loader = new GridModelLoader();
+        GridModel<Real> model = loader.load(cfg);
 
         assertNotNull(model.nodeOrThrow(99));
         return model;

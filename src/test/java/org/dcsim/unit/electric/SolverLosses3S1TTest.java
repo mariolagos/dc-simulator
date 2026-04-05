@@ -65,7 +65,8 @@ public class SolverLosses3S1TTest {
                 .resolve();
 
         @SuppressWarnings("unchecked")
-        GridModel<Real> model = (GridModel<Real>) GridModelLoader.load(cfg);
+                GridModelLoader loader = new GridModelLoader();
+        GridModel<Real> model = loader.load(cfg);
         return model;
     }
 

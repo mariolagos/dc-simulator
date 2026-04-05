@@ -22,7 +22,6 @@ public class Node<T extends FieldElement<T>> {
     private final String position;
 
     // v0.8 additions (MFE)
-    private NodeKind nodeKind;     // SUBSTATION / TRAIN / GROUND
     private int trackId;           // -1 if not on a track
     private int position_m;      // numeric coordinate [m] along track
 
@@ -121,14 +120,6 @@ public class Node<T extends FieldElement<T>> {
 
     public String getDescription() {
         return description;
-    }
-
-    public NodeKind getNodeKind() {
-        return nodeKind;
-    }
-
-    public void setNodeKind(NodeKind nodeKind) {
-        this.nodeKind = nodeKind;
     }
 
     public int getTrackId() {

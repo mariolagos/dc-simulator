@@ -8,19 +8,10 @@ public final class NodeMeta {
     // ...
 
     // v0.8 additions (MFE):
-    private NodeKind nodeKind = NodeKind.GROUND;  // default for existing GND
     private String trackId;                       // null if not applicable
     private Double positionM;                     // null if not applicable
 
     // --- getters/setters ---
-
-    public NodeKind getNodeKind() {
-        return nodeKind;
-    }
-
-    public void setNodeKind(NodeKind nodeKind) {
-        this.nodeKind = nodeKind;
-    }
 
     public String getTrackId() {
         return trackId;

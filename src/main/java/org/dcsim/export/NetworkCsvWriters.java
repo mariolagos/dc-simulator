@@ -46,7 +46,12 @@ public final class NetworkCsvWriters {
 
             w.write("node_id,position_m\n");
             for (Node<Real> n : model.getNodes()) {
-                if (n.getNodeKind() == NodeKind.SUBSTATION)
+                if (
+                        n.getNode_id().startsWith("F") ||
+                                n.getNode_id().startsWith("f") ||
+                                n.getNode_id().startsWith("R") ||
+                                n.getNode_id().startsWith("r")
+                )
                     w.write(n.getNameOrDefault() + "," + n.getPositionM() + "\n");
             }
         }

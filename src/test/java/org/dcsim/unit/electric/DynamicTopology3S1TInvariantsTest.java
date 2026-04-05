@@ -51,7 +51,8 @@ public class DynamicTopology3S1TInvariantsTest {
                 .resolve();
 
         @SuppressWarnings("unchecked")
-        GridModel<Real> model = (GridModel<Real>) GridModelLoader.load(cfg);
+                GridModelLoader loader = new GridModelLoader();
+        GridModel<Real> model = loader.load(cfg);
 
         // Topology invariant: never connect ground in dynamic lines.
         assertNotNull(model.nodeOrThrow(model.getGroundNodeId()));

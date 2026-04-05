@@ -175,7 +175,6 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
                     : firstNonGroundNonBus(model);
 
             Node<Real> anchor = model.getNodeById(anchorNodeId);
-            anchor.setNodeKind(NodeKind.TRAIN);
 
             Map<String, List<PowerPoint>> byTplNormalised =
                     ScenarioHelpers.getNormalisedTemplates(dcsim, extentByTrack, trackPoints);

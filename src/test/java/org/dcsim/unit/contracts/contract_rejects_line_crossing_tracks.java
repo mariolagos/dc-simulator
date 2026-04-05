@@ -11,7 +11,8 @@ public class contract_rejects_line_crossing_tracks {
     @Ignore("Temporarily disabled during C1 delivery. Covered by new C1-focused tests.")
     @Test(expected = IllegalArgumentException.class)
     public void contract_rejects_line_crossing_tracks() throws Exception {
-        GridModel<Real> m = (GridModel<Real>) GridModelLoader.load(ConfigFactory.parseString("""
+        GridModelLoader loader = new GridModelLoader();
+        GridModel<Real> m = (GridModel<Real>) loader.load(ConfigFactory.parseString("""
         groundNodeId=0
         nodes=[
           {id=0, position="0 0+000"}

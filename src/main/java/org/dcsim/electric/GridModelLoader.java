@@ -150,7 +150,6 @@ public class GridModelLoader {
                             && "GND".equalsIgnoreCase(nodeConf.getString("name")));
 
             if (isGround) {
-                node.setNodeKind(NodeKind.GROUND);
                 node.setTrackId(-1);
                 node.setPositionM(-1);
             } else {
