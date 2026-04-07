@@ -55,13 +55,13 @@ public class IslandSeparationMiniTests {
 
     /** Create a minimal two-island network: A and B are not electrically connected. */
     private static GridModel<?> buildTwoDisjointIslands(double emfV, double rInt, double rLoad) {
-        var gm = new GridModel<>(0);
+        var gm = new GridModel<>("GROUND");
 
         // Ground + two island anchor nodes
         gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
         gm.addNode(new Node(1, Real.fromDouble(10.0), "A1"));
         gm.addNode(new Node(2, Real.fromDouble(20.0), "B1"));
-        gm.setGroundNodeId(gm.getNodeById(0));
+        gm.setGroundNodeId(gm.getNodeById("GROUND"));
 
         // Per-island diode substation (no backfeed)
         org.dcsim.testing.Devices.addSubstation(gm, "SS_A", 1, emfV, rInt, /*allowBackFeed*/ false, "diode");

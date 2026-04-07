@@ -4,7 +4,6 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigParseOptions;
 import org.dcsim.electric.*;
-import org.dcsim.math.Real;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -16,63 +15,67 @@ import static org.junit.Assert.*;
 
 public class DynamicTopology3S1TAnchorOnSubstationTest {
 
+    private static final String GROUND = "GROUND";
+
     @Ignore("Temporarily disabled during C1 delivery. Covered by new C1-focused tests.")
     @Test
     public void anchor_exactly_on_substation_position_produces_deterministic_topology() throws Exception {
-        GridModel<Real> model = load3S1T();
+        GridModel<?> model = load3S1T();
 
-        // SS2 is at 1500 m in the baseline scenario
-        Node<Real> anchor = model.nodeOrThrow(99);
+        // SS2 is at 1500 m
+        Node<?> anchor = model.nodeOrThrow("99");
         anchor.setPositionM(1500);
 
         List<DcLine> lines = buildDynLines(model);
 
-        // Expect exactly 3 dynamic lines (N-1)
         assertEquals("Unexpected number of dynamic lines", 3, lines.size());
 
-        Set<Long> pairs = lines.stream()
+        Set<String> pairs = lines.stream()
                 .map(l -> pair(l.getFromNode(), l.getToNode()))
                 .collect(Collectors.toSet());
 
-        // One deterministic, acceptable outcome:
         // SS1 - SS2 - anchor - SS3
         assertEquals(setOfPairs(
-                pair(1, 2),
-                pair(2, 99),
-                pair(99, 3)
+                pair("1", "2"),
+                pair("2", "99"),
+                pair("99", "3")
         ), pairs);
 
         // Hard invariants
         for (DcLine l : lines) {
             assertTrue("Line resistance must be strictly positive", l.getResistance().asDouble() > 0.0);
-            assertNotEquals("Dynamic line must not connect to ground", 0, l.getFromNode());
-            assertNotEquals("Dynamic line must not connect to ground", 0, l.getToNode());
+            assertNotEquals("Dynamic line must not connect to ground", GROUND, l.getFromNode());
+            assertNotEquals("Dynamic line must not connect to ground", GROUND, l.getToNode());
         }
     }
 
-    // ---- helpers (identical to test #1 on purpose) ----
+    // ---- helpers ----
 
-    private static GridModel<Real> load3S1T() throws Exception {
+    private static GridModel<?> load3S1T() throws Exception {
         File f = new File("project/3subs1train/scenario1/application.conf");
         assertTrue("Missing scenario file: " + f.getAbsolutePath(), f.exists());
 
         Config cfg = ConfigFactory.parseFileAnySyntax(f, ConfigParseOptions.defaults().setAllowMissing(false))
                 .resolve();
 
-        @SuppressWarnings("unchecked")
-                GridModelLoader loader = new GridModelLoader();
-        GridModel<Real> model = loader.load(cfg);
+        GridModelLoader loader = new GridModelLoader();
+        GridModel<?> model = loader.load(cfg);
 
-        assertNotNull(model.nodeOrThrow(99));
+        assertNotNull(model.nodeOrThrow("99"));
         return model;
     }
 
-    private static List<DcLine> buildDynLines(GridModel<Real> model) {
+    private static List<DcLine> buildDynLines(GridModel<?> model) {
         List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
-        for (Node<Real> n : model.getNodes()) {
-            if (n.get_internal_id() == model.getGroundNodeId()) continue;
+
+        for (Node<?> n : model.getNodes()) {
+            if (GROUND.equals(n.getNode_id())) continue;
+
             nodePos.add(new DynamicLineTopologyBuilder.NodePos(
-                    n.get_internal_id(), n.getTrackId(), n.getPositionM()));
+                    n.getNode_id(),
+                    n.getTrackId(),
+                    n.getPositionM()
+            ));
         }
 
         return DynamicLineTopologyBuilder.buildDynamicLines(
@@ -81,15 +84,11 @@ public class DynamicTopology3S1TAnchorOnSubstationTest {
         ).stream().map(d -> (DcLine) d).collect(Collectors.toList());
     }
 
-    private static long pair(int a, int b) {
-        int lo = Math.min(a, b);
-        int hi = Math.max(a, b);
-        return (((long) lo) << 32) ^ (hi & 0xffffffffL);
+    private static String pair(String a, String b) {
+        return (a.compareTo(b) <= 0) ? a + "|" + b : b + "|" + a;
     }
 
-    private static Set<Long> setOfPairs(long... ps) {
-        Set<Long> s = new LinkedHashSet<>();
-        for (long p : ps) s.add(p);
-        return s;
+    private static Set<String> setOfPairs(String... ps) {
+        return new LinkedHashSet<>(Arrays.asList(ps));
     }
 }

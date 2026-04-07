@@ -77,7 +77,7 @@ public final class AppRunner {
         private final Map<String, TrainSpawn> pending = new LinkedHashMap<>();
 
         // --- Parametrar som återanvänds för varje ankarinstans ---
-        private final int anchorNodeId;
+        private final String anchorNodeId;
         private final List<EdgeRef> path;
         private final double vMS, pW, Rmin, epsFrac;
 
@@ -131,7 +131,7 @@ public final class AppRunner {
                 List<TrainSpawn> trainSpawns,
                 SimulationSpeed speed,
                 int stopAfterSteps,
-                int anchorNodeId,
+                String anchorNodeId,
                 List<EdgeRef> path,
                 double vMS, double pW, double Rmin, double epsFrac
         ) {
@@ -153,7 +153,7 @@ public final class AppRunner {
                 List<TrainSpawn> spawns,
                 SimulationSpeed speed,
                 int stopAfterSteps,
-                int anchorNodeId,
+                String anchorNodeId,
                 List<EdgeRef> path,
                 double vMS, double pW, double Rmin, double epsFrac
         ) {
@@ -172,7 +172,7 @@ public final class AppRunner {
                 List<TrainSpawn> trainSpawns,
                 SimulationSpeed speed,
                 int stopAfterSteps,
-                int anchorNodeId,
+                String anchorNodeId,
                 List<EdgeRef> path,
                 double vMS, double pW, double Rmin, double epsFrac
         ) {
@@ -349,16 +349,16 @@ public final class AppRunner {
         DcIterativeSolver.setLongWriter(longWriter);
 
         // ---- Legacy runtime parameters kept local for now ----
-        int anchorNodeId = dcsim.hasPath("grid.anchorNodeId")
-                ? dcsim.getInt("grid.anchorNodeId")
+        String anchorNodeId = dcsim.hasPath("grid.anchorNodeId")
+                ? dcsim.getString("grid.anchorNodeId")
                 : firstNonGroundNonBus(input.getGridModel());
 
         List<EdgeRef> raw = new ArrayList<>();
         for (Object o : (java.util.Collection<?>) input.getGridModel().getDevices()) {
             Device<?> d = (Device<?>) o;
             if (d instanceof Line ln) {
-                int from = ln.getFromNode();
-                int to = ln.getToNode();
+                String from = ln.getFromNode();
+                String to = ln.getToNode();
                 double lm = ln.getLength();
                 double r = ln.getResistance().asDouble();
                 raw.add(new EdgeRef(from, to, r, lm));
@@ -434,31 +434,31 @@ public final class AppRunner {
         return base + "_" + ord;
     }
 
-    private static int findPathStart(List<EdgeRef> edges) {
-        Set<Integer> froms = new HashSet<>(), tos = new HashSet<>();
+    private static String findPathStart(List<EdgeRef> edges) {
+        Set<String> froms = new HashSet<>(), tos = new HashSet<>();
         for (EdgeRef e : edges) {
             froms.add(e.i);
             tos.add(e.j);
         }
-        for (int f : froms) if (!tos.contains(f)) return f;
-        return edges.isEmpty() ? 0 : edges.get(0).i;
+        for (String f : froms) if (!tos.contains(f)) return f;
+        return edges.isEmpty() ? "" : edges.get(0).i;
     }
 
-    private static List<EdgeRef> linearizePath(List<EdgeRef> edges, int startNodeId) {
+    private static List<EdgeRef> linearizePath(List<EdgeRef> edges, String startNodeId) {
         List<EdgeRef> remaining = new ArrayList<>(edges);
         List<EdgeRef> out = new ArrayList<>();
-        int cur = startNodeId;
+        String cur = startNodeId;
         while (!remaining.isEmpty()) {
             int hit = -1;
             boolean flip = false;
             for (int k = 0; k < remaining.size(); k++) {
                 EdgeRef e = remaining.get(k);
-                if (e.i == cur) {
+                if (e.i.equals(cur)) {
                     hit = k;
                     flip = false;
                     break;
                 }
-                if (e.j == cur) {
+                if (e.j.equals(cur)) {
                     hit = k;
                     flip = true;
                     break;
@@ -485,27 +485,26 @@ public final class AppRunner {
         return 25.0;
     }
 
-    private static int firstNonGroundNonBus(GridModel<Real> m) {
-        int g = m.getGroundNodeId();
-        Set<Integer> bus = new HashSet<>();
+    private static String firstNonGroundNonBus(GridModel<Real> m) {
+        String g = m.getGroundNodeId();
+        Set<String> bus = new HashSet<>();
         for (Object did : m.getDeviceIds()) {
             Device<Real> d = m.getDevice(String.valueOf(did));
             if (d instanceof Substation ss) bus.add(ss.getFromNode());
         }
         for (Object o : m.getNodeIds()) {
-            int id = (o instanceof Integer) ? (Integer) o : Integer.parseInt(o.toString());
-            if (id != g && !bus.contains(id)) return id;
+            if (!o.equals(g) && !bus.contains(0)) return o.toString();
         }
         return g;
     }
 
     // (används ej längre — men lämnas kvar om du vill ha annan fallback)
     @SuppressWarnings("unused")
-    private static int firstNonGround(GridModel<Real> m) {
-        int g = m.getGroundNodeId();
+    private static String firstNonGround(GridModel<Real> m) {
+        String g = m.getGroundNodeId();
         for (Object o : m.getNodeIds()) {
             int id = (o instanceof Integer) ? (Integer) o : Integer.parseInt(o.toString());
-            if (id != g) return id;
+            if (!o.equals(g)) return o.toString();
         }
         return g;
     }

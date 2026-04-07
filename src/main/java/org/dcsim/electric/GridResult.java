@@ -12,7 +12,7 @@ public final class GridResult {
     private final Map<String, Real> devicePowers          = new LinkedHashMap<>();
     private final Map<String, Real> deviceCurrents        = new LinkedHashMap<>();
     private final Map<String, Real> deviceRequestedPowers = new LinkedHashMap<>();
-    private final Map<Integer, Real> nodeVoltages         = new LinkedHashMap<>();
+    private final Map<String, Real> nodeVoltages         = new LinkedHashMap<>();
 
     // (optional) matrices used for debugging / reconstruction
     private final RealMatrix Y;
@@ -30,7 +30,7 @@ public final class GridResult {
     public void setCurrent(String deviceId, Real current)          { deviceCurrents.put(deviceId, current); }
     public void setPower(String deviceId, Real power)              { devicePowers.put(deviceId, power); }
     public void setRequestedPower(String deviceId, Real p)         { deviceRequestedPowers.put(deviceId, p); }
-    public void setVoltage(int nodeId, Real voltage)               { nodeVoltages.put(nodeId, voltage); }
+    public void setVoltage(String nodeId, Real voltage)               { nodeVoltages.put(nodeId, voltage); }
 
     // ---- reads for writer/plots ----
     public Real getPower(String deviceId)              { return devicePowers.get(deviceId); }
@@ -40,7 +40,7 @@ public final class GridResult {
     // handy null-safe doubles (optional; use if you like)
     public double getPowerAsDouble(String id)          { return asDouble(getPower(id)); }
     public double getRequestedPowerAsDouble(String id) { return asDouble(getRequestedPower(id)); }
-    public double getVoltageAsDouble(int nodeId)       { return asDouble(getLatestNodeVoltage(nodeId)); }
+    public double getVoltageAsDouble(String nodeId)       { return asDouble(getLatestNodeVoltage(nodeId)); }
     private static double asDouble(Real r)             { return (r == null) ? 0.0 : r.asDouble(); }
 
     // matrices (may be null)
@@ -56,17 +56,17 @@ public final class GridResult {
     public Real getLatestDevicePower(String deviceId)      { return getPower(deviceId); }
     public Real getLatestDeviceCurrent(String deviceId)    { return getCurrent(deviceId); }
     public Real getLatestRequestedPower(String deviceId)   { return getRequestedPower(deviceId); }
-    public Real getLatestNodeVoltage(int nodeId)           { return nodeVoltages.getOrDefault(nodeId, Real.ZERO); }
+    public Real getLatestNodeVoltage(String nodeId)        { return nodeVoltages.getOrDefault(nodeId, Real.ZERO); }
 
     public void setLatestDevicePower(String deviceId, Real p)    { setPower(deviceId, p); }
     public void setLatestDeviceCurrent(String deviceId, Real i)  { setCurrent(deviceId, i); }
     public void setLatestRequestedPower(String deviceId, Real p) { setRequestedPower(deviceId, p); }
-    public void setLatestNodeVoltage(int nodeId, Real v)         { setVoltage(nodeId, v); }
+    public void setLatestNodeVoltage(String nodeId, Real v)         { setVoltage(nodeId, v); }
 
     // ---- legacy/compat aliases expected by ResultCsvWriter ----
     public Real getLatestDeviceRequestedPower(String deviceId)    { return deviceRequestedPowers.get(deviceId); }
 
-    public Real getVoltage(int nodeId)                            { return getLatestNodeVoltage(nodeId); } // alias
+    public Real getVoltage(String nodeId)                            { return getLatestNodeVoltage(nodeId); } // alias
 
 
     // immutable value carrier for “summa-summarum"

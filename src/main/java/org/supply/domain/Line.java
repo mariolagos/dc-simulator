@@ -11,8 +11,8 @@ import java.util.Objects;
 public class Line implements Device<Real> {
 
     // --- Internal / solver-facing ---
-    private final int fromNode;
-    private final int toNode;
+    private final String fromNode;
+    private final String toNode;
     private final Real resistance;
     private final String description;
     private final String category;
@@ -26,8 +26,8 @@ public class Line implements Device<Real> {
 
     // --- New main constructor ---
     public Line(
-            int fromNode,
-            int toNode,
+            String fromNode,
+            String toNode,
             Real resistance,
             String description,
             String category,
@@ -53,7 +53,7 @@ public class Line implements Device<Real> {
     }
 
     // --- Legacy constructor kept for backward compatibility ---
-    public Line(int fromNode, int toNode, Real resistance, String description, String category, double length) {
+    public Line(String fromNode, String toNode, Real resistance, String description, String category, double length) {
         this(
                 fromNode,
                 toNode,
@@ -69,22 +69,22 @@ public class Line implements Device<Real> {
     }
 
     // --- Factory methods for legacy usage ---
-    public static Line of(int fromNode, int toNode, Real resistance, double length) {
+    public static Line of(String fromNode, String toNode, Real resistance, double length) {
         return new Line(fromNode, toNode, resistance, "line", "catenary1", length);
     }
 
-    public static Line of(int fromNode, int toNode, Real resistance, String description, double length) {
+    public static Line of(String fromNode, String toNode, Real resistance, String description, double length) {
         return new Line(fromNode, toNode, resistance, description, "catenary1", length);
     }
 
-    public static Line ofCategory(int fromNode, int toNode, Real resistance, String category, double length) {
+    public static Line ofCategory(String  fromNode, String toNode, Real resistance, String category, double length) {
         return new Line(fromNode, toNode, resistance, "line", category, length);
     }
 
     // --- Factory method for new contract-driven code ---
     public static Line ofContract(
-            int fromNode,
-            int toNode,
+            String fromNode,
+            String toNode,
             Real resistance,
             double length,
             String line_id,
@@ -113,7 +113,7 @@ public class Line implements Device<Real> {
     }
 
     @Override
-    public int getConnectedNode() {
+    public String getConnectedNode() {
         throw new UnsupportedOperationException("Line is two-node device");
     }
 
@@ -143,7 +143,7 @@ public class Line implements Device<Real> {
     }
 
     @Override
-    public void stamp(RealMatrix y, RealVector j, RealVector x, int step, Map<Integer, Integer> nodeIndex) {
+    public void stamp(RealMatrix y, RealVector j, RealVector x, int step, Map<String, Integer> nodeIndex) {
         int i = nodeIndex.get(fromNode);
         int k = nodeIndex.get(toNode);
 
@@ -155,11 +155,11 @@ public class Line implements Device<Real> {
     }
 
     // --- Legacy getters ---
-    public int getFromNode() {
+    public String getFromNode() {
         return fromNode;
     }
 
-    public int getToNode() {
+    public String getToNode() {
         return toNode;
     }
 

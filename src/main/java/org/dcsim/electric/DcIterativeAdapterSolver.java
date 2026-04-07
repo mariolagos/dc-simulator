@@ -1,52 +1,54 @@
 package org.dcsim.electric;
 
-
-import org.dcsim.export.LongTableWriter;
 import org.apache.commons.math3.linear.RealVector;
 import org.dcsim.math.Real;
 import org.dcsim.solver.api.DcNet;
 import org.dcsim.solver.impl.DcIterativeSolver;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.dcsim.solver.build.NetBuilder.makeNet;
 
 /**
- * DcIterativeAdapterSolver
- * ------------------------
- * Robust, kompilerande adapter som:
- * - Tar emot TrainAnchors (helst Map.Entry<trainId, TrainAnchorComponent>) via ElectricSolver.setTrainAnchors(...)
- * - Applicerar begärd effekt till TrainLoad före lösning (med singel/singel-fallback)
- * - Bygger DcNet via din NetBuilder utan reflection (hanterar båda signaturerna med NoSuchMethodError)
- * - Anropar DcIterativeSolver.solve(DcNet) och packar resultatet i GridResult(null, V)
+ * Adapter between production GridModel and iterative solver.
+ *
+ * Model side:
+ *   - node identity = String node_id
+ *
+ * Solver side:
+ *   - node identity = compact int index
+ *
+ * This class performs the mapping:
+ *   String node_id -> net.tryIdxOf(node_id) -> int index
  */
 public final class DcIterativeAdapterSolver implements ElectricSolver {
-    private static boolean finite(double x) { return !Double.isNaN(x) && !Double.isInfinite(x); }
-
 
     private static final boolean VERBOSE_ALL = Boolean.getBoolean("dcsim.verbose.all");
 
-    // Senaste begärda effekt per tåg-id (W)
     private final Map<String, Double> lastRequestedPowerW = new HashMap<>();
+
+    private static boolean finite(double x) {
+        return !Double.isNaN(x) && !Double.isInfinite(x);
+    }
 
     @Override
     public GridResult solve(GridModel model, double timeSec, int timestep) {
 
-        // 1) Applicera senaste anchor-requests på TrainLoad
+        // 1) Apply latest anchor requests to TrainLoad
         applyAnchorsToTrainLoads(model);
 
-        // 2) Bygg nät via din NetBuilder (utan reflection)
+        // 2) Build compact solver net
         final DcNet net = buildNetSafe(model, timeSec, timestep);
 
-        // ===== DEBUG: koppla ihop GridModel och DcNet =====
+        // ===== DEBUG =====
         if (VERBOSE_ALL) {
             System.out.println("=== [ADAPT-NODES] nodeIndex from DcNet ===");
             for (Object nodeObj : model.getNodeIds()) {
-                int nodeId = (nodeObj instanceof Integer)
-                        ? (Integer) nodeObj
-                        : Integer.parseInt(nodeObj.toString());
+                String nodeId = String.valueOf(nodeObj);
                 Integer idx = net.tryIdxOf(nodeId);
-                System.out.printf("[ADAPT-NODE] nodeId=%d idx=%s%n",
+                System.out.printf("[ADAPT-NODE] nodeId=%s idx=%s%n",
                         nodeId, String.valueOf(idx));
             }
             System.out.println("=== [ADAPT-NODES] end ===");
@@ -54,9 +56,9 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
             System.out.println("=== [ADAPT-TRAINS] TrainLoad attachment ===");
             for (Object o : model.getDevices()) {
                 if (o instanceof TrainLoad tl) {
-                    int nodeId = tl.getToNode();     // noden tåget sitter på i GridModel
+                    String nodeId = tl.getToNode();
                     Integer idx = net.tryIdxOf(nodeId);
-                    System.out.printf("[ADAPT-TRAIN] id=%s nodeId=%d idx=%s%n",
+                    System.out.printf("[ADAPT-TRAIN] id=%s nodeId=%s idx=%s%n",
                             tl.getId(), nodeId, String.valueOf(idx));
                 }
             }
@@ -70,74 +72,76 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
             }
             System.out.println("=== [ADAPT-LINES] end ===");
         }
-        // ===== SLUT DEBUG =====
+        // ===== END DEBUG =====
 
-        // 3) Kör iterativa lösaren (din version tar endast DcNet)
+        // 3) Solve
         DcIterativeSolver solver = new DcIterativeSolver();
         solver.setSimTimeSec(timeSec);
         RealVector V = solver.solve(net);
 
-        // Bygg ett "fullt" GridResult istället för bara (null, V)
         GridResult res = new GridResult(null, V);
 
-        // 1) Fyll nodspänningar i map (om GridResult har set-metoder för det)
+        // 4) Populate node voltages in result (keyed by node_id)
         for (Object nodeObj : model.getNodeIds()) {
-            int nid = (nodeObj instanceof Integer)
-                    ? (Integer) nodeObj
-                    : Integer.parseInt(nodeObj.toString());
+            String nodeId = String.valueOf(nodeObj);
+            Integer idx = net.tryIdxOf(nodeId);
+            if (idx == null) continue;
+            if (idx < 0 || idx >= V.getDimension()) continue;
 
-            if (nid < 0 || nid >= V.getDimension()) continue;
+            double vNode = V.getEntry(idx);
+            if (!finite(vNode)) continue;
 
-            double vNode = V.getEntry(nid);
-            if (!Double.isFinite(vNode)) continue;
-
-            // Anpassa till din API:
-            res.setLatestNodeVoltage(nid, Real.fromDouble(vNode));
+            res.setLatestNodeVoltage(nodeId, Real.fromDouble(vNode));
         }
 
-        // 2) Fyll effekt för TrainLoad-enheter
+        // 5) Populate device powers
         for (Object did : model.getDeviceIds()) {
             String devId = String.valueOf(did);
             Device<Real> dev = model.getDevice(devId);
 
             if (dev instanceof TrainLoad tl) {
-                int nodeId = tl.getToNode();          // eller motsv.
-                double vTrain = V.getEntry(nodeId);   // spänning vid tågnoden
+                String nodeId = tl.getToNode();
+                Integer idx = net.tryIdxOf(nodeId);
+                if (idx == null || idx < 0 || idx >= V.getDimension()) continue;
 
-                // Läs begärd nettoeffekt – med tecken:
+                double vTrain = V.getEntry(idx);
+                if (!finite(vTrain)) continue;
+
                 double pTotW = readRequestedPowerRobust(tl);
-                // (denna pTotW kan vara negativ vid regen)
-
                 res.setLatestDevicePower(devId, Real.fromDouble(pTotW));
-            }
-            else if (dev instanceof Substation ss) {
+
+            } else if (dev instanceof Substation ss) {
                 double E = ss.getEmf().asDouble();
                 double R = ss.getInternalResistance().asDouble();
-                if (R <= 0.0) continue;
+                if (!(R > 0.0)) continue;
 
-                int nodeId = ss.getToNode();
-                double vBus = V.getEntry(nodeId);
+                String nodeId = ss.getToNode();
+                Integer idx = net.tryIdxOf(nodeId);
+                if (idx == null || idx < 0 || idx >= V.getDimension()) continue;
+
+                double vBus = V.getEntry(idx);
+                if (!finite(vBus)) continue;
 
                 double dV = E - vBus;
-                double I  = dV / R;
+                double I = dV / R;
 
-                double pNetW  = vBus * I;        // effekt in i nätet (kan bli < 0 vid backfeed)
-                double pLossW = (dV * dV) / R;   // intern förlust
+                double pNetW = vBus * I;
+                double pLossW = (dV * dV) / R;
 
                 res.setLatestDevicePower(devId, Real.fromDouble(pNetW));
-                // pLossW kan du antingen ta med i totals eller logga via PowerAccounting
+
+                if (VERBOSE_ALL) {
+                    System.out.printf("[ADAPT-SS] id=%s node=%s idx=%d vBus=%.3f E=%.3f R=%.6f Pnet=%.3f Ploss=%.3f%n",
+                            devId, nodeId, idx, vBus, E, R, pNetW, pLossW);
+                }
             }
         }
 
         return res;
     }
 
-    /**
-     * ElectricSolver hook: tas emot från GridModelActor varje tick.
-     * Skicka helst anchors.entrySet() så vi får id i key.
-     */
     @Override
-    public void setTrainAnchors(java.util.Collection<?> anchors, double dtSec) {
+    public void setTrainAnchors(Collection<?> anchors, double dtSec) {
         lastRequestedPowerW.clear();
         if (anchors == null || anchors.isEmpty()) return;
 
@@ -146,12 +150,10 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
             double pW = 0.0;
 
             if (a instanceof Map.Entry<?, ?> entry) {
-                // Förväntat: id i key, komponent i value
                 id = (entry.getKey() != null) ? String.valueOf(entry.getKey()) : null;
                 Object comp = entry.getValue();
                 pW = readRequestedPowerRobust(comp);
             } else {
-                // Fallback: endast komponent — försök hitta id via getters/nested och läs power
                 Object comp = a;
                 pW = readRequestedPowerRobust(comp);
                 id = extractTrainId(comp);
@@ -159,20 +161,38 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
 
             if (id != null) {
                 lastRequestedPowerW.put(id, pW);
-                if (VERBOSE_ALL) System.out.printf("[ADAPT] anchor id=%s req=%.1f W%n", id, pW);
+                if (VERBOSE_ALL) {
+                    System.out.printf("[ADAPT] anchor id=%s req=%.1f W%n", id, pW);
+                }
             } else if (VERBOSE_ALL) {
                 System.out.printf("[ADAPT] anchor without id: P=%.1f W%n", pW);
             }
         }
 
-        if (VERBOSE_ALL) System.out.println("[ADAPT] anchors received: " + lastRequestedPowerW);
+        if (VERBOSE_ALL) {
+            System.out.println("[ADAPT] anchors received: " + lastRequestedPowerW);
+        }
     }
 
-    // ===== Hjälpare =====
+    @Override
+    public void setTrainRequestedPower(Map<String, Double> requestedPowerW, double dtSec) {
+        lastRequestedPowerW.clear();
+        if (requestedPowerW != null) {
+            lastRequestedPowerW.putAll(requestedPowerW);
+        }
+
+        System.out.println(
+                "[ADAPT-REQ] tick.dt=" + dtSec
+                        + " reqW=" + lastRequestedPowerW
+        );
+    }
 
     private void applyAnchorsToTrainLoads(GridModel model) {
-        final boolean singleAnchorOnly = !lastRequestedPowerW.isEmpty() && lastRequestedPowerW.size() == 1;
-        final Double singleAnchorPower = singleAnchorOnly ? lastRequestedPowerW.values().iterator().next() : null;
+        final boolean singleAnchorOnly =
+                !lastRequestedPowerW.isEmpty() && lastRequestedPowerW.size() == 1;
+
+        final Double singleAnchorPower =
+                singleAnchorOnly ? lastRequestedPowerW.values().iterator().next() : null;
 
         for (Object o : model.getDevices()) {
             if (o instanceof TrainLoad tl) {
@@ -180,18 +200,22 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
                 if (p == null && singleAnchorOnly) {
                     p = singleAnchorPower;
                 }
+
                 if (p != null) {
                     tl.setRequestedPower(Real.fromDouble(p));
-                    if (VERBOSE_ALL)
-                        System.out.printf("[ADAPT] applied requestedPower to TL %s : %.1f W%n", tl.getId(), p);
+                    if (VERBOSE_ALL) {
+                        System.out.printf("[ADAPT] applied requestedPower to TL %s : %.1f W%n",
+                                tl.getId(), p);
+                    }
                 } else {
-                    // Sista fallback: hedra ev. redan satt requestedPower från aktorn
                     try {
                         Real rp = tl.getRequestedPower();
                         if (rp != null) {
                             tl.setRequestedPower(rp);
-                            if (VERBOSE_ALL) System.out.printf("[ADAPT] fallback requestedPower from TL %s : %.1f W%n",
-                                    tl.getId(), rp.asDouble());
+                            if (VERBOSE_ALL) {
+                                System.out.printf("[ADAPT] fallback requestedPower from TL %s : %.1f W%n",
+                                        tl.getId(), rp.asDouble());
+                            }
                         }
                     } catch (Throwable ignore) {
                     }
@@ -200,17 +224,11 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
         }
     }
 
-    // Bygg DcNet via din NetBuilder utan reflection, enligt signaturen:
-// public static DcNet makeNet(GridModel<Real> model)
     @SuppressWarnings("unchecked")
     private DcNet buildNetSafe(GridModel model, double timeSec, int timestep) {
-        // Om din NetBuilder ligger i ett annat paket, ändra FQCN nedan.
         return makeNet((GridModel<Real>) model);
     }
 
-    /**
-     * Läs total requested power om den finns; annars summera mot/brk/aux.
-     */
     private static double readRequestedPowerRobust(Object comp) {
         if (comp == null) return 0.0;
 
@@ -235,12 +253,13 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
             );
 
             double m = mot != null ? mot : 0.0;
-            double b = brk != null ? brk : 0.0; // regen kan vara negativ
+            double b = brk != null ? brk : 0.0;
             double a = aux != null ? aux : 0.0;
             pTot = m + b + a;
 
             if (VERBOSE_ALL) {
-                System.out.printf("[ADAPT] comp-> mot=%.1f, brk=%.1f, aux=%.1f => P=%.1f W%n", m, b, a, pTot);
+                System.out.printf("[ADAPT] comp-> mot=%.1f, brk=%.1f, aux=%.1f => P=%.1f W%n",
+                        m, b, a, pTot);
             }
         }
 
@@ -261,24 +280,27 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
             if (v instanceof Number) return ((Number) v).doubleValue();
             if (v instanceof Real) return ((Real) v).asDouble();
         } catch (NoSuchMethodException ignored) {
-        } catch (Throwable t) { /* ignore */ }
+        } catch (Throwable t) {
+            // ignore
+        }
         return null;
     }
 
-    /**
-     * Fallback om vi inte fick Map.Entry: försök hitta tåg-id via getters/nested getTrain().
-     */
     private static String extractTrainId(Object a) {
         if (a == null) return null;
 
         String[] simple = {"getTrainId", "trainId", "getId", "id", "getName", "name"};
+
         for (String m : simple) {
             try {
                 Object v = a.getClass().getMethod(m).invoke(a);
                 if (v != null) return String.valueOf(v);
             } catch (NoSuchMethodException ignored) {
-            } catch (Throwable t) { /* continue */ }
+            } catch (Throwable t) {
+                // continue
+            }
         }
+
         try {
             Object tr = a.getClass().getMethod("getTrain").invoke(a);
             if (tr != null) {
@@ -287,24 +309,16 @@ public final class DcIterativeAdapterSolver implements ElectricSolver {
                         Object v = tr.getClass().getMethod(m).invoke(tr);
                         if (v != null) return String.valueOf(v);
                     } catch (NoSuchMethodException ignored) {
-                    } catch (Throwable t) { /* continue */ }
+                    } catch (Throwable t) {
+                        // continue
+                    }
                 }
             }
         } catch (NoSuchMethodException ignored) {
-        } catch (Throwable t) { /* ignore */ }
+        } catch (Throwable t) {
+            // ignore
+        }
 
         return null;
     }
-    @Override
-    public void setTrainRequestedPower(Map<String, Double> requestedPowerW, double dtSec) {
-        lastRequestedPowerW.clear();
-        if (requestedPowerW != null) lastRequestedPowerW.putAll(requestedPowerW);
-
-        // Log “applied to solver input”
-        System.out.println(
-                "[ADAPT-REQ] tick.dt=" + dtSec
-                        + " reqW=" + lastRequestedPowerW
-        );
-    }
-
 }

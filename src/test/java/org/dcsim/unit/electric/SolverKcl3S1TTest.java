@@ -26,82 +26,69 @@ import static org.junit.Assert.*;
 
 public class SolverKcl3S1TTest {
 
+    private static final String GROUND = "GROUND";
+
     @Ignore("Temporarily disabled during C1 delivery. Covered by new C1-focused tests.")
     @Test
     public void threeSubsOneTrain_KCL_residual_is_small() throws Exception {
-        GridModel<Real> model = load3S1T();
-
-        // Rebuild dynamic topology like production does (per tick)
+        GridModel<Real> model = (GridModel<Real>) load3S1T();
         model.setDynamicLineDevices(buildDynLines(model));
 
-        // Build compact-indexed net
         DcNet net = NetBuilder.makeNet(model);
-
-        // Solve
         RealVector V = DcIterativeSolver.solve(net);
 
-        // Rebuild G and J at the final V and compute residual ||G*V - J||_inf
         DcSystem base = MatrixBuilder.build(net, V.toArray());
         RealMatrix G = base.G().copy();
         RealVector J = base.J().copy();
 
-        // Stamp substations (same idea as solver)
         for (SubstationData ss : net.substations()) {
             DcStamps.stampSubstation(
                     V, G, J,
                     ss.a(), ss.b(),
                     ss.emf_V(), ss.rint_ohm(),
                     ss.allowBackfeed(),
-                    /*eps=*/1e-6,
-                    /*gLeakDiag=*/1e-12
+                    1e-6,
+                    1e-12
             );
         }
 
-        // Stamp trains (assume motor enabled for 3S1T baseline)
         for (TrainData tr : net.trains()) {
             DcStamps.stampTrain(
                     V, G, J,
                     tr,
-                    /*vminDefault=*/0.0,
-                    /*motorEnabled=*/true
+                    0.0,
+                    true
             );
         }
 
-        // Clamp global ground (Dirichlet V=0). This mirrors the solver's "clampNode" idea.
         clampNode(G, J, net.groundIndex());
 
         double kclInf = G.operate(V).subtract(J).getLInfNorm();
-
-        // Tolerance: keep it slightly looser than internal solver thresholds to avoid false failures.
         assertTrue("KCL residual too large: " + kclInf, kclInf < 1e-5);
 
-        // Also assert no NaNs/Infs in voltages (cheap sanity)
         for (int i = 0; i < V.getDimension(); i++) {
             double vi = V.getEntry(i);
             assertTrue("Non-finite voltage at idx=" + i + ": " + vi, Double.isFinite(vi));
         }
     }
 
-    // ---- helpers ----
-
-    private static GridModel<Real> load3S1T() throws Exception {
+    private static GridModel<?> load3S1T() throws Exception {
         File f = new File("project/3subs1train/scenario1/application.conf");
         assertTrue("Missing scenario file: " + f.getAbsolutePath(), f.exists());
 
         Config cfg = ConfigFactory.parseFileAnySyntax(f, ConfigParseOptions.defaults().setAllowMissing(false))
                 .resolve();
 
-        @SuppressWarnings("unchecked")
-                GridModelLoader loader = new GridModelLoader();
-        GridModel<Real> model = loader.load(cfg);
-        return model;
+        GridModelLoader loader = new GridModelLoader();
+        return loader.load(cfg);
     }
 
-    private static List<Device<Real>> buildDynLines(GridModel<Real> model) {
+    private static List<Device<Real>> buildDynLines(GridModel<?> model) {
         List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
-        for (Node<Real> n : model.getNodes()) {
-            if (n.get_internal_id() == model.getGroundNodeId()) continue;
-            nodePos.add(new DynamicLineTopologyBuilder.NodePos(n.get_internal_id(), n.getTrackId(), n.getPositionM()));
+        for (Node<?> n : model.getNodes()) {
+            if (GROUND.equals(n.getNode_id())) continue;
+            nodePos.add(new DynamicLineTopologyBuilder.NodePos(
+                    n.getNode_id(), n.getTrackId(), n.getPositionM()));
         }
 
         return DynamicLineTopologyBuilder.buildDynamicLines(
@@ -112,13 +99,10 @@ public class SolverKcl3S1TTest {
 
     private static void clampNode(RealMatrix G, RealVector J, int idx) {
         int n = G.getRowDimension();
-
-        // Zero row and set diag=1
         for (int j = 0; j < n; j++) G.setEntry(idx, j, 0.0);
         G.setEntry(idx, idx, 1.0);
         J.setEntry(idx, 0.0);
 
-        // Zero column (except diag)
         for (int i = 0; i < n; i++) {
             if (i == idx) continue;
             G.setEntry(i, idx, 0.0);

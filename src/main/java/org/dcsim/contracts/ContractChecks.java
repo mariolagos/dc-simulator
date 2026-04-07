@@ -22,7 +22,7 @@ public final class ContractChecks {
         Objects.requireNonNull(model, "model");
 
         // --- Ground must exist
-        int gnd = model.getGroundNodeId();
+        String gnd = model.getGroundNodeId();
         Node<?> g = model.nodeOrThrow(gnd);
         if (g == null) {
             throw new IllegalArgumentException("Ground node missing: nodeId=" + gnd);
@@ -34,8 +34,10 @@ public final class ContractChecks {
         // --- Nodes: absolute meters, non-negative (except ground)
 
         Map<Integer, Integer> min = new HashMap<>();
-        Map<Integer, Integer> max = new HashMap<>();        for (Node<?> n : model.getNodes()) {
-            if (n.get_internal_id() == gnd || isAnchorNode(n)) continue;
+        Map<Integer, Integer> max = new HashMap<>();
+
+        for (Node<?> n : model.getNodes()) {
+            if (n.getNode_id() == gnd || isAnchorNode(n)) continue;
 
             if (n.getTrackId() < 0) {
                 throw new IllegalArgumentException("Node has invalid trackId < 0: nodeId=" + n.get_internal_id());
@@ -55,10 +57,10 @@ public final class ContractChecks {
         for (Object dev : model.getLines()) {
             Line l = (Line) dev;
 
-            int a = l.getFromNode();
-            int b = l.getToNode();
+            String a = l.getFromNode();
+            String b = l.getToNode();
 
-            if (a == gnd || b == gnd) {
+            if (a.equals(gnd) || b.equals(gnd)) {
                 throw new IllegalArgumentException("Line must not connect directly to ground in grid.lines. from=" + a + " to=" + b);
             }
 
@@ -211,13 +213,13 @@ public final class ContractChecks {
 
     public static Map<Integer, TrackExtent> extentByTrackFromModel(GridModel<?> model) {
         Objects.requireNonNull(model, "model");
-        int gnd = model.getGroundNodeId();
+        String gnd = model.getGroundNodeId();
 
         Map<Integer, Integer> min = new HashMap<>();
         Map<Integer, Integer> max = new HashMap<>();
 
         for (var n : model.getNodes()) {
-            if (n.get_internal_id() == gnd || isAnchorNode(n)) continue;
+            if (n.getNode_id().equals(gnd) || isAnchorNode(n)) continue;
             int track = n.getTrackId();
             int m = n.getPositionM();
 

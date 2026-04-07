@@ -12,7 +12,6 @@ import org.dcsim.electric.GridModel;
 import org.dcsim.electric.GridModelLoader;
 import org.dcsim.electric.Line;
 import org.dcsim.electric.Node;
-import org.dcsim.electric.NodeKind;
 import org.dcsim.electric.Substation;
 import org.dcsim.export.ScenarioMaterializer;
 import org.dcsim.math.Real;
@@ -170,8 +169,8 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
                 );
             }
 
-            int anchorNodeId = dcsim.hasPath("grid.anchorNodeId")
-                    ? dcsim.getInt("grid.anchorNodeId")
+            String anchorNodeId = dcsim.hasPath("grid.anchorNodeId")
+                    ? dcsim.getString("grid.anchorNodeId")
                     : firstNonGroundNonBus(model);
 
             Node<Real> anchor = model.getNodeById(anchorNodeId);
@@ -330,42 +329,42 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
         pts.add(new ScenarioHelpers.TrackPoint(acc, bisKm, bisMeter));
     }
 
-    private static int findPathStart(List<EdgeRef> edges) {
-        Set<Integer> froms = new HashSet<>(), tos = new HashSet<>();
+    private static String findPathStart(List<EdgeRef> edges) {
+        Set<String> froms = new HashSet<>(), tos = new HashSet<>();
         for (EdgeRef e : edges) {
             froms.add(e.i);
             tos.add(e.j);
         }
-        for (int f : froms) if (!tos.contains(f)) return f;
-        return edges.isEmpty() ? 0 : edges.get(0).i;
+        for (String f : froms) {
+            if (!tos.contains(f)) return f;
+        }
+        return edges.isEmpty() ? "" : edges.get(0).i;
     }
 
-    private static List<EdgeRef> linearizePath(List<EdgeRef> edges, int startNodeId) {
-        // TODO (#4):
-        // Current implementation assumes a single contiguous path.
-        // C1 has multiple parallel tracks and implicit return network.
-        // Proper solution requires explicit feeding/return topology.
+    private static List<EdgeRef> linearizePath(List<EdgeRef> edges, String startNodeId) {
         List<EdgeRef> remaining = new ArrayList<>(edges);
         List<EdgeRef> out = new ArrayList<>();
-        int cur = startNodeId;
+        String cur = startNodeId;
 
         while (!remaining.isEmpty()) {
             int hit = -1;
             boolean flip = false;
             for (int k = 0; k < remaining.size(); k++) {
                 EdgeRef e = remaining.get(k);
-                if (e.i == cur) {
+                if (e.i.equals(cur)) {
                     hit = k;
                     flip = false;
                     break;
                 }
-                if (e.j == cur) {
+                if (e.j.equals(cur)) {
                     hit = k;
                     flip = true;
                     break;
                 }
             }
-            if (hit < 0) throw new IllegalStateException("Path not contiguous from node " + cur);
+            if (hit < 0) {
+                throw new IllegalStateException("Path not contiguous from node " + cur);
+            }
 
             EdgeRef e = remaining.remove(hit);
             if (flip) e = new EdgeRef(e.j, e.i, e.R, e.lengthM);
@@ -387,17 +386,24 @@ public final class DcSimScenarioLoader implements ScenarioLoader<Real> {
         return 25.0;
     }
 
-    private static int firstNonGroundNonBus(GridModel<Real> m) {
-        int g = m.getGroundNodeId();
-        Set<Integer> bus = new HashSet<>();
+    private static String firstNonGroundNonBus(GridModel<Real> m) {
+        String g = m.getGroundNodeId();
+        Set<String> bus = new HashSet<>();
+
         for (Object did : m.getDeviceIds()) {
             Device<Real> d = m.getDevice(String.valueOf(did));
-            if (d instanceof Substation ss) bus.add(ss.getFromNode());
+            if (d instanceof Substation ss) {
+                bus.add(ss.getFromNode());
+            }
         }
+
         for (Object o : m.getNodeIds()) {
-            int id = (o instanceof Integer) ? (Integer) o : Integer.parseInt(o.toString());
-            if (id != g && !bus.contains(id)) return id;
+            String id = o.toString();
+            if (!id.equals(g) && !bus.contains(id)) {
+                return id;
+            }
         }
+
         return g;
     }
 

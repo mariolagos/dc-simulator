@@ -40,10 +40,10 @@ public class MiniMiniSolverTests {
         DcDebug.setVerbose(true);
 
         // Build minimal model
-        var gm = new GridModel<>(0);
+        var gm = new GridModel<>("GROUND");
         gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
         gm.addNode(new Node(1, Real.fromDouble(10.0), "ND1"));
-        gm.setGroundNodeId(gm.getNodeById(0));
+        gm.setGroundNodeId(gm.getNodeById("GROUND"));
 
         // Substation (internal R) + line (to ground)
         org.dcsim.testing.Devices.addSubstation(gm, "SS", 1, 900.0, 2.0, /*allowBackFeed*/ true, "baseline");
@@ -62,10 +62,10 @@ public class MiniMiniSolverTests {
     public void two_parallel_lines_halves_Rline_and_changes_voltage() {
         DcDebug.setVerbose(true);
 
-        var gm = new GridModel<>(0);
+        var gm = new GridModel<>("GROUND");
         gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
         gm.addNode(new Node(1, Real.fromDouble(10.0), "ND1"));
-        gm.setGroundNodeId(gm.getNodeById(0));
+        gm.setGroundNodeId(gm.getNodeById("GROUND"));
 
         org.dcsim.testing.Devices.addSubstation(gm, "SS", 1, 900.0, 2.0, true, "baseline");
         // Two parallel 8Ω lines => Req = 4Ω

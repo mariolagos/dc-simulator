@@ -69,8 +69,8 @@ public class DiodeRegenSolverTests {
             double imax, double vmin, double vmax) {
 
         // nodes: 0=ground, 1,2,3
-        final List<Integer> nodeIds = Arrays.asList(0, 1, 2, 3);
-        final Map<Integer,Integer> idx = new HashMap<>();
+        final List<String> nodeIds = Arrays.asList("0", "1", "2", "3");
+        final Map<String,Integer> idx = new HashMap<>();
         for (int i=0;i<nodeIds.size();i++) idx.put(nodeIds.get(i), i);
         final int g = idx.get(0);
 
@@ -104,8 +104,8 @@ public class DiodeRegenSolverTests {
             double regenW,
             double imax, double vmin, double vmax) {
 
-        final List<Integer> nodeIds = Arrays.asList(0, 1, 2, 3);
-        final Map<Integer,Integer> idx = new HashMap<>();
+        final List<String> nodeIds = Arrays.asList("0", "1", "2", "3");
+        final Map<String,Integer> idx = new HashMap<>();
         for (int i=0;i<nodeIds.size();i++) idx.put(nodeIds.get(i), i);
         final int g = idx.get(0);
 

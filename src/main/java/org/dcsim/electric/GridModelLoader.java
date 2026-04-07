@@ -1,13 +1,15 @@
-// org/dcsim/electric/GridModelLoader.java
 package org.dcsim.electric;
+
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.dcsim.contracts.ContractChecks;
+import org.dcsim.electric.GridModel;
 import org.dcsim.math.Real;
 import org.dcsim.utils.PositionUtils;
 import org.supply.domain.ConnectionType;
 import org.supply.domain.InstallationType;
+import org.dcsim.electric.Node;
 import org.supply.domain.PowerConnection;
 import org.supply.domain.PowerInstallation;
 
@@ -62,14 +64,14 @@ public class GridModelLoader {
             Node from = requireNode(nodesByNodeId, feeding.getNodeId());
             Node to = requireNode(nodesByNodeId, returning.getNodeId());
 
-            if (from.getNode_id() == to.getNode_id()) {
+            if (from.getNode_id().equals(to.getNode_id())) {
                 throw new IllegalArgumentException("Substation " + id + " connects same node twice");
             }
 
             Substation ss = new Substation(
                     id,
-                    from.get_internal_id(),
-                    to.get_internal_id(),
+                    from.getNode_id(),
+                    to.getNode_id(),
                     model.getGroundNodeId(),
                     inst.getEmfV(),
                     inst.getInternalResistanceOhm(),
@@ -127,36 +129,68 @@ public class GridModelLoader {
 
     private static void buildNodes(GridModel model, Config grid) {
         var nodeList = grid.getConfigList("nodes");
-        int groundNodeId = model.getGroundNodeId();
+        String groundNodeId = model.getGroundNodeId();
 
         for (var nodeConf : nodeList) {
-            int id = nodeConf.getInt("id");
+            String nodeId = requireString(nodeConf, "node_id");
+            String position = requireString(nodeConf, "position");
 
-            String position = nodeConf.getString("position");
             Real voltage = nodeConf.hasPath("voltage")
                     ? Real.fromDouble(nodeConf.getDouble("voltage"))
                     : Real.ZERO;
 
-            Node node = new Node(id, voltage, position);
-
-            if (nodeConf.hasPath("name")) {
-                node.setName(nodeConf.getString("name"));
-            }
+            int trackId;
+            int positionM;
 
             boolean isGround =
-                    id == groundNodeId
-                            || "GND".equalsIgnoreCase(position)
-                            || (nodeConf.hasPath("name")
-                            && "GND".equalsIgnoreCase(nodeConf.getString("name")));
+                    nodeId.equals(groundNodeId)
+                            || "GND".equalsIgnoreCase(position);
 
             if (isGround) {
-                node.setTrackId(-1);
-                node.setPositionM(-1);
+                trackId = -1;
+                positionM = -1;
             } else {
                 int[] secPos = PositionUtils.parseFlexible(position);
-                node.setTrackId(secPos[0]);
-                node.setPositionM(secPos[1] * 1000);
+                trackId = secPos[0];
+                positionM = secPos[1] * 1000;
             }
+
+            int internalId = 0;
+
+            Node node = null;
+            Real voltage2 = Real.ZERO;
+            for (var nodeConf2 : nodeList) {
+                String nodeId2 = requireString(nodeConf2, "node_id");
+                String position2 = requireString(nodeConf2, "position");
+
+                voltage2 = nodeConf2.hasPath("voltage")
+                        ? Real.fromDouble(nodeConf2.getDouble("voltage"))
+                        : Real.ZERO;
+
+                node = new Node(
+                        internalId++,   // TEMP internal_id
+                        voltage2,
+                        position2
+                );
+
+                node.setName(nodeId2); // ← koppla node_id här
+
+                boolean isGround2 =
+                        nodeId2.equals(groundNodeId)
+                                || "GND".equalsIgnoreCase(position2);
+
+                if (isGround) {
+                    node.setTrackId(-1);
+                    node.setPositionM(-1);
+                } else {
+                    int[] secPos = PositionUtils.parseFlexible(position2);
+                    node.setTrackId(secPos[0]);
+                    node.setPositionM(secPos[1] * 1000);
+                }
+
+                model.addNode(node);
+            }
+            node.setVoltage(voltage2);
 
             model.addNode(node);
         }
@@ -171,19 +205,24 @@ public class GridModelLoader {
         if (!grid.hasPath("lines")) return;
 
         var lineList = grid.getConfigList("lines");
+        Map<String, Node> nodesByNodeId = buildNodesByNodeId(model);
 
         for (var line : lineList) {
-            int from = line.getInt("from");
-            int to = line.getInt("to");
+            String fromNodeId = requireString(line, "from_node_id");
+            String toNodeId = requireString(line, "to_node_id");
 
-            Node fromNode = model.nodeOrThrow(from);
-            Node toNode = model.nodeOrThrow(to);
+            Node fromNode = requireNodeByNodeId(nodesByNodeId, fromNodeId);
+            Node toNode = requireNodeByNodeId(nodesByNodeId, toNodeId);
+
+            if (fromNode.getNode_id().equals(toNode.getNode_id())) {
+                throw new IllegalArgumentException("Line connects same node twice: " + fromNodeId);
+            }
 
             if (fromNode.getTrackId() != toNode.getTrackId()) {
                 throw new IllegalArgumentException(
-                        "Line crosses tracks: from node " + from
+                        "Line crosses tracks: from node " + fromNodeId
                                 + " track=" + fromNode.getTrackId()
-                                + ", to node " + to
+                                + ", to node " + toNodeId
                                 + " track=" + toNode.getTrackId());
             }
 
@@ -191,7 +230,6 @@ public class GridModelLoader {
 
             String positionFrom = fromNode.getPosition();
             String positionTo = toNode.getPosition();
-
             double lenM = PositionUtils.distance(positionFrom, positionTo);
 
             Line l;
@@ -200,31 +238,36 @@ public class GridModelLoader {
 
             if (hasDesc && hasCat) {
                 l = new Line(
-                        from,
-                        to,
-                        resistancePerKm.times(lenM / 1000),
+                        fromNodeId,
+                        toNodeId,
+                        resistancePerKm.times(lenM / 1000.0),
                         line.getString("description"),
                         line.getString("category"),
                         lenM
                 );
             } else if (hasCat) {
                 l = Line.ofCategory(
-                        from,
-                        to,
-                        resistancePerKm.times(lenM / 1000),
+                        fromNodeId,
+                        toNodeId,
+                        resistancePerKm.times(lenM / 1000.0),
                         line.getString("category"),
                         lenM
                 );
             } else if (hasDesc) {
                 l = Line.of(
-                        from,
-                        to,
-                        resistancePerKm.times(lenM / 1000),
+                        fromNodeId,
+                        toNodeId,
+                        resistancePerKm.times(lenM / 1000.0),
                         line.getString("description"),
                         lenM
                 );
             } else {
-                l = Line.of(from, to, resistancePerKm.times(lenM / 1000), lenM);
+                l = Line.of(
+                        fromNodeId,
+                        toNodeId,
+                        resistancePerKm.times(lenM / 1000.0),
+                        lenM
+                );
             }
 
             System.out.println("ADDING LINE class=" + l.getClass().getName()
@@ -243,7 +286,7 @@ public class GridModelLoader {
             GridModel model,
             Config grid,
             Config electrics,
-            int groundNodeId
+            String groundNodeId
     ) {
         boolean ssDefaultAllowBackfeed;
 
@@ -268,7 +311,10 @@ public class GridModelLoader {
 
         for (var sub : substationList) {
             String id = sub.getString("id");
-            int nodeIdOnBus = sub.getInt("nodeId");
+
+            String nodeIdOnBus = sub.hasPath("node_id")
+                    ? sub.getString("node_id")
+                    : sub.getString("nodeId"); // transitional compatibility
 
             Real emf = Real.fromDouble(sub.getDouble("emf"));
             Real rInternal = Real.fromDouble(sub.getDouble("internalResistance"));
@@ -450,62 +496,48 @@ public class GridModelLoader {
      * I fall (3) blir electrics/trains tomma (defaults används).
      */
     public GridModel load(Config config) throws IOException {
-        Config root;   // innehåller ev. dcsim, electrics, trains
-        Config grid;   // själva grid-blocket (nodes/substations/lines)
+        Config root;
+        Config grid;
 
-        // --- Fall 1: full root med dcsim.grid ---
+        // Fall 1: full root with dcsim.grid
         if (config.hasPath("dcsim.grid")) {
             root = config.getConfig("dcsim");
             grid = root.getConfig("grid");
 
-            // --- Fall 2: config ÄR redan dcsim-subträdet (har grid.* under sig) ---
+            // Fall 2: config is already the dcsim subtree
         } else if (config.hasPath("grid.nodes") || config.hasPath("grid.substations")) {
             root = config;
             grid = root.getConfig("grid");
 
-            // --- Fall 3: config ÄR själva grid-blocket (har nodes/substations direkt) ---
+            // Fall 3: config is already the grid block
         } else {
-            root = ConfigFactory.empty(); // inga electrics/trains tillgängliga
+            root = ConfigFactory.empty();
             grid = config;
         }
 
-        // Sections (empty if missing → defaults nedan)
-        Config electrics = root.hasPath("electrics") ? root.getConfig("electrics") : ConfigFactory.empty();
-        Config trainsCfg = root.hasPath("trains") ? root.getConfig("trains") : ConfigFactory.empty();
+        Config electrics = root.hasPath("electrics")
+                ? root.getConfig("electrics")
+                : ConfigFactory.empty();
 
-        // ---- Electrics/Substations config (diode vs. backfeed + optional current limit) ----
+        Config trainsCfg = root.hasPath("trains")
+                ? root.getConfig("trains")
+                : ConfigFactory.empty();
 
-        // ---- Default rectifier/backfeed behavior ----
-        // Preferred: substations.defaults.rectifierType = BIDIR | DIODE
-        // Legacy:    substations.defaults.allowBackfeed = true|false
-        boolean ssDefaultAllowBackfeed;
-
-        String ssDefaultRectifier = electrics.hasPath("substations.defaults.rectifierType")
-                ? electrics.getString("substations.defaults.rectifierType")
-                : null;
-
-        if (ssDefaultRectifier != null) {
-            ssDefaultAllowBackfeed = ssDefaultRectifier.equalsIgnoreCase("BIDIR");
-        } else {
-            ssDefaultAllowBackfeed =
-                    electrics.hasPath("substations.defaults.allowBackfeed")
-                            && electrics.getBoolean("substations.defaults.allowBackfeed");
-        }
-        Config ssOverrides =
-                electrics.hasPath("substations.overrides")
-                        ? electrics.getConfig("substations.overrides")
-                        : ConfigFactory.empty();
-
-        // ---- Train defaults (used only for legacy pre-created trains here) ----
+        // Train defaults (legacy pre-created trains only)
         double tCutoffDefault = trainsCfg.hasPath("defaults.cutoffVoltage")
-                ? trainsCfg.getDouble("defaults.cutoffVoltage") : 850.0;
-        double tMaxVDefault = trainsCfg.hasPath("defaults.maxVoltage")
-                ? trainsCfg.getDouble("defaults.maxVoltage") : 1000.0;
-        double tMaxADefault = trainsCfg.hasPath("defaults.maxCurrentA")
-                ? trainsCfg.getDouble("defaults.maxCurrentA") : 4000.0;
+                ? trainsCfg.getDouble("defaults.cutoffVoltage")
+                : 850.0;
 
-        // ---- Grid core ----
-        int groundNodeId = grid.getInt("groundNodeId");
+        double tMaxVDefault = trainsCfg.hasPath("defaults.maxVoltage")
+                ? trainsCfg.getDouble("defaults.maxVoltage")
+                : 1000.0;
+
+        double tMaxADefault = trainsCfg.hasPath("defaults.maxCurrentA")
+                ? trainsCfg.getDouble("defaults.maxCurrentA")
+                : 4000.0;
+
+        // Grid core
+        String groundNodeId = requireString(grid, "groundNodeId");
         GridModel model = new GridModel(groundNodeId);
 
         buildNodes(model, grid);
@@ -521,27 +553,31 @@ public class GridModelLoader {
 
         buildLines(model, grid);
 
-        // Behåll nuvarande “force backfeed allowed” (om det är avsiktligt i din kodbas)
         model.recomputeBackfeedFlag();
 
-        // Legacy: pre-created trains defined under grid.trains (great for small deterministic tests).
-        // This does NOT use TrainActor/traffic/power profiles.
+        // Legacy: pre-created trains defined under grid.trains
         if (grid.hasPath("trains")) {
             var trainList = grid.getConfigList("trains");
+
             for (var tr : trainList) {
                 String id = tr.getString("id");
-                // Older configs may have fromNode/toNode; newer ones use nodeId→ground
-                int fromNode = tr.hasPath("fromNode") ? tr.getInt("fromNode") : groundNodeId;
-                int toNode = tr.hasPath("toNode") ? tr.getInt("toNode") : groundNodeId;
-                if (tr.hasPath("nodeId")) {
-                    fromNode = tr.getInt("nodeId");
-                    toNode = groundNodeId;
+
+                String fromNodeId = tr.hasPath("from_node_id")
+                        ? tr.getString("from_node_id")
+                        : groundNodeId;
+
+                String toNodeId = tr.hasPath("to_node_id")
+                        ? tr.getString("to_node_id")
+                        : groundNodeId;
+
+                // Transitional compatibility
+                if (tr.hasPath("node_id")) {
+                    fromNodeId = tr.getString("node_id");
+                    toNodeId = groundNodeId;
                 }
 
-                TrainLoad train = new TrainLoad(id, fromNode, toNode);
+                TrainLoad train = new TrainLoad(id, fromNodeId, toNodeId);
 
-                // Apply per-train overrides from trains.overrides.<ID>.*, else fall back to defaults,
-                // else honor inline values on the device entry if present.
                 double cutoff = tCutoffDefault;
                 double maxV = tMaxVDefault;
                 double maxA = tMaxADefault;
@@ -569,6 +605,5 @@ public class GridModelLoader {
 
         return model;
     }
-
 
 }

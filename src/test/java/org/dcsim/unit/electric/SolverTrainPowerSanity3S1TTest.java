@@ -27,45 +27,39 @@ import static org.junit.Assert.*;
 
 public class SolverTrainPowerSanity3S1TTest {
 
+    private static final String GROUND = "GROUND";
+
     @Ignore("Temporarily disabled during C1 delivery. Covered by new C1-focused tests.")
     @Test
     public void threeSubsOneTrain_train_power_sign_and_magnitude_are_sane() throws Exception {
-        GridModel<Real> model = load3S1T();
+        GridModel<Real> model = (GridModel<Real>) load3S1T();
         model.setDynamicLineDevices(buildDynLines(model));
 
-        // Inject a synthetic TrainLoad on the anchor node (99 -> ground).
-        // This keeps v0.8 focused: we test solver + stamps without the traffic/profile pipeline.
-        injectTrainLoad(model, /*trainNodeId=*/99, /*reqW=*/200_000.0);
+        injectTrainLoad(model, "99", 200_000.0);
 
         DcNet net = NetBuilder.makeNet(model);
         assertEquals("Expected exactly one train after injection", 1, net.trains().size());
 
         RealVector V = DcIterativeSolver.solve(net);
 
-        // Dimension from base system (lines etc.)
         DcSystem base = MatrixBuilder.build(net, V.toArray());
         int n = base.G().getRowDimension();
 
         TrainData tr = net.trains().get(0);
         double req = tr.req_W();
 
-        // Stamp train alone into zero matrices to isolate its contribution
         RealMatrix Gt = new Array2DRowRealMatrix(n, n);
         RealVector Jt = new ArrayRealVector(n);
 
         DcStamps.stampTrain(
                 V, Gt, Jt,
                 tr,
-                /*vminDefault=*/0.0,
-                /*motorEnabled=*/true
+                0.0,
+                true
         );
 
-        // Current flowing INTO the train at each node contribution:
-        // I_into_train = (Gt*V - Jt)
         RealVector Iin = Jt.subtract(Gt.operate(V));
 
-        // Power absorbed by the train from the network:
-        // P = sum_i V_i * I_into_train_i
         double P = 0.0;
         for (int i = 0; i < n; i++) {
             P += V.getEntry(i) * Iin.getEntry(i);
@@ -75,55 +69,48 @@ public class SolverTrainPowerSanity3S1TTest {
         assertTrue("Non-finite req_W", Double.isFinite(req));
         assertTrue("req_W should be non-zero", Math.abs(req) > 1e-9);
 
-        // Sign sanity: +req => consumes power, -req => delivers power
         assertEquals("Train power sign mismatch. req_W=" + req + " P=" + P,
                 Math.signum(req), Math.signum(P), 0.0);
 
-        // Magnitude sanity (wide bounds on purpose)
         double absReq = Math.abs(req);
         double absP = Math.abs(P);
 
         assertTrue("Train power too small vs request. req_W=" + req + " P=" + P,
-                absP > 0.01 * absReq); // > 1% of requested
+                absP > 0.01 * absReq);
 
         assertTrue("Train power unreasonably larger than request. req_W=" + req + " P=" + P,
-                absP < 2.0 * absReq + 1.0); // generous upper bound
+                absP < 2.0 * absReq + 1.0);
     }
 
-    // ---- helpers ----
-
-    private static void injectTrainLoad(GridModel<Real> model, int trainNodeId, double reqW) {
-        int gnd = model.getGroundNodeId();
+    private static void injectTrainLoad(GridModel<?> model, String trainNodeId, double reqW) {
+        String gnd = model.getGroundNodeId();
 
         TrainLoad tl = new TrainLoad("TrainLoadSynthetic", trainNodeId, gnd);
         tl.setRequestedPower(Real.fromDouble(reqW));
-
-        // Make sure we don't accidentally clamp current/voltage in this sanity test
         tl.setMaxCurrent(Real.fromDouble(1e30));
-        tl.setCutoffVoltage(Real.fromDouble(1e30)); // so regen logic won't zero current (not relevant here)
+        tl.setCutoffVoltage(Real.fromDouble(1e30));
         tl.setMaxVoltage(Real.fromDouble(1e30));
 
         model.addDevice(tl);
     }
 
-    private static GridModel<Real> load3S1T() throws Exception {
+    private static GridModel<?> load3S1T() throws Exception {
         File f = new File("project/3subs1train/scenario1/application.conf");
         assertTrue("Missing scenario file: " + f.getAbsolutePath(), f.exists());
 
         Config cfg = ConfigFactory.parseFileAnySyntax(f, ConfigParseOptions.defaults().setAllowMissing(false))
                 .resolve();
 
-        @SuppressWarnings("unchecked")
-                GridModelLoader loader = new GridModelLoader();
-        GridModel<Real> model = loader.load(cfg);
-        return model;
+        GridModelLoader loader = new GridModelLoader();
+        return loader.load(cfg);
     }
 
-    private static List<Device<Real>> buildDynLines(GridModel<Real> model) {
+    private static List<Device<Real>> buildDynLines(GridModel<?> model) {
         List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
-        for (Node<Real> n : model.getNodes()) {
-            if (n.get_internal_id() == model.getGroundNodeId()) continue;
-            nodePos.add(new DynamicLineTopologyBuilder.NodePos(n.get_internal_id(), n.getTrackId(), n.getPositionM()));
+        for (Node<?> n : model.getNodes()) {
+            if (GROUND.equals(n.getNode_id())) continue;
+            nodePos.add(new DynamicLineTopologyBuilder.NodePos(
+                    n.getNode_id(), n.getTrackId(), n.getPositionM()));
         }
 
         return DynamicLineTopologyBuilder.buildDynamicLines(

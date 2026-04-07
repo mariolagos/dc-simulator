@@ -20,9 +20,9 @@ public class DynamicLineTopologyBuilderTest {
 
         // Same track, intentionally unsorted by position
         List<DynamicLineTopologyBuilder.NodePos> nodes = List.of(
-                new DynamicLineTopologyBuilder.NodePos(20, 1, 1000),
-                new DynamicLineTopologyBuilder.NodePos(10, 1, 0),
-                new DynamicLineTopologyBuilder.NodePos(99, 1, 200)
+                new DynamicLineTopologyBuilder.NodePos("20", 1, 1000),
+                new DynamicLineTopologyBuilder.NodePos("10", 1, 0),
+                new DynamicLineTopologyBuilder.NodePos("99", 1, 200)
         );
 
         List<Device<Real>> lines = DynamicLineTopologyBuilder.buildDynamicLines(
@@ -48,15 +48,15 @@ public class DynamicLineTopologyBuilderTest {
         double rPerM = 0.01;
 
         List<DynamicLineTopologyBuilder.NodePos> near = List.of(
-                new DynamicLineTopologyBuilder.NodePos(10, 1, 0),
-                new DynamicLineTopologyBuilder.NodePos(99, 1, 200),
-                new DynamicLineTopologyBuilder.NodePos(20, 1, 1000)
+                new DynamicLineTopologyBuilder.NodePos("10", 1, 0),
+                new DynamicLineTopologyBuilder.NodePos("99", 1, 200),
+                new DynamicLineTopologyBuilder.NodePos("20", 1, 1000)
         );
 
         List<DynamicLineTopologyBuilder.NodePos> far = List.of(
-                new DynamicLineTopologyBuilder.NodePos(10, 1, 0),
-                new DynamicLineTopologyBuilder.NodePos(99, 1, 800),
-                new DynamicLineTopologyBuilder.NodePos(20, 1, 1000)
+                new DynamicLineTopologyBuilder.NodePos("10", 1, 0),
+                new DynamicLineTopologyBuilder.NodePos("99", 1, 800),
+                new DynamicLineTopologyBuilder.NodePos("20", 1, 1000)
         );
 
         List<Device<Real>> linesNear = DynamicLineTopologyBuilder.buildDynamicLines(
@@ -94,12 +94,12 @@ public class DynamicLineTopologyBuilderTest {
         // Track 1 has two nodes => 1 line
         // Track 2 has three nodes => 2 lines
         List<DynamicLineTopologyBuilder.NodePos> nodes = List.of(
-                new DynamicLineTopologyBuilder.NodePos(10, 1, 0),
-                new DynamicLineTopologyBuilder.NodePos(99, 1, 500),
+                new DynamicLineTopologyBuilder.NodePos("10", 1, 0),
+                new DynamicLineTopologyBuilder.NodePos("99", 1, 500),
 
-                new DynamicLineTopologyBuilder.NodePos(30, 2, 0),
-                new DynamicLineTopologyBuilder.NodePos(31, 2, 100),
-                new DynamicLineTopologyBuilder.NodePos(32, 2, 200)
+                new DynamicLineTopologyBuilder.NodePos("30", 2, 0),
+                new DynamicLineTopologyBuilder.NodePos("31", 2, 100),
+                new DynamicLineTopologyBuilder.NodePos("32", 2, 200)
         );
 
         List<Device<Real>> lines = DynamicLineTopologyBuilder.buildDynamicLines(
@@ -112,14 +112,16 @@ public class DynamicLineTopologyBuilderTest {
         // Ensure no line connects track1 nodeIds (10,99) with track2 nodeIds (30,31,32)
         for (Device<Real> d : lines) {
             DcLine l = (DcLine) d;
-            int a = l.getFromNode();
-            int b = l.getToNode();
+            String a = l.getFromNode();
+            String b = l.getToNode();
 
-            boolean aTrack1 = (a == 10 || a == 99);
-            boolean bTrack1 = (b == 10 || b == 99);
+//            boolean aTrack2 = (a == 30 || a == 31 || a == 32);
+//            boolean bTrack2 = (b == 30 || b == 31 || b == 32);
+            boolean aTrack1 = (a.equals("10") || a.equals("99"));
+            boolean bTrack1 = (b.equals("10") || b.equals("99"));
 
-            boolean aTrack2 = (a == 30 || a == 31 || a == 32);
-            boolean bTrack2 = (b == 30 || b == 31 || b == 32);
+            boolean aTrack2 = (a.equals("30") || a.equals("31") || a.equals("32"));
+            boolean bTrack2 = (b.equals("30") || b.equals("31") || b.equals("32"));
 
             assertFalse("Found cross-track line: " + a + "<->" + b,
                     (aTrack1 && bTrack2) || (aTrack2 && bTrack1));
@@ -127,9 +129,10 @@ public class DynamicLineTopologyBuilderTest {
     }
 
     private static void assertEndpoints(DcLine l, int n1, int n2) {
-        int a = l.getFromNode();
-        int b = l.getToNode();
-        boolean ok = (a == n1 && b == n2) || (a == n2 && b == n1);
+        String a = l.getFromNode();
+        String b = l.getToNode();
+//        boolean ok = (a == n1 && b == n2) || (a == n2 && b == n1);
+        boolean ok = (a.equals(n1) && b.equals(n2)) || (a.equals(n2) && b.equals((n1)));
         assertTrue("Unexpected endpoints: " + a + "<->" + b + ", expected " + n1 + "<->" + n2, ok);
     }
 }

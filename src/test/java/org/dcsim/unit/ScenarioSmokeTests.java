@@ -86,9 +86,9 @@ public class ScenarioSmokeTests {
         }
 
         // --- build a tiny DC net: nodes [0..3], ground=0
-        final int ground = 0;
-        final java.util.List<Integer> nodeIds = java.util.Arrays.asList(0, 1, 2, 3);
-        final java.util.Map<Integer,Integer> idxById = new java.util.HashMap<>();
+        final String ground = "GROUND";
+        final java.util.List<String> nodeIds = java.util.Arrays.asList("0", "1", "2", "3");
+        final java.util.Map<String,Integer> idxById = new java.util.HashMap<>();
         for (int i = 0; i < nodeIds.size(); i++) idxById.put(nodeIds.get(i), i);
 
         final double R_LINE = 0.50;   // ohm between 1-2 and 2-3
@@ -114,16 +114,20 @@ public class ScenarioSmokeTests {
         trains.add(new org.dcsim.solver.api.TrainData("Tmotor", 2, 0, motorW, IMAX, CUT, VMAX));
         trains.add(new org.dcsim.solver.api.TrainData("Tregen", 3, 0, regenW, IMAX, CUT, VMAX));
 
+        Integer groundIndex = idxById.get(ground);
+        if (groundIndex == null) {
+            throw new IllegalArgumentException("Unknown ground node id: " + ground);
+        }
+
         org.dcsim.solver.api.DcNet net = new org.dcsim.solver.api.DcNet(
                 nodeIds.size(),
-                ground,
+                groundIndex,
                 java.util.Collections.unmodifiableList(nodeIds),
                 java.util.Collections.unmodifiableMap(idxById),
                 java.util.Collections.unmodifiableList(lines),
                 java.util.Collections.unmodifiableList(subs),
                 java.util.Collections.unmodifiableList(trains)
         );
-
         // --- solve node voltages
         org.apache.commons.math3.linear.RealVector V = org.dcsim.solver.impl.DcIterativeSolver.solveVoltages(net);
 

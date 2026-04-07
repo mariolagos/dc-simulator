@@ -14,15 +14,15 @@ public class contract_rejects_negative_positionM {
         GridModel<Real> m = (GridModel<Real>) loader.load(ConfigFactory.parseString("""
         groundNodeId=0
         nodes=[
-          {id=0, position="GND"}
-          {id=1, position="1 0+000"}
+          {id="0", position="1 0+00"}
+          {id="1", position="1 1+000"}
         ]
         substations=[]
         lines=[]
     """));
 
         // Force a bad value (simulating a buggy loader / future regression)
-        m.nodeOrThrow(1).setPositionM(-1);
+        m.nodeOrThrow("1").setPositionM(-1);
 
         ContractChecks.validateGridModel(m);
     }

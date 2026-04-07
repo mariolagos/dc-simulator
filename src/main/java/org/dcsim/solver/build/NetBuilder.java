@@ -44,17 +44,16 @@ public final class NetBuilder {
         }
 
         final int n = modelNodes.size();
-        final List<Integer> nodeIds = new ArrayList<>(n);
-        final Map<Integer, Integer> idxById = new HashMap<>(n * 2);
+        final List<String> nodeIds = new ArrayList<>(n);
+        final Map<String, Integer> idxById = new HashMap<>(n * 2);
 
         for (int i = 0; i < n; i++) {
-            int id = modelNodes.get(i).get_internal_id();
+            String id = modelNodes.get(i).getNode_id();
             nodeIds.add(id);
-            idxById.put(id, i);
-        }
+            idxById.put(id, i);        }
 
         // 2) Ground-index
-        final Integer groundNodeId = model.getGroundNodeId();
+        final String groundNodeId = model.getGroundNodeId();
         if (groundNodeId == null)
             throw new IllegalArgumentException("Model ground node is null.");
         final Integer gnd = idxById.get(groundNodeId);
@@ -81,12 +80,12 @@ public final class NetBuilder {
         for (Device<Real> d : lineDevices) {
             if (d instanceof Line ln) {
                 Line l = (Line) d;
-                int fromId = l.getFromNode();
-                int toId = l.getToNode();
+                String fromId = l.getFromNode();
+                String toId = l.getToNode();
                 Integer a = idxById.get(fromId);
                 Integer b = idxById.get(toId);
                 if (a == null || b == null) {
-                    System.out.printf("[ADAPT-LINE] SKIP static %s from=%d to=%d (idx a=%s b=%s)%n",
+                    System.out.printf("[ADAPT-LINE] SKIP static %s from=%s to=%d (idx a=%s b=%s)%n",
                             l.getDescription(), fromId, toId, a, b);
                     continue;
                 }
@@ -99,8 +98,8 @@ public final class NetBuilder {
 
             } else if (d instanceof DcLine) {
                 DcLine l = (DcLine) d;
-                int fromId = l.getFromNode();
-                int toId = l.getToNode();
+                String fromId = l.getFromNode();
+                String toId = l.getToNode();
                 Integer a = idxById.get(fromId);
                 Integer b = idxById.get(toId);
                 if (a == null || b == null) {

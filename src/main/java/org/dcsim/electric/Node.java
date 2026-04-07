@@ -108,16 +108,6 @@ public class Node<T extends FieldElement<T>> {
         return position;
     }
 
-    public Real computeNetCurrent(List<Device<Real>> devices, double time) {
-        Real total = Real.ZERO;
-        for (Device<Real> device : devices) {
-            if (device.getConnectedNode() == internal_id) {
-                total = total.plus(device.computeCurrent(voltage, time));
-            }
-        }
-        return total;
-    }
-
     public String getDescription() {
         return description;
     }

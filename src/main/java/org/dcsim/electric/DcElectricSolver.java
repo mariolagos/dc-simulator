@@ -23,7 +23,7 @@ public class DcElectricSolver implements ElectricSolver {
         // -------------------------------
         // 1) Build node index
         // -------------------------------
-        final Map<Integer, Integer> nodeIndex = new LinkedHashMap<>();
+        final Map<String, Integer> nodeIndex = new LinkedHashMap<>();
 
         // Known two-node devices first
         for (Object o : model.getDevices()) {
@@ -35,15 +35,15 @@ public class DcElectricSolver implements ElectricSolver {
                 ensureNode(nodeIndex, tl.getToNode());
             }
         }
-        // Substations (duck-typed)
+// Substations (duck-typed)
         for (Object o : model.getDevices()) {
             if (looksLikeSubstation(o)) {
-                Integer n = readNodeId(o);
+                String n = readNodeId(o);
                 if (n != null) {
                     ensureNode(nodeIndex, n);
                 } else {
-                    Integer a = readInt(o, "getFromNode");
-                    Integer b = readInt(o, "getToNode");
+                    String a = readString(o, "getFromNode");
+                    String b = readString(o, "getToNode");
                     if (a != null) ensureNode(nodeIndex, a);
                     if (b != null) ensureNode(nodeIndex, b);
                 }
@@ -70,11 +70,11 @@ public class DcElectricSolver implements ElectricSolver {
         // Substations (Norton): G=1/R to ground, J=G*E
         for (Object o : model.getDevices()) {
             if (looksLikeSubstation(o)) {
-                Integer n = readNodeId(o);
-                if (n == null) n = readInt(o, "getFromNode"); // fallback
+                String n = readNodeId(o);
+                if (n == null) n = readString(o, "getFromNode"); // fallback
                 Double Rint = orDoubles(o, "getInternalResistance", "getRint", "getInternalR");
                 Double E    = orDoubles(o, "getEmf", "getOpenCircuitVoltage");
-                if (n != null && Rint != null && E != null && n >= 0 && Rint > 0.0) {
+                if (n != null && Rint != null && E != null && !n.equals("") && Rint > 0.0) {
                     double Gsh = 1.0 / Rint;
                     int i = nodeIndex.get(n);
                     Y.addToEntry(i, i, Gsh);
@@ -97,8 +97,8 @@ public class DcElectricSolver implements ElectricSolver {
         // 4) Build result + write node voltages
         // -------------------------------
         GridResult result = new GridResult(Y, J);
-        for (Map.Entry<Integer, Integer> e : nodeIndex.entrySet()) {
-            int nodeId = e.getKey();
+        for (Map.Entry<String, Integer> e : nodeIndex.entrySet()) {
+            String nodeId = e.getKey();
             int idx    = e.getValue();
             result.setVoltage(nodeId, Real.fromDouble(V.getEntry(idx)));
         }
@@ -143,11 +143,11 @@ public class DcElectricSolver implements ElectricSolver {
         // Substations: I = (E - Vn)/Rint ; P = Vn * I
         for (Object o : model.getDevices()) {
             if (looksLikeSubstation(o)) {
-                Integer n = readNodeId(o);
-                if (n == null) n = readInt(o, "getFromNode");
+                String  n = readNodeId(o);
+                if (n == null) n = readString(o, "getFromNode");
                 Double Rint = orDoubles(o, "getInternalResistance", "getRint", "getInternalR");
                 Double E    = orDoubles(o, "getEmf", "getOpenCircuitVoltage");
-                if (n != null && Rint != null && E != null && n >= 0 && Rint > 0.0) {
+                if (n != null && Rint != null && E != null && !n.equals("") && Rint > 0.0) {
                     int idx = nodeIndex.get(n);
                     double Vn = V.getEntry(idx);
                     double I  = (E - Vn) / Rint;
@@ -167,8 +167,8 @@ public class DcElectricSolver implements ElectricSolver {
     // --------------------------------------------------
     // Helpers
     // --------------------------------------------------
-    private static void ensureNode(Map<Integer,Integer> index, int nodeId) {
-        if (nodeId < 0) return;
+    private static void ensureNode(Map<String,Integer> index, String nodeId) {
+        if (nodeId.equals("")) return;
         if (!index.containsKey(nodeId)) {
             index.put(nodeId, index.size());
         }
@@ -185,15 +185,25 @@ public class DcElectricSolver implements ElectricSolver {
                 && (hasMethod(o, "getInternalResistance") || hasMethod(o, "getRint") || hasMethod(o, "getInternalR"))
                 && (hasMethod(o, "getNodeId") || hasMethod(o, "getFromNode"));
     }
+
     private static boolean hasMethod(Object o, String name) {
         try { o.getClass().getMethod(name); return true; }
         catch (NoSuchMethodException e) { return false; }
     }
-    private static Integer readNodeId(Object o) { return readInt(o, "getNodeId"); }
-    private static Integer readInt(Object o, String method) {
-        try { Object v = o.getClass().getMethod(method).invoke(o); return (Integer) v; }
-        catch (Throwable t) { return null; }
+
+    private static String readNodeId(Object o) {
+        return readString(o, "getNodeId");
     }
+
+    private static String readString(Object o, String method) {
+        try {
+            Object v = o.getClass().getMethod(method).invoke(o);
+            return v != null ? v.toString() : null;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     private static Double readDouble(Object o, String method) {
         try {
             Object v = o.getClass().getMethod(method).invoke(o);
@@ -202,6 +212,7 @@ public class DcElectricSolver implements ElectricSolver {
             return null;
         } catch (Throwable t) { return null; }
     }
+
     private static Double orDoubles(Object o, String... mnames) {
         for (String m : mnames) {
             Double v = readDouble(o, m);
@@ -209,6 +220,7 @@ public class DcElectricSolver implements ElectricSolver {
         }
         return null;
     }
+
     private static String readId(Object o) {
         try { Object v = o.getClass().getMethod("getId").invoke(o); return (String) v; }
         catch (Throwable t) { return null; }
