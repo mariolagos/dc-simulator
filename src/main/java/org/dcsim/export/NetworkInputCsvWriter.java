@@ -24,6 +24,7 @@ import java.util.Set;
 
 public final class NetworkInputCsvWriter {
 
+    private static final int C1_LEGACY_NODE_EXPORT_OFFSET_M = -100;
     static final boolean DEBUG_VERBOSITY = false;
 
     /**
@@ -91,12 +92,15 @@ public final class NetworkInputCsvWriter {
                     continue;
                 }
 
-                w.write(nodeId + "," + n.getTrackId() + "," + n.getPositionM() + "\n");
+                w.write(nodeId + "," + n.getTrackId() + "," + (n.getPositionM() + C1_LEGACY_NODE_EXPORT_OFFSET_M) + "\n");
             }
         }
     }
 
     private void writeLines(Config dcsim, GridModel<Real> model, Path file) throws IOException {
+        // TODO(#27): Temporary C1 legacy offset.
+        // Remove when track/path/model position transform is implemented.
+        // Then update C1 config positions instead of shifting here.
         if (DEBUG_VERBOSITY) {
             System.out.println("writeLines: lines=" + model.getLines().size());
         }

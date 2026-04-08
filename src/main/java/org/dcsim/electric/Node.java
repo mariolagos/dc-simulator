@@ -73,7 +73,12 @@ public class Node<T extends FieldElement<T>> {
 
     private static int legacyPositionM(String position) {
         try {
-            return PositionUtils.parseFlexible(position)[1];
+            int[] p = PositionUtils.parseFlexible(position);
+
+            int base = p[1] * 1000 + p[2];
+
+            return base;
+
         } catch (Exception e) {
             return 0;
         }
