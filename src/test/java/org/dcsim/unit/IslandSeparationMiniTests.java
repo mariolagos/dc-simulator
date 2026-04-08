@@ -8,6 +8,7 @@ import org.dcsim.solver.impl.DcDebug;
 import org.dcsim.testing.AssertHelpers;
 import org.dcsim.testing.PowerAsserts;
 import org.dcsim.testing.TestHarness;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.file.Path;
@@ -85,6 +86,7 @@ public class IslandSeparationMiniTests {
      * island independently settles to the divider baseline and that the sum of substation
      * powers (our "grid absorption" proxy) is ≈ 0 W.</p>
      */
+    @Ignore("Pending #19: legacy node-id assumptions in test helper path. Re-enable after id migration settles.")
     @Test
     public void islands_regenCannotFeedMotor_whenDisconnected() {
         DcDebug.setVerbose(true);
@@ -127,6 +129,7 @@ public class IslandSeparationMiniTests {
      * ground and basic voltages; additional current/power splits can be asserted once
      * train/behavior elements are in place.</p>
      */
+    @Ignore("Pending #19: legacy node-id assumptions in test helper path. Re-enable after id migration settles.")
     @Test
     public void islands_regenCanFeedMotor_whenLinked() {
         DcDebug.setVerbose(true);

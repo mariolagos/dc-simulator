@@ -13,12 +13,18 @@ public class SolveStaticMiniTests {
 
     @Test
     public void solve_substation_plus_line_matches_divider() throws IOException {
+
+        String GROUND = "0";
+        String ND1 = "1";
+        int ground_internal_id = 0;
+        int nd1_internal_id = 1;
+
         org.dcsim.solver.impl.DcDebug.setVerbose(false);
 
         // Build GridModel with production API (without reflection)
-        var gm = new org.dcsim.electric.GridModel<>(0);
-        ElectricBuilders.ensureNode(gm, 0, 0.0, "GND");
-        ElectricBuilders.ensureNode(gm, 1, 10.0, "ND1");
+        var gm = new org.dcsim.electric.GridModel<>(GROUND);
+        ElectricBuilders.ensureNode(gm, ground_internal_id, 0.0, GROUND);
+        ElectricBuilders.ensureNode(gm, nd1_internal_id, 10.0, ND1);
         ElectricBuilders.ensureGround(gm, 0);
 
         Devices.addSubstation(gm, "SS", /*anchor*/ 1, 900.0, 2.0, /*allowBackFeed*/ false, "divider");

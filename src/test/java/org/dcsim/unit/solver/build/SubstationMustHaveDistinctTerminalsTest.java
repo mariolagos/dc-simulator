@@ -13,14 +13,16 @@ public class SubstationMustHaveDistinctTerminalsTest {
 
     @Test
     public void substation_with_same_from_and_to_node_is_rejected() {
-        final int GND = 0;
-        final int SUB = 1;
+        final String GND = "0";
+        final String SUB = "1";
+        int gnd_internal_id = 0;
+        int sub_imternal_id = 1;
 
         GridModel<Real> model = new GridModel<>(GND);
 
         // Nodes
-        model.addNode(new Node<>(SUB, Real.ZERO, "SUB"));
-        model.addNode(new Node<>(GND, Real.ZERO, "GND"));
+        model.addNode(new Node<>(sub_imternal_id, Real.ZERO, "SUB"));
+        model.addNode(new Node<>(gnd_internal_id, Real.ZERO, "GND"));
 
         // ❌ Invalid substation: from == to
         model.addDevice(new Substation(
