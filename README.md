@@ -399,3 +399,89 @@ introducing additional matrix nodes or changing the solver API.
 ### Substation validation (NEW)
 - Substations must have **distinct electrical terminals**.
 - A substation with identical `fromNode` and `toNode` is rejected at NetBuilder time (fail-fast).
+
+---
+
+## Package Structure (v0.11+)
+
+A new package structure is introduced to separate domain concepts, transformation logic, and solver implementation.  
+This structure will be gradually adopted. Legacy code may remain outside this structure until cleanup (planned for v0.12).
+
+### Structure
+
+- supply
+  - domain
+  - mapping
+  - solver
+  - io
+  - app
+  - util
+
+### Responsibilities
+
+#### `domain`
+Contains all domain and configuration-facing classes.  
+These represent the concepts exposed to the user via configuration.
+
+Examples:
+- Node
+- Line
+- PowerInstallation
+- Substation
+- Point
+- PowerConnection
+- Enums and value objects (e.g. positions)
+
+#### `mapping`
+Contains transformation logic between representations.
+
+Examples:
+- Railway → model coordinate transformation
+- Section-based positioning
+- Mapping between domain objects and solver objects
+
+#### `solver`
+Contains electrical and numerical computation logic.
+
+Examples:
+- Matrix assembly (stamping)
+- Solver algorithms
+- Device behavior implementations
+
+#### `io`
+Handles all input and output operations.
+
+Examples:
+- Configuration readers
+- CSV import/export
+- Report generation I/O
+
+#### `app`
+Executable application entry points.
+
+Examples:
+- DcSimApp
+- DcExport
+- DcReport
+
+#### `util`
+General-purpose helper utilities.  
+This package should remain small and not contain domain logic.
+
+---
+
+### Design Principles
+
+- Domain classes reflect configuration and user concepts.
+- Model coordinates are derived from railway coordinates via mapping.
+- Solver logic is separated from domain representation.
+- Interfaces are introduced selectively at system boundaries (e.g. mapping, IO, solver).
+- Legacy code will be incrementally migrated into this structure.
+
+---
+
+### Migration Strategy
+
+- New and refactored code should be placed in the new `supply` structure.
+- Existing code remains unchanged until explicitly migrated.
+- Full cleanup and consolidation are planned for version v0.12.

@@ -324,6 +324,11 @@ These arguments are used to derive:
 
       resultsDir = outputRoot/results
 
+- **reportsDir**  
+  Directory containing analysis and reports:
+
+      reportsDir = outputRoot/reports
+
 ### Output root resolution
 
 If the optional `output` argument is omitted:
@@ -415,7 +420,7 @@ flowchart LR
   widefile
   DcRepApp
   reports
-  conf --> DcSimApp
+  DcExpApp --> DcSimApp
   conf --> DcExpApp
   DcSimApp --> longfile
   longfile --> DcRepApp
@@ -441,11 +446,11 @@ flowchart LR
   reports
   runfile
   conf --> DcExpApp
-  DcExpApp --> DcSimApp
-  DcSimApp ---> runfile
+  DcSimApp --> longfile
   longfile --> DcRepApp
   DcRepApp --> reports
   DcExpApp --> runfile
+  runfile --> DcSimApp
   runfile --> Matlab
   Matlab --> widefile
   widefile --> DcRepApp
