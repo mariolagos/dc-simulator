@@ -1,5 +1,7 @@
 package org.dcsim.export;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 
 /**
@@ -22,7 +24,7 @@ public final class LongCsv {
     private static volatile String projectName  = System.getProperty("dcsim.project",  "dc-simulator");
     private static volatile String scenarioName = System.getProperty("dcsim.scenario", "3subs1train");
     private static volatile String baseHash     = System.getProperty("dcsim.hash",     "8110f7deeaa232a8602fcccbd55f512cebdfc7af");
-    private static volatile String longPath     = System.getProperty("dcsim.longtable","output/longtable.csv");
+    private static volatile String longPath = System.getProperty("dcsim.longtable", "longtable.csv");
     private static volatile boolean overwrite   = true;
 
     private LongCsv() {}
@@ -36,6 +38,38 @@ public final class LongCsv {
         if (overwriteFile != null)                   overwrite    = overwriteFile.booleanValue();
     }
 
+
+    private static String resolveLongPathDeterministically(String maybeRelativePath) {
+        if (maybeRelativePath == null || maybeRelativePath.isBlank()) return "longtable.csv";
+
+        Path raw = Paths.get(maybeRelativePath);
+        if (raw.isAbsolute()) return raw.toString();
+
+        // Preferred key first
+        String resultsRootStr = System.getProperty("dcsim.paths.resultsDir");
+        if (resultsRootStr == null || resultsRootStr.isBlank()) {
+            resultsRootStr = System.getProperty("dcsim.resultsDir");
+        }
+
+        if (resultsRootStr == null || resultsRootStr.isBlank()) {
+            throw new IllegalStateException(
+                    "[LongCsv] dcsim.longtable is relative (" + raw + ") but no results root configured. " +
+                            "Set -Ddcsim.paths.resultsDir=<ABSOLUTE> (preferred) or -Ddcsim.resultsDir=<ABSOLUTE>.");
+        }
+
+        Path resultsRoot = Paths.get(resultsRootStr);
+        if (!resultsRoot.isAbsolute()) {
+            throw new IllegalStateException("[LongCsv] results root must be ABSOLUTE. Got: " + resultsRoot);
+        }
+
+        return resultsRoot
+                .resolve(projectName)
+                .resolve(scenarioName)
+                .resolve(raw)
+                .normalize()
+                .toString();
+    }
+
     /** Lazy-init LongTableWriter med korrekt konstruktor. */
     public static LongTableWriter get() {
         LongTableWriter w = WRITER;
@@ -43,6 +77,8 @@ public final class LongCsv {
         synchronized (LOCK) {
             if (WRITER == null) {
                 try {
+                    String resolved = resolveLongPathDeterministically(longPath);
+                    longPath = resolved;
                     WRITER = new LongTableWriter(longPath, overwrite, projectName, scenarioName, baseHash);
                     System.out.println("[LongCsv] LongTableWriter initialized: " + longPath
                             + "  project=" + projectName + " scenario=" + scenarioName + " hash=" + baseHash);

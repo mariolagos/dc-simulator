@@ -1,6 +1,12 @@
 package org.dcsim.export;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.Flushable;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
@@ -13,6 +19,9 @@ public final class LongTableWriter implements Closeable, Flushable {
 
     public LongTableWriter(String path, boolean overwrite,
                            String project, String scenario, String baseHash) throws IOException {
+        if (path == null || path.trim().isEmpty()) {
+            throw new IllegalArgumentException("LongTableWriter: path is null/empty");
+        }
         File f = new File(path);
         File p = f.getParentFile();
         if (p != null) p.mkdirs();

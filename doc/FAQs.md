@@ -6,15 +6,7 @@ _Last updated: 2025-09-11_
 
 ## 1) What does `export.treatNegativeBrakingAsBrake` do?
 
-**Short answer:** It’s **reporting-only**.
-- **`false` (recommended):** Regen (negative traction) flows in the network and is **not** mirrored as `P_brake`.
-- **`true`:** Any negative traction (regen) is **also** shown as a positive `P_brake` number in the CSV, even though power still goes back into the network.
-
-**When to use `true`:**
-- Quick sanity plots when you don’t have a dedicated dissipative brake model but still want to visualize “brake-like” energy.
-- Post-processing where you want a single “brake-looking” time series.
-
-**Caveat:** With `true`, `Balance` will typically **not** be zero during regen periods, because you’re double-counting energy (once in the network, once as “brake”).
+Obsolet
 
 ---
 
@@ -41,7 +33,6 @@ Given your config (3 substations, `allowBackfeed=false`, Excel power profile, an
       (numerically small if the model is well-posed; may show residuals due to discretization and device reporting granularity)
     - `Balance = Mismatch − P_brake`  
       With pure regen (no dissipative brake), `P_brake ≈ 0`, so `Balance ≈ Mismatch`.  
-      If you enable the reporting trick (`treatNegativeBrakingAsBrake=true`), `Balance` will deviate during regen.
 
 These behaviors match what you’re seeing.
 

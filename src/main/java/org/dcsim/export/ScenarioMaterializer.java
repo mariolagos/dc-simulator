@@ -12,6 +12,14 @@ import java.nio.file.Path;
 public final class ScenarioMaterializer {
 
     public static void materializeScenario(Path scenarioConf, Path outDir, Path runExcel, String trainId) throws Exception {
+        if (outDir == null) {
+            throw new IllegalArgumentException("ScenarioMaterializer.materializeScenario: outDir is null");
+        }
+        if (!outDir.isAbsolute()) {
+            throw new IllegalStateException(
+                    "ScenarioMaterializer.materializeScenario: outDir must be ABSOLUTE for deterministic output paths. Got: " + outDir);
+        }
+
         Files.createDirectories(outDir);
 
         Config scenario = DcSimScenarioLoader.loadScenarioConfig(scenarioConf);

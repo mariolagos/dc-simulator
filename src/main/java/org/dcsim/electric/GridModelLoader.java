@@ -8,11 +8,6 @@ import org.dcsim.math.Real;
 import org.dcsim.utils.PositionUtils;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class GridModelLoader {
 
@@ -72,9 +67,23 @@ public class GridModelLoader {
         Config trainsCfg = root.hasPath("trains") ? root.getConfig("trains") : ConfigFactory.empty();
 
         // ---- Electrics/Substations config (diode vs. backfeed + optional current limit) ----
-        boolean ssDefaultAllowBackfeed =
-                electrics.hasPath("substations.defaults.allowBackfeed")
-                        && electrics.getBoolean("substations.defaults.allowBackfeed");
+
+        // ---- Default rectifier/backfeed behavior ----
+        // Preferred: substations.defaults.rectifierType = BIDIR | DIODE
+        // Legacy:    substations.defaults.allowBackfeed = true|false
+        boolean ssDefaultAllowBackfeed;
+
+        String ssDefaultRectifier = electrics.hasPath("substations.defaults.rectifierType")
+                ? electrics.getString("substations.defaults.rectifierType")
+                : null;
+
+        if (ssDefaultRectifier != null) {
+            ssDefaultAllowBackfeed = ssDefaultRectifier.equalsIgnoreCase("BIDIR");
+        } else {
+            ssDefaultAllowBackfeed =
+                    electrics.hasPath("substations.defaults.allowBackfeed")
+                            && electrics.getBoolean("substations.defaults.allowBackfeed");
+        }
         Config ssOverrides =
                 electrics.hasPath("substations.overrides")
                         ? electrics.getConfig("substations.overrides")
@@ -136,12 +145,29 @@ public class GridModelLoader {
             // allowBackfeed: default från electrics.*, per-station override i electrics.*,
             // och inline override på grid.substations-item (om närvarande).
             boolean allow = ssDefaultAllowBackfeed;
-            if (ssOverrides.hasPath(id + ".allowBackfeed")) {
-                allow = ssOverrides.getBoolean(id + ".allowBackfeed");
+
+            // Preferred: rectifierType = BIDIR | DIODE
+            String rectifier = null;
+            if (ssOverrides.hasPath(id + ".rectifierType")) {
+                rectifier = ssOverrides.getString(id + ".rectifierType");
+            } else if (sub.hasPath("rectifierType")) {
+                rectifier = sub.getString("rectifierType");
             }
-            if (sub.hasPath("allowBackfeed")) {
-                allow = sub.getBoolean("allowBackfeed");
+
+            if (rectifier != null) {
+                allow = rectifier.equalsIgnoreCase("BIDIR");
+            } else {
+                if (ssOverrides.hasPath(id + ".allowBackfeed")) {
+                    allow = ssOverrides.getBoolean(id + ".allowBackfeed");
+                    System.err.println("[DEPRECATION] electrics.substations.overrides." + id
+                            + ".allowBackfeed is deprecated; use rectifierType=BIDIR|DIODE");
+                }
+                if (sub.hasPath("allowBackfeed")) {
+                    allow = sub.getBoolean("allowBackfeed");
+                    System.err.println("[DEPRECATION] grid.substations[].allowBackfeed is deprecated; use rectifierType=BIDIR|DIODE");
+                }
             }
+
             ss.setAllowBackfeed(allow);
 
             // Optional per-station current limit (A)
@@ -155,7 +181,6 @@ public class GridModelLoader {
             model.addDevice(ss);
         }
         // Behåll nuvarande “force backfeed allowed” (om det är avsiktligt i din kodbas)
-        for (Object s : model.getSubstations()) ((Substation) s).setAllowBackfeed(true);
         model.recomputeBackfeedFlag();
 
         // Lines (description/category optional)
