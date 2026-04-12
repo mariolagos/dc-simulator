@@ -12,7 +12,7 @@ public class PowerInstallation {
     // Electrical parameters
     private final Real emf_v;
     private final Real internal_resistance_ohm;
-    private final String rectifier_type;
+    private final RectifierType rectifier_type;
 
     // Optional metadata
     private final String description;
@@ -22,7 +22,7 @@ public class PowerInstallation {
             InstallationType installation_type,
             Real emf_v,
             Real internal_resistance_ohm,
-            String rectifier_type
+            RectifierType rectifier_type
     ) {
         this(installation_id, installation_type, emf_v, internal_resistance_ohm, rectifier_type, null);
     }
@@ -32,7 +32,7 @@ public class PowerInstallation {
             InstallationType installation_type,
             Real emf_v,
             Real internal_resistance_ohm,
-            String rectifier_type,
+            RectifierType rectifier_type,
             String description
     ) {
         this.installation_id = Objects.requireNonNull(installation_id);
@@ -59,7 +59,7 @@ public class PowerInstallation {
         return internal_resistance_ohm;
     }
 
-    public String getRectifierType() {
+    public RectifierType getRectifierType() {
         return rectifier_type;
     }
 
@@ -82,7 +82,7 @@ public class PowerInstallation {
                 ", installation_type=" + installation_type +
                 ", emf_v=" + emf_v +
                 ", internal_resistance_ohm=" + internal_resistance_ohm +
-                ", rectifier_type='" + rectifier_type + '\'' +
+                ", rectifier_type='" + rectifier_type +
                 ", description='" + description + '\'' +
                 '}';
     }

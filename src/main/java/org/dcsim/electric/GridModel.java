@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+// Legacy electric model.
+// Kept temporarily while node_id-based model loading migrates to org.supply.model.GridModel.
+@Deprecated
 public class GridModel<F extends FieldElement<F>> {
 
     // --- Noder: generiskt typade och indexerade ---

@@ -1,2 +1,6 @@
-package org.supply.domain;public enum RectifierType {
+package org.supply.domain;
+
+public enum RectifierType {
+    DIODE,
+    THYRISTOR
 }

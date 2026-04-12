@@ -1,76 +1,62 @@
 package org.supply.domain;
 
-import org.dcsim.electric.NodeKind;
-import org.dcsim.math.FieldElement;
 import org.dcsim.math.Real;
 
 import java.util.Objects;
 
 /**
- * A Node represents a point in the electric network with a voltage.
- * Devices are connected to nodes and inject/extract current based on voltage.
+ * Node in the supply network.
+ *
+ * positionRwy is the raw railway position string, for example:
+ * "23 12+6 U"
+ *
+ * We keep it as a raw string for now and avoid mixing in parsed
+ * section/track/meter fields until that model is settled.
  */
-public class Node<T extends FieldElement<T>> {
-    private String description; // Optional descriptive text
+public class Node {
 
-    private final String node_id;
-    private final int section_id;
+    private final String nodeId;
+    private final String positionRwy;
     private Real voltage;
-    private final String position;
+    private String description;
 
-    // v0.8 additions (MFE)
-    private int trackId;           // -1 if not on a track
-    private int position_m;      // numeric coordinate [m] along track
-
-    // ?? Main constructor (the only "real" one)
-    public Node(
-            String node_id,
-            int section_id,
-            int position_m,
-            String position
-    ) {
-        this.node_id = Objects.requireNonNull(node_id);
-        this.section_id = section_id;
-        this.position_m = position_m;
-        this.position = position; // may be null in future if removed
+    public Node(String nodeId, String positionRwy) {
+        this.nodeId = Objects.requireNonNull(nodeId, "nodeId");
+        this.positionRwy = Objects.requireNonNull(positionRwy, "positionRwy");
         this.voltage = Real.ZERO;
     }
 
+    public String getNodeId() {
+        return nodeId;
+    }
+
+    // Behåll tillfälligt för bakåtkompatibilitet om annan kod redan använder detta namn.
     public String getNode_id() {
-        return node_id;
+        return nodeId;
+    }
+
+    public String getPositionRwy() {
+        return positionRwy;
+    }
+
+    // Behåll tillfälligt för bakåtkompatibilitet om annan kod redan använder detta namn.
+    public String getPosition() {
+        return positionRwy;
     }
 
     public Real getVoltage() {
         return voltage;
     }
 
-    public String getPosition() {
-        return position;
+    public void setVoltage(Real voltage) {
+        this.voltage = Objects.requireNonNull(voltage, "voltage");
     }
 
     public String getDescription() {
         return description;
     }
 
-    public int getTrackId() {
-        return trackId;
+    public void setDescription(String description) {
+        this.description = description;
     }
-
-    public void setTrackId(int trackId) {
-        this.trackId = trackId;
-    }
-
-    public int getPositionM() {
-        return position_m;
-    }
-
-    public void setPositionM(int positionM) {
-        this.position_m = positionM;
-    }
-
-    public void setVoltage(Real voltage) {
-        this.voltage = voltage;
-    }
-
-
 }

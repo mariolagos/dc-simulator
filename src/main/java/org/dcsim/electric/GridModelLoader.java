@@ -4,13 +4,11 @@ package org.dcsim.electric;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.dcsim.contracts.ContractChecks;
-import org.dcsim.electric.GridModel;
 import org.dcsim.math.Real;
 import org.dcsim.utils.PositionUtils;
 import org.supply.domain.ConnectionType;
 import org.supply.domain.InstallationType;
-import org.dcsim.electric.Node;
-import org.supply.domain.PowerConnection;
+import org.supply.domain.InstallationConnection;
 import org.supply.domain.PowerInstallation;
 
 import java.io.IOException;
@@ -21,12 +19,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+// Legacy electric model.
+// Kept temporarily while node_id-based model loading migrates to org.supply.model.GridModel.
+@Deprecated
 public class GridModelLoader {
     // refactored start ------------------------------------------------------------------------------------------------
     private static void buildSubstationsFromInstallations(
             GridModel model,
             List<PowerInstallation> installations,
-            List<PowerConnection> connections,
+            List<InstallationConnection> connections,
             Config electrics
     ) {
         Map<String, Node> nodesByNodeId = buildNodesByNodeId(model);
@@ -47,10 +48,10 @@ public class GridModelLoader {
 
             String id = inst.getInstallationId();
 
-            PowerConnection feeding = null;
-            PowerConnection returning = null;
+            InstallationConnection feeding = null;
+            InstallationConnection returning = null;
 
-            for (PowerConnection c : connections) {
+            for (InstallationConnection c : connections) {
                 if (!id.equals(c.getInstallationId())) continue;
 
                 if (c.getConnectionType() == ConnectionType.FEEDING) feeding = c;
@@ -80,15 +81,11 @@ public class GridModelLoader {
 
             boolean allow = defaultAllowBackfeed;
 
-            String rectifier = null;
             if (overrides.hasPath(id + ".rectifierType")) {
-                rectifier = overrides.getString(id + ".rectifierType");
-            } else if (inst.getRectifierType() != null) {
-                rectifier = inst.getRectifierType();
-            }
-
-            if (rectifier != null) {
+                String rectifier = overrides.getString(id + ".rectifierType");
                 allow = rectifier.equalsIgnoreCase("BIDIR");
+            } else if (inst.getRectifierType() != null) {
+                allow = inst.getRectifierType().name().equalsIgnoreCase("BIDIR");
             }
 
             ss.setAllowBackfeed(allow);
@@ -404,7 +401,7 @@ public class GridModelLoader {
                     ? conf.getString("description")
                     : null;
 
-            installations.add(new PowerInstallation(
+            installations.add(LegacyPowerInstallationAdapter.fromLegacy(
                     installation_id,
                     installation_type,
                     emf_v,
@@ -417,13 +414,13 @@ public class GridModelLoader {
         return installations;
     }
 
-    private List<PowerConnection> readPowerConnections(Config grid) {
+    private List<InstallationConnection> readPowerConnections(Config grid) {
         if (!grid.hasPath("power_connections")) {
             return List.of();
         }
 
         List<? extends Config> connectionList = grid.getConfigList("power_connections");
-        List<PowerConnection> connections = new ArrayList<>();
+        List<InstallationConnection> connections = new ArrayList<>();
 
         for (Config conf : connectionList) {
             String installation_id = requireString(conf, "installation_id");
@@ -432,7 +429,7 @@ public class GridModelLoader {
             ConnectionType connection_type =
                     ConnectionType.valueOf(requireString(conf, "connection_type").toUpperCase());
 
-            connections.add(new PowerConnection(
+            connections.add(new InstallationConnection(
                     installation_id,
                     node_id,
                     connection_type
@@ -543,7 +540,7 @@ public class GridModelLoader {
         buildNodes(model, grid);
 
         List<PowerInstallation> installations = readPowerInstallations(grid);
-        List<PowerConnection> connections = readPowerConnections(grid);
+        List<InstallationConnection> connections = readPowerConnections(grid);
 
         if (grid.hasPath("power_installations")) {
             buildSubstationsFromInstallations(model, installations, connections, electrics);

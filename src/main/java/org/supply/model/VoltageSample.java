@@ -1,4 +1,4 @@
-package org.dcsim.electric;
+package org.supply.model;
 
 
 import org.dcsim.math.Real;

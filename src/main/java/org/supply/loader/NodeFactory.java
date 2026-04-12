@@ -1,7 +1,8 @@
-package org.supply.model;
+package org.supply.loader;
 
 import com.typesafe.config.Config;
 import org.supply.domain.Node;
+import org.supply.model.GridModel;
 
 import java.util.List;
 
@@ -13,11 +14,10 @@ public class NodeFactory {
 
         for (Config nodeConfig : nodes) {
 
-            int nodeId = nodeConfig.getInt("node_id");
+            String nodeId = nodeConfig.getString("node_id");
             String positionRwy = nodeConfig.getString("position_rwy");
-            int trackId = nodeConfig.getInt("track_id");
 
-            Node node = new Node(nodeId, positionRwy, trackId);
+            Node node = new Node(nodeId, positionRwy);
 
             model.addNode(node);
         }

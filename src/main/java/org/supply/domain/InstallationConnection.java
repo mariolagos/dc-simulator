@@ -2,13 +2,13 @@ package org.supply.domain;
 
 import java.util.Objects;
 
-public class PowerConnection {
+public class InstallationConnection {
 
     private final String installation_id;
     private final String node_id;
     private final ConnectionType connection_type;
 
-    public PowerConnection(
+    public InstallationConnection(
             String installation_id,
             String node_id,
             ConnectionType connection_type
@@ -40,7 +40,7 @@ public class PowerConnection {
 
     @Override
     public String toString() {
-        return "PowerConnection{" +
+        return "InstallationConnection{" +
                 "installation_id='" + installation_id + '\'' +
                 ", node_id='" + node_id + '\'' +
                 ", connection_type=" + connection_type +
