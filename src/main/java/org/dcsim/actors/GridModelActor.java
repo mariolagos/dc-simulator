@@ -258,7 +258,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     // ===== state =====
     private final GridModel<Real> model;
     private final ElectricSolver solver;
-    private final int anchorNodeId;
+    private final String anchorNodeId;
     private final Map<String, TrainLoad> trainDevices = new HashMap<>();
     private final Map<String, UpdateTrainPower> latest = new HashMap<>();
     private final ResultCsvWriter writer;
@@ -271,13 +271,13 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     private double trainDtSec = 0.0;
 
     private final Set<String> warnedTrainOnBus = new HashSet<>();
-    private final Set<Integer> substationBusNodes = new HashSet<>();
+    private final Set<String> substationBusNodes = new HashSet<>();
 
     // ===== factory =====
     public static Behavior<Command> create(GridModel<Real> model,
                                            ElectricSolver solver,
                                            String csvOutPath,
-                                           int anchorNodeId) {
+                                           String anchorNodeId) {
         return Behaviors.setup(ctx -> new GridModelActor(ctx, model, solver, csvOutPath, anchorNodeId));
     }
 
@@ -285,7 +285,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     public static Behavior<Command> create(GridModel<Real> model,
                                            DcElectricSolver legacySolver,
                                            String csvOutPath,
-                                           int anchorNodeId) {
+                                           String anchorNodeId) {
         return create(model, (ElectricSolver) legacySolver, csvOutPath, anchorNodeId);
     }
 
@@ -293,13 +293,13 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                            GridModel<Real> model,
                            ElectricSolver solver,
                            String csvOutPath,
-                           int anchorNodeId) throws IOException {
+                           String anchorNodeId) throws IOException {
         super(ctx);
         this.model = model;
         this.solver = solver;
 //        this.csvOutPath = csvOutPath;
         this.anchorNodeId = anchorNodeId;
-        if (anchorNodeId == model.getGroundNodeId()) {
+        if (anchorNodeId.equals(model.getGroundNodeId())) {
             throw new IllegalArgumentException("anchorNodeId must not be ground");
         }
 
@@ -380,12 +380,15 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                     writer.setKnownTrains(knownTrainIds);
 
                     long share = anchors.values().stream()
-                            .filter(c -> c.getAnchorNode() == msg.comp.getAnchorNode()).count();
+                            .filter(c -> c.getAnchorNodeId().equals(msg.comp.getAnchorNodeId()))
+                            .count();
+
                     if (share > 1) {
                         getContext().getLog().warn(
                                 "Multiple TrainAnchorComponents share anchor node {} – risk för remap-kollision.",
-                                msg.comp.getAnchorNode());
+                                msg.comp.getAnchorNodeId());
                     }
+
                     getContext().getLog().info("TrainAnchorComponent installed for {} (dt={} s)",
                             msg.trainId, trainDtSec);
                     return this;
@@ -402,7 +405,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         getContext().getLog().info("[GMA] ensureTrainDeviceInternal called for {}", trainId);
 
         TrainLoad tl = trainDevices.computeIfAbsent(trainId, id -> {
-            int g = model.getGroundNodeId();
+            String g = model.getGroundNodeId();
             TrainLoad ntl = new TrainLoad(id, anchorNodeId, g);
 
             TrainCfg cfg = trainOverrides.getOrDefault(id, trainDefaults);
@@ -428,8 +431,8 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         });
 
         // ===== v0.8 MFE: ALWAYS re-bind terminals (also for existing TrainLoad) =====
-        int trainNodeId = this.anchorNodeId;       // 99 i 3S1T
-        int groundNodeId = model.getGroundNodeId(); // 0
+        String trainNodeId = this.anchorNodeId;       // 99 i 3S1T
+        String groundNodeId = model.getGroundNodeId(); // 0
 
         // log före
         getContext().getLog().info("[GMA] ensure TrainLoad {} terminals BEFORE: from={} to={}",
@@ -667,8 +670,14 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         try {
             sb = solveWithRectifierBlocks(timeSec, tick.step);
         } catch (Exception ex) {
-            getContext().getLog().error("Solve failed at t={}s step={}: {}", timeSec, tick.step, ex.toString());
-            return this;
+            getContext().getLog().error(
+                    "Solve failed at t={}s step={}: {}",
+                    timeSec, tick.step, ex.toString()
+            );
+
+            getContext().getSystem().terminate();
+
+            throw new RuntimeException("Solver failed", ex); // 👈 viktigt
         }
 
         GridResult res = sb.res;
@@ -697,7 +706,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                 if (tl == null) continue;
 
                 // Todo: generalisera. Hämta nod-id för tåget (anpassa till ditt API)
-                int nodeId = tl.getFromNode();
+                String nodeId = tl.getFromNode();
                 Real vNode = res.getLatestNodeVoltage(nodeId);
                 if (vNode == null) continue;
 
@@ -742,9 +751,10 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         // ================================================================
         // Cache node voltages
         // ================================================================
-        for (Object node : model.getNodeIds()) {
-            int nid = (node instanceof Integer) ? (Integer) node : Integer.parseInt(node.toString());
-            Real v = res.getLatestNodeVoltage(nid);
+        for (Object nodeObject : model.getNodeIds()) {
+            int nid = (nodeObject instanceof Integer) ? (Integer) nodeObject : Integer.parseInt(nodeObject.toString());
+            Node node = (Node) nodeObject;
+            Real v = res.getLatestNodeVoltage(node.getNode_id());
             if (v != null) lastNodeV.put(nid, v.asDouble());
         }
 
@@ -1211,7 +1221,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
             TrainLoad tl = trainDevices.get(trainId);
             if (tl == null) continue;
 
-            int nodeId = tl.getFromNode(); // IMPORTANT: no hard-coded node
+            String nodeId = tl.getFromNode(); // IMPORTANT: no hard-coded node
             Real vNode = res.getLatestNodeVoltage(nodeId);
 
             if (vNode == null) {
@@ -1234,21 +1244,21 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
     private void rebuildDynamicLineTopology(double timeSec) {
 
         // Collect candidates per nodeId (we expect exactly one per nodeId).
-        Map<Integer, List<DynamicLineTopologyBuilder.NodePos>> candidatesById = new LinkedHashMap<>();
+        Map<String, List<DynamicLineTopologyBuilder.NodePos>> candidatesById = new LinkedHashMap<>();
         long seq = ++topoSeq;
         String th = Thread.currentThread().getName();
         System.out.println("[TOPO-BEGIN] seq=" + seq + " t=" + timeSec + " thread=" + th);
 
         for (Node<Real> n : model.getNodes()) {
 
-            final int nodeId = n.getId();
-            if (nodeId == model.getGroundNodeId()) continue;
+            final String nodeId = n.getNode_id();
+            if (nodeId.equals(model.getGroundNodeId())) continue;
 
             final int trackId = n.getTrackId();
             final int posM = n.getPositionM();
 
             // Raw source log for TRAIN node
-            if (nodeId == 99) {
+            if (nodeId.equals("GROUND")) {
                 System.out.println("[TOPO-SRC] seq=" + seq + " t=" + timeSec
                         + " TRAIN raw posM=" + posM + " trackId=" + trackId);
                 System.out.println("[TOPO-SRC] TRAIN node raw posM=" + posM + " trackId=" + trackId);
@@ -1270,8 +1280,8 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
         // Resolve to a unique NodePos per nodeId (dedup).
         List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>(candidatesById.size());
 
-        for (Map.Entry<Integer, List<DynamicLineTopologyBuilder.NodePos>> e : candidatesById.entrySet()) {
-            int nodeId = e.getKey();
+        for (Map.Entry<String, List<DynamicLineTopologyBuilder.NodePos>> e : candidatesById.entrySet()) {
+            String nodeId = e.getKey();
             List<DynamicLineTopologyBuilder.NodePos> cands = e.getValue();
 
             if (cands.size() == 1) {
@@ -1287,7 +1297,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
 
             DynamicLineTopologyBuilder.NodePos chosen;
 
-            if (nodeId == 99) {
+            if (nodeId.equals("GROUND")) {
                 // Heuristic for TRAIN node:
                 //  - prefer candidate closest to lastTrainPosM (if known)
                 //  - else prefer smallest |posM|
@@ -1312,7 +1322,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
 
         // Update lastTrainPosM from the chosen NodePos (not raw iteration order)
         for (DynamicLineTopologyBuilder.NodePos np : nodePos) {
-            if (np.nodeId == 99) {
+            if (np.equals("GROUND")) {
                 lastTrainPosM = np.posM;
                 break;
             }
@@ -1324,9 +1334,9 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                 .sorted(Comparator
                         .comparingInt((DynamicLineTopologyBuilder.NodePos a) -> a.trackId)
                         .thenComparingInt(a -> a.posM)
-                        .thenComparingInt(a -> a.nodeId))
-                .forEach(np -> System.out.println("  - nodeId=" + np.nodeId + " trackId=" + np.trackId + " posM=" + np.posM));
-
+                        .thenComparing(a -> a.nodeId))
+                .forEach(np -> System.out.println(
+                        "  - nodeId=" + np.nodeId + " trackId=" + np.trackId + " posM=" + np.posM));
         // Build dynamic lines
         List<Device<Real>> newLines = DynamicLineTopologyBuilder.buildDynamicLines(
                 nodePos,
@@ -1357,7 +1367,7 @@ public class GridModelActor extends AbstractBehavior<GridModelActor.Command> {
                         + " <-> " + right.nodeId + "(posM=" + right.posM + ")"
                         + " R=" + R + " Ohm");
 
-                if (left.nodeId == 99 || right.nodeId == 99) {
+                if (left.nodeId.equals("GROUND") || right.equals("GROUND")) {
                     System.out.println("[TOPO-TRAIN] pair with TRAIN node 99: "
                             + left.nodeId + "(posM=" + left.posM + ")"
                             + " <-> " + right.nodeId + "(posM=" + right.posM + ")"

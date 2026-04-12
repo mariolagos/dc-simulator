@@ -3,7 +3,7 @@ package org.dcsim.electric;
 import org.dcsim.math.FieldElement;
 
 public interface TwoNodeDevice<T extends FieldElement<T>> extends Device<T> {
-    int getFromNode();
+    String getFromNode();
 
-    int getToNode();
+    String getToNode();
 }

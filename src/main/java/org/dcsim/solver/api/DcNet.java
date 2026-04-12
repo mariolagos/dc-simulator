@@ -13,8 +13,8 @@ public final class DcNet {
     // ===== Transitional public fields (deprecated) =====
     @Deprecated public final int n;
     @Deprecated public final int groundIndex;
-    @Deprecated public final List<Integer> nodeIds;
-    @Deprecated public final Map<Integer, Integer> indexById;
+    @Deprecated public final List<String> nodeIds;
+    @Deprecated public final Map<String, Integer> indexById;
     @Deprecated public final List<LineData> lines;
     @Deprecated public final List<SubstationData> substations;
     @Deprecated public final List<TrainData> trains;
@@ -23,8 +23,8 @@ public final class DcNet {
     public DcNet(
             int n,
             int groundIndex,
-            List<Integer> nodeIds,
-            Map<Integer, Integer> indexById,
+            List<String> nodeIds,
+            Map<String, Integer> indexById,
             List<LineData> lines,
             List<SubstationData> substations,
             List<TrainData> trains
@@ -56,7 +56,7 @@ public final class DcNet {
             throw new IllegalArgumentException("groundIndex out of range");
         }
         // ensure indexById covers all nodeIds
-        for (Integer id : this.nodeIds) {
+        for (String id : this.nodeIds) {
             Integer ix = this.indexById.get(id);
             if (ix == null || ix < 0 || ix >= n) {
                 throw new IllegalArgumentException("indexById missing or out of range for nodeId " + id);
@@ -83,8 +83,8 @@ public final class DcNet {
     // ===== Accessor methods (preferred) =====
     public int n() { return n; }
     public int groundIndex() { return groundIndex; }
-    public List<Integer> nodeIds() { return nodeIds; }
-    public Map<Integer, Integer> indexById() { return indexById; }
+    public List<String> nodeIds() { return nodeIds; }
+    public Map<String, Integer> indexById() { return indexById; }
     public List<LineData> lines() { return lines; }
     public List<SubstationData> substations() { return substations; }
     public List<TrainData> trains() { return trains; }
@@ -100,18 +100,15 @@ public final class DcNet {
     }
 
     // --- lägg i org.dcsim.solver.api.DcNet ---
-    public Integer tryIdxOf(int nodeId) {
-        // nullable lookup – bra i test/diagnostik
+    public Integer tryIdxOf(String nodeId) {
         return indexById.get(nodeId);
     }
 
-    public int idxOf(int nodeId) {
-        // strikt variant som matchar testens förväntan
+    public int idxOf(String nodeId) {
         final Integer k = indexById.get(nodeId);
         if (k == null) {
             throw new IllegalArgumentException("Unknown nodeId: " + nodeId);
         }
         return k;
     }
-
 }

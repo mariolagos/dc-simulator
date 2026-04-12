@@ -16,7 +16,6 @@ export {
 # false (recommended now): do NOT mirror negative traction (regen) as "P_brake".
 # true: purely a reporting trick — shows P_brake even though regen still flows in the network.
 #       This makes Balance != 0 whenever regen exists.
-treatNegativeBrakingAsBrake = false
 }
 
 
@@ -79,7 +78,5 @@ mean dissipative brake request)</li>
 <li>Mismatch = P_substations_out − P_trains − P_lines − P_substations_internal</li>
 <li>Balance = Mismatch − P_brake (where P_brake is reporting-only, fed via 
 setLatestBrakeW)</li>
-<li>With treatNegativeBrakingAsBrake = false, both Mismatch and Balance should be ≈ 0 
-(numerics aside) when topology/params are sane.</li>
 </ul>
 

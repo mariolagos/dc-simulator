@@ -56,28 +56,40 @@ public final class StraightTrackBuilder {
 
         final double segKm = length_km / (nNodes - 1);
 
-        // Node ids 0..nNodes-1
-        List<Integer> nodeIds = new ArrayList<>(nNodes);
-        for (int i=0;i<nNodes;i++) nodeIds.add(i);
+        // Node ids "0".."nNodes-1"
+        List<String> nodeIds = new ArrayList<>(nNodes);
+        for (int i = 0; i < nNodes; i++) {
+            nodeIds.add(String.valueOf(i));
+        }
 
-        // id -> compact index map
-        Map<Integer,Integer> idxById = new HashMap<>(nNodes * 2);
-        for (int i=0;i<nNodes;i++) idxById.put(nodeIds.get(i), i);
+        // node_id -> compact index
+        Map<String, Integer> idxById = new HashMap<>(nNodes * 2);
+        for (int i = 0; i < nNodes; i++) {
+            idxById.put(nodeIds.get(i), i);
+        }
 
         // Lines between consecutive nodes
         List<LineData> lines = new ArrayList<>(Math.max(0, nNodes - 1));
-        for (int i=0;i<nNodes-1;i++) {
+        for (int i = 0; i < nNodes - 1; i++) {
             double R = r_per_km * segKm;
-            lines.add(new LineData("L_"+i+"_"+(i+1), i, i+1, R));
+            lines.add(new LineData("L_" + i + "_" + (i + 1), i, i + 1, R));
         }
 
         // Substations
         List<SubstationData> ss = new ArrayList<>(subs != null ? subs.size() : 0);
         if (subs != null) {
             for (SubCfg c : subs) {
-                if (c.nodeIndex < 0 || c.nodeIndex >= nNodes)
+                if (c.nodeIndex < 0 || c.nodeIndex >= nNodes) {
                     throw new IllegalArgumentException("Substation nodeIndex out of range: " + c.nodeIndex);
-                ss.add(new SubstationData(c.id, c.nodeIndex, groundIndex, c.emf_V, c.rint_ohm, c.allowBackfeed));
+                }
+                ss.add(new SubstationData(
+                        c.id,
+                        c.nodeIndex,
+                        groundIndex,
+                        c.emf_V,
+                        c.rint_ohm,
+                        c.allowBackfeed
+                ));
             }
         }
 
@@ -85,8 +97,9 @@ public final class StraightTrackBuilder {
         List<TrainData> trs = new ArrayList<>(trains != null ? trains.size() : 0);
         if (trains != null) {
             for (TrainCfg t : trains) {
-                if (t.a < 0 || t.a >= nNodes || t.b < 0 || t.b >= nNodes)
+                if (t.a < 0 || t.a >= nNodes || t.b < 0 || t.b >= nNodes) {
                     throw new IllegalArgumentException("Train nodes out of range: " + t.a + "," + t.b);
+                }
                 trs.add(new TrainData(t.id, t.a, t.b, t.req_W, t.iMax_A, t.cut_V, t.vmax_V));
             }
         }
@@ -100,5 +113,4 @@ public final class StraightTrackBuilder {
                 Collections.unmodifiableList(ss),
                 Collections.unmodifiableList(trs)
         );
-    }
-}
+    }}

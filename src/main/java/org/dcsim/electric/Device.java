@@ -9,11 +9,11 @@ import java.util.Map;
 
 public interface Device<T extends FieldElement<T>> {
     String getId();
-    int getConnectedNode();
+    String getConnectedNode();
     T getPower();
     T computeCurrent(T nodeVoltage, double time);
     public Real getCurrent();  // ev. abstract
-    public void stamp(RealMatrix yMatrix, RealVector jVector, RealVector xVector, int timestep, Map<Integer, Integer> nodeIndexMap);
+    public void stamp(RealMatrix yMatrix, RealVector jVector, RealVector xVector, int timestep, Map<String, Integer> nodeIndexMap);
 
 
 

@@ -77,7 +77,7 @@ public final class A1Generator {
         // feed_nodes is a semicolon-separated list of node names.
         write(d.resolve("substations.csv"),
                 "id,feed_nodes,return_node,emf,internal_resistance,rectifier_type\n" +
-                        "S1,N1;N2,N1,750,0.01,IDEAL\n");
+                        "S1,N1;N2,N1,750,0.01,DIODE\n");
 
         // run.csv (SPEC): time_s,train_id,section,track,position_m,P_req_W
         write(d.resolve("run.csv"),

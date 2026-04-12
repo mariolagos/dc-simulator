@@ -19,9 +19,9 @@ public class IslandsMiniTests {
         // nodes: [0]=ground, [1]=bus
         final int n = 2;
         final int gnd = 0;
-        List<Integer> nodeIds = Arrays.asList(0,1);
-        Map<Integer,Integer> idx = new HashMap<>();
-        idx.put(0,0); idx.put(1,1);
+        List<String> nodeIds = Arrays.asList("0","1");
+        Map<String,Integer> idx = new HashMap<>();
+        idx.put("0",0); idx.put("1",1);
         List<LineData> lines = new ArrayList<>();            // no lines
         List<SubstationData> subs = new ArrayList<>();
         subs.add(new SubstationData("SS", 1, 0, E, Rint, allowBackfeed));

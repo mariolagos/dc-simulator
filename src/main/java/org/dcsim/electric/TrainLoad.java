@@ -21,8 +21,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class TrainLoad implements Device<Real> {
 
     private final String id;
-    private int fromNode;
-    private int toNode;
+    private String fromNode;
+    private String toNode;
 
     // Requested components (W)
     private Real requestedMotoringPower  = Real.ZERO;   // >= 0
@@ -121,19 +121,19 @@ public class TrainLoad implements Device<Real> {
         return new double[] { pLine, pBrake };
     }
 
-    public TrainLoad(String id, int fromNode, int toNode) {
+    public TrainLoad(String id, String fromNode, String toNode) {
         this.id = id;
         this.fromNode = fromNode;
         this.toNode = toNode;
     }
 
     public String getId() { return id; }
-    public int getFromNode() { return fromNode; }
-    public int getToNode() { return toNode; }
+    public String getFromNode() { return fromNode; }
+    public String getToNode() { return toNode; }
 
     /** Allow topology to move train along the line later. */
-    public void setFromNode(int newFromNode) { this.fromNode = newFromNode; }
-    public void setToNode(int newToNode) { this.toNode = newToNode; }
+    public void setFromNode(String newFromNode) { this.fromNode = newFromNode; }
+    public void setToNode(String newToNode) { this.toNode = newToNode; }
 
     /** Set requested motoring/braking/auxiliary in kW (braking already negative). */
     public void setRequestedComponents(double motoringKW, double brakingKW, double auxiliaryKW) {
@@ -165,7 +165,7 @@ public class TrainLoad implements Device<Real> {
 
     @Override public String toString() { return "TrainLoad(" + id + ")"; }
 
-    @Override public int getConnectedNode() { throw new UnsupportedOperationException("TrainLoad is a two-node device"); }
+    @Override public String getConnectedNode() { throw new UnsupportedOperationException("TrainLoad is a two-node device"); }
     @Override public Real getCurrent() { return current; }
     @Override public Real getPower()   { throw new UnsupportedOperationException("Use getPower(from,to)"); }
 
@@ -270,7 +270,7 @@ public class TrainLoad implements Device<Real> {
      */
     @Override
     public void stamp(RealMatrix yMatrix, RealVector jVector, RealVector xVector,
-                      int timestep, Map<Integer, Integer> nodeIndexMap) {
+                      int timestep, Map<String, Integer> nodeIndexMap) {
         // visible regardless of logger config:
         DBG_STAMP_COUNT.incrementAndGet();
         System.out.println("[TL.STAMP] id=" + id + " step=" + timestep + " PreqW=" + requestedPower.asDouble());

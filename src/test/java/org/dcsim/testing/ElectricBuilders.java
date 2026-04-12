@@ -9,15 +9,26 @@ public final class ElectricBuilders {
 
     public static Node ensureNode(GridModel<?> gm, int id, double pos, String name) {
         Node n = new Node(id, Real.fromDouble(pos), name);
+        n.setName(name);
         gm.addNode(n);
-        if (gm.getGroundNodeId() != 0 && id == 0) {
-            // om modellen har en annan ground: skriv över till 0
+
+        String groundNodeId = gm.getGroundNodeId();
+        if ((groundNodeId == null || !groundNodeId.equals("GND")) && id == 0) {
             gm.setGroundNodeId(n);
         }
+
         return n;
     }
 
     public static void ensureGround(GridModel<?> gm, int groundId) {
-        gm.setGroundNodeId(gm.getNodeById(groundId));
+        for (Object nodeObj : gm.getNodes()) {
+            Node n = (Node) nodeObj;
+            if (n.get_internal_id() == groundId) {
+                gm.setGroundNodeId(n);
+                return;
+            }
+        }
+
+        throw new IllegalArgumentException("No node found for internal id: " + groundId);
     }
 }

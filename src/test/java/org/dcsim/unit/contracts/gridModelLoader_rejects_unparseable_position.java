@@ -14,6 +14,7 @@ public class gridModelLoader_rejects_unparseable_position {
         substations=[]
         lines=[]
     """);
-        GridModelLoader.load(cfg);
+        GridModelLoader loader = new GridModelLoader();
+        loader.load(cfg);
     }
 }

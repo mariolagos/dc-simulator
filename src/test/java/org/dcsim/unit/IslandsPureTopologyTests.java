@@ -3,7 +3,7 @@ package org.dcsim.unit;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealVector;
 import org.dcsim.solver.api.DcNet;
-import org.dcsim.solver.fixtures.NetFixtures;
+import org.supply.solver.testSupport.NetFixtures;
 import org.dcsim.solver.impl.DcIslands;
 import org.junit.Test;
 

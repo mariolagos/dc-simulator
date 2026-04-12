@@ -25,7 +25,8 @@ public final class RunCsvWriter {
         Objects.requireNonNull(path);
         Objects.requireNonNull(rows);
 
-        Files.createDirectories(path.getParent());
+        Path parent = path.getParent();
+        if (parent != null) Files.createDirectories(parent);
 
         try (BufferedWriter w = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
             // header

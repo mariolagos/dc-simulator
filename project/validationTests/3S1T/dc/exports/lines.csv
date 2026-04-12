@@ -1,0 +1,4 @@
+from_node,to_node,length_m,resistance_ohm
+N1,N2,1500.0,0.045
+N2,N3,1500.0,0.045
+N3,N99,100.0,0.003

@@ -9,11 +9,11 @@ public final class DynamicLineTopologyBuilder {
     private DynamicLineTopologyBuilder() {}
 
     public static final class NodePos {
-        public final int nodeId;
+        public final String nodeId;
         public final int trackId;
         public final int posM;
 
-        public NodePos(int nodeId, int trackId, int posM) {
+        public NodePos(String nodeId, int trackId, int posM) {
             this.nodeId = nodeId;
             this.trackId = trackId;
             this.posM = posM;

@@ -1,0 +1,1337 @@
+src\main\java\org\dcsim\actors\GridModelActor.java:52:    private final java.util.Map<String, Integer> trainLogNode = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:66:    private final Map<Integer, Double> lastNodeV = new HashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:67:    private final Map<String, Double> lastPosM = new HashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:70:    private final Map<String, Double> burnedJ = new java.util.HashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:77:    private static final String[] LINE_IDS = new String[]{"L_1_2", "L_2_3"};
+src\main\java\org\dcsim\actors\GridModelActor.java:80:    private final LinkedHashSet<String> knownTrainIds = new LinkedHashSet<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:86:    private final Map<String, Integer> trainBasePosM = new HashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:239:    private TrainCfg trainDefaults = new TrainCfg(850.0, 1000.0, 4000.0);
+src\main\java\org\dcsim\actors\GridModelActor.java:240:    private final Map<String, TrainCfg> trainOverrides = new HashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:255:        return new TrainCfg(minV, maxV, maxA);
+src\main\java\org\dcsim\actors\GridModelActor.java:262:    private final Map<String, TrainLoad> trainDevices = new HashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:263:    private final Map<String, UpdateTrainPower> latest = new HashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:268:    private final Map<String, Double> lastRequestedPowerW = new HashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:270:    private final Map<String, TrainAnchorComponent> anchors = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:273:    private final Set<String> warnedTrainOnBus = new HashSet<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:274:    private final Set<Integer> substationBusNodes = new HashSet<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:281:        return Behaviors.setup(ctx -> new GridModelActor(ctx, model, solver, csvOutPath, anchorNodeId));
+src\main\java\org\dcsim\actors\GridModelActor.java:303:            throw new IllegalArgumentException("anchorNodeId must not be ground");
+src\main\java\org\dcsim\actors\GridModelActor.java:306:        this.writer = new ResultCsvWriter(
+src\main\java\org\dcsim\actors\GridModelActor.java:367:        return newReceiveBuilder()
+src\main\java\org\dcsim\actors\GridModelActor.java:406:            TrainLoad ntl = new TrainLoad(id, anchorNodeId, g);
+src\main\java\org\dcsim\actors\GridModelActor.java:514:            int newPos = (int) Math.floor(msg.positionMeters.doubleValue());
+src\main\java\org\dcsim\actors\GridModelActor.java:518:            if (Math.abs(newPos - oldPos) > 500) {
+src\main\java\org\dcsim\actors\GridModelActor.java:519:                System.out.println("[TOPO-WARN] large train pos jump: " + oldPos + " -> " + newPos);
+src\main\java\org\dcsim\actors\GridModelActor.java:528:                    + " newPosM=" + newPos);
+src\main\java\org\dcsim\actors\GridModelActor.java:530:            trainNode.setPositionM(newPos);
+src\main\java\org\dcsim\actors\GridModelActor.java:540:                        (double) newPos,
+src\main\java\org\dcsim\actors\GridModelActor.java:583:            Set<String> missing = new HashSet<>(knownTrainIds);
+src\main\java\org\dcsim\actors\GridModelActor.java:600:        Map<String, Double> reqW_direct = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:677:            throw new RuntimeException("Solver failed", ex); // 👈 viktigt
+src\main\java\org\dcsim\actors\GridModelActor.java:783:            tick.replyTo.tell(new Solved(timeSec, tick.step));
+src\main\java\org\dcsim\actors\GridModelActor.java:806:        if (reqRegenW <= 0.0) return new BrakeSplit(0.0, 0.0);
+src\main\java\org\dcsim\actors\GridModelActor.java:812:            return new BrakeSplit(0.0, reqRegenW); // everything to resistor
+src\main\java\org\dcsim\actors\GridModelActor.java:816:        return new BrakeSplit(netW, resW);
+src\main\java\org\dcsim\actors\GridModelActor.java:1040:                // This prevents mixing old brake/regen allocations with new solve time.
+src\main\java\org\dcsim\actors\GridModelActor.java:1041:                Map<String, Double> brkReqMagW0 = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1042:                Map<String, Double> netMagW0    = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1043:                Map<String, Double> resMagW0    = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1053:                return new SolveBundle(r0_stale, brkReqMagW0, netMagW0, resMagW0);
+src\main\java\org\dcsim\actors\GridModelActor.java:1069:        Map<String, Double> brkReqMagW = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1070:        Map<String, Double> netExport0W = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1124:            Map<String, Double> netMagW = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1125:            Map<String, Double> resMagW = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1135:            return new SolveBundle(r0, brkReqMagW, netMagW, resMagW);
+src\main\java\org\dcsim\actors\GridModelActor.java:1161:        Map<String, Double> reqW_direct2 = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1194:        Map<String, Double> netMagW_final = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1195:        Map<String, Double> resMagW_final = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1209:        return new SolveBundle(r1, brkReqMagW, netMagW_final, resMagW_final);
+src\main\java\org\dcsim\actors\GridModelActor.java:1243:        Map<Integer, List<DynamicLineTopologyBuilder.NodePos>> candidatesById = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1270:                    .computeIfAbsent(nodeId, k -> new ArrayList<>())
+src\main\java\org\dcsim\actors\GridModelActor.java:1271:                    .add(new DynamicLineTopologyBuilder.NodePos(nodeId, trackId, posM));
+src\main\java\org\dcsim\actors\GridModelActor.java:1277:        List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>(candidatesById.size());
+src\main\java\org\dcsim\actors\GridModelActor.java:1337:        List<Device<Real>> newLines = DynamicLineTopologyBuilder.buildDynamicLines(
+src\main\java\org\dcsim\actors\GridModelActor.java:1343:        Map<Integer, List<DynamicLineTopologyBuilder.NodePos>> byTrack = new HashMap<>();
+src\main\java\org\dcsim\actors\GridModelActor.java:1345:            byTrack.computeIfAbsent(np.trackId, k -> new ArrayList<>()).add(np);
+src\main\java\org\dcsim\actors\GridModelActor.java:1376:        model.setDynamicLineDevices(newLines);
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:48:    private final Map<String, ActorRef<TrainActor.Command>> trains = new LinkedHashMap<>();
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:60:        return Behaviors.setup(ctx -> Behaviors.withTimers(timers -> new SimulationControllerActor(ctx, timers, grid)));
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:82:        return newReceiveBuilder()
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:94:        grid.tell(new GridModelActor.EnsureTrainDevice(msg.trainId));
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:105:            getContext().scheduleOnce(Duration.ZERO, getContext().getSelf(), new InternalTick());
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:107:            timers.startTimerAtFixedRate(new InternalTick(), Duration.ofMillis(Math.round(dt * 1000.0)));
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:121:        grid.tell(new GridModelActor.SimulationFinished());
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:129:            if (shouldStop()) return onStop(new StopSimulation());
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:136:            if (shouldStop()) return onStop(new StopSimulation());
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:138:        getContext().scheduleOnce(Duration.ZERO, getContext().getSelf(), new InternalTick());
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:145:        for (var e : trains.entrySet()) e.getValue().tell(new TrainActor.Tick(thisT));
+src\main\java\org\dcsim\actors\SimulationControllerActor.java:146:        grid.tell(new GridModelActor.SolveTick(thisT, thisStep));
+src\main\java\org\dcsim\actors\TrainActor.java:49:                new TrainActor(ctx, trainId, grid, profile, departureSec, motoringAndAuxInSameModel, auxiliaryKW)
+src\main\java\org\dcsim\actors\TrainActor.java:93:        return newReceiveBuilder()
+src\main\java\org\dcsim\actors\TrainActor.java:156:        grid.tell(new GridModelActor.UpdateTrainPower(
+src\main\java\org\dcsim\actors\TrainProfileActor.java:20:        return Props.create(TrainProfileActor.class, () -> new TrainProfileActor(rootConfig));
+src\main\java\org\dcsim\actors\TrainProfileActor.java:51:                        new Object[]{id, templateId, departure, headway, Integer.valueOf(count), signature});
+src\main\java\org\dcsim\actors\TrainProfileActor.java:72:                    log.info("  stop: signature={}, arrival={}, departure={}", new Object[]{sig, arr, dep});
+src\main\java\org\dcsim\actors\TrainProfileActor.java:88:                    new Object[]{Double.valueOf(aux), Boolean.valueOf(sameModel)});
+src\main\java\org\dcsim\actors\TrainProfileActor.java:97:                    log.info("  template id={} folder={} legs={}", new Object[]{id, folder, Integer.valueOf(legs)});
+src\main\java\org\dcsim\AppRunner.java:80:        private final List<ActorRef<TrainActor.Command>> trains = new ArrayList<>();
+src\main\java\org\dcsim\AppRunner.java:85:        private final Map<String, TrainAnchorComponent> trainComps = new LinkedHashMap<>();
+src\main\java\org\dcsim\AppRunner.java:86:        private final Map<String, Double> sByTrain = new HashMap<>();
+src\main\java\org\dcsim\AppRunner.java:87:        private final Map<String, TrainSpawn> pending = new LinkedHashMap<>();
+src\main\java\org\dcsim\AppRunner.java:148:                    new Root(ctx, model, solver, csvOut, tickSec, startSec, endSec,
+src\main\java\org\dcsim\AppRunner.java:222:            this.gridReplyAdapter = ctx.messageAdapter(GridModelActor.SolveReply.class, FromGrid::new);
+src\main\java\org\dcsim\AppRunner.java:225:            ctx.scheduleOnce(java.time.Duration.ofMillis(1), ctx.getSelf(), new Kick());
+src\main\java\org\dcsim\AppRunner.java:231:            return newReceiveBuilder()
+src\main\java\org\dcsim\AppRunner.java:240:                grid.tell(new GridModelActor.SimulationFinished());
+src\main\java\org\dcsim\AppRunner.java:254:                        var comp = new TrainAnchorComponent(anchorNodeId, path, vMS, pW, Rmin, epsFrac);
+src\main\java\org\dcsim\AppRunner.java:257:                        grid.tell(new GridModelActor.InstallTrainAnchor(ts.trainId, comp, this.tickSec));
+src\main\java\org\dcsim\AppRunner.java:266:            for (var tr : trains) tr.tell(new TrainActor.Tick(t));
+src\main\java\org\dcsim\AppRunner.java:279:            grid.tell(new GridModelActor.SolveTick(t, s, gridReplyAdapter));
+src\main\java\org\dcsim\AppRunner.java:289:                    grid.tell(new GridModelActor.SimulationFinished());
+src\main\java\org\dcsim\AppRunner.java:297:                    getContext().scheduleOnce(java.time.Duration.ofNanos(delayNanos), getContext().getSelf(), new Kick());
+src\main\java\org\dcsim\AppRunner.java:299:                    getContext().scheduleOnce(java.time.Duration.ZERO, getContext().getSelf(), new Kick());
+src\main\java\org\dcsim\AppRunner.java:316:        ScenarioLoader<Real> loader = new DcSimScenarioLoader();
+src\main\java\org\dcsim\AppRunner.java:341:        LongTableWriter longWriter = new LongTableWriter(csvPath, overwrite, project, scenarioId, hash);
+src\main\java\org\dcsim\AppRunner.java:345:        ElectricSolver solver = new DcIterativeAdapterSolver();
+src\main\java\org\dcsim\AppRunner.java:353:        new File(outPath).getParentFile().mkdirs();
+src\main\java\org\dcsim\AppRunner.java:355:        try (ResultCsvWriter ignored = new ResultCsvWriter(input.getGridModel(), outPath, true)) {
+src\main\java\org\dcsim\AppRunner.java:368:        List<EdgeRef> raw = new ArrayList<>();
+src\main\java\org\dcsim\AppRunner.java:376:                raw.add(new EdgeRef(from, to, r, lm));
+src\main\java\org\dcsim\AppRunner.java:419:        List<TrainSpawn> out = new ArrayList<>();
+src\main\java\org\dcsim\AppRunner.java:421:            out.add(new TrainSpawn(
+src\main\java\org\dcsim\AppRunner.java:449:        Set<Integer> froms = new HashSet<>(), tos = new HashSet<>();
+src\main\java\org\dcsim\AppRunner.java:459:        List<EdgeRef> remaining = new ArrayList<>(edges);
+src\main\java\org\dcsim\AppRunner.java:460:        List<EdgeRef> out = new ArrayList<>();
+src\main\java\org\dcsim\AppRunner.java:478:            if (hit < 0) throw new IllegalStateException("Path not contiguous from node " + cur);
+src\main\java\org\dcsim\AppRunner.java:480:            if (flip) e = new EdgeRef(e.j, e.i, e.R, e.lengthM);
+src\main\java\org\dcsim\AppRunner.java:501:        Set<Integer> bus = new HashSet<>();
+src\main\java\org\dcsim\config\ConfigLoader.java:19:        Config root = ConfigFactory.parseFile(new File(confPath)).resolve();
+src\main\java\org\dcsim\config\ConfigLoader.java:29:                new AppConfig.SimulationControl(tickDuration, simulationStart, simulationEnd);
+src\main\java\org\dcsim\config\ConfigLoader.java:37:        return new AppConfig(simCtl);
+src\main\java\org\dcsim\contracts\ContractChecks.java:28:            throw new IllegalArgumentException("Ground node missing: nodeId=" + gnd);
+src\main\java\org\dcsim\contracts\ContractChecks.java:36:        Map<Integer, Integer> min = new HashMap<>();
+src\main\java\org\dcsim\contracts\ContractChecks.java:37:        Map<Integer, Integer> max = new HashMap<>();        for (Node<?> n : model.getNodes()) {
+src\main\java\org\dcsim\contracts\ContractChecks.java:41:                throw new IllegalArgumentException("Node has invalid trackId < 0: nodeId=" + n.getId());
+src\main\java\org\dcsim\contracts\ContractChecks.java:44:                throw new IllegalArgumentException("Node has invalid positionM < 0 (meters): nodeId=" + n.getId()
+src\main\java\org\dcsim\contracts\ContractChecks.java:62:                throw new IllegalArgumentException("Line must not connect directly to ground in grid.lines. from=" + a + " to=" + b);
+src\main\java\org\dcsim\contracts\ContractChecks.java:69:                throw new IllegalArgumentException("Line crosses trackId boundary (v0.8 forbids this). from=" + a
+src\main\java\org\dcsim\contracts\ContractChecks.java:74:                throw new IllegalArgumentException("Line resistance must be > 0. from=" + a + " to=" + b
+src\main\java\org\dcsim\contracts\ContractChecks.java:85:                throw new IllegalArgumentException(
+src\main\java\org\dcsim\contracts\ContractChecks.java:97:            throw new IllegalArgumentException("TrackPosition is null");
+src\main\java\org\dcsim\contracts\ContractChecks.java:101:            throw new IllegalArgumentException("Non-finite metersInLine(): " + abs);
+src\main\java\org\dcsim\contracts\ContractChecks.java:113:            throw new IllegalArgumentException("Track dataset is empty");
+src\main\java\org\dcsim\contracts\ContractChecks.java:117:        Map<Integer, List<PositionUtils.TrackPosition>> byLine = new LinkedHashMap<>();
+src\main\java\org\dcsim\contracts\ContractChecks.java:119:            byLine.computeIfAbsent(tp.line, k -> new ArrayList<>()).add(tp);
+src\main\java\org\dcsim\contracts\ContractChecks.java:132:                    throw new IllegalArgumentException(
+src\main\java\org\dcsim\contracts\ContractChecks.java:136:                    throw new IllegalArgumentException(
+src\main\java\org\dcsim\contracts\ContractChecks.java:155:        return new TrackExtent(min, max);
+src\main\java\org\dcsim\contracts\ContractChecks.java:175:            throw new IllegalArgumentException("Run dataset is empty");
+src\main\java\org\dcsim\contracts\ContractChecks.java:185:                throw new IllegalArgumentException("Non-finite time at i=" + i + ": " + t);
+src\main\java\org\dcsim\contracts\ContractChecks.java:188:                throw new IllegalArgumentException(
+src\main\java\org\dcsim\contracts\ContractChecks.java:197:                throw new IllegalArgumentException("Negative run meters at i=" + i + ": " + m);
+src\main\java\org\dcsim\contracts\ContractChecks.java:200:                throw new IllegalArgumentException(
+src\main\java\org\dcsim\contracts\ContractChecks.java:207:                throw new IllegalArgumentException("Non-finite power at i=" + i + ": " + pw);
+src\main\java\org\dcsim\contracts\ContractChecks.java:216:        Map<Integer, Integer> min = new HashMap<>();
+src\main\java\org\dcsim\contracts\ContractChecks.java:217:        Map<Integer, Integer> max = new HashMap<>();
+src\main\java\org\dcsim\contracts\ContractChecks.java:228:        Map<Integer, TrackExtent> out = new HashMap<>();
+src\main\java\org\dcsim\contracts\ContractChecks.java:231:            out.put(track, new TrackExtent(min.get(track), max.get(track)));
+src\main\java\org\dcsim\contracts\ContractChecks.java:241:            throw new IllegalArgumentException("Run dataset is empty");
+src\main\java\org\dcsim\contracts\ContractChecks.java:250:            if (!Double.isFinite(t)) throw new IllegalArgumentException("Non-finite time at i=" + i + ": " + t);
+src\main\java\org\dcsim\contracts\ContractChecks.java:251:            if (t < prevT) throw new IllegalArgumentException("Run time not monotonic at i=" + i + ": prevT=" + prevT + " t=" + t);
+src\main\java\org\dcsim\contracts\ContractChecks.java:260:                throw new IllegalArgumentException("Run references unknown trackId/line=" + track + " at i=" + i);
+src\main\java\org\dcsim\contracts\ContractChecks.java:263:                throw new IllegalArgumentException("Run position outside model extent at row=" + i + ": time" + t
+src\main\java\org\dcsim\contracts\ContractChecks.java:268:            if (!Double.isFinite(pw)) throw new IllegalArgumentException("Non-finite power at i=" + i + ": " + pw);
+src\main\java\org\dcsim\DcSimApp.java:8:            new AppRunner().run(args);
+src\main\java\org\dcsim\DcSimApp.java:10:            throw new RuntimeException(e);
+src\main\java\org\dcsim\DcSimPaths.java:64:        return new OutputRoots(exportDir, resultsDir, effectiveDir, longtablePath);
+src\main\java\org\dcsim\DcSimScenarioLoader.java:93:                    throw new RuntimeException("Export failed: runExcel not found: " + runExcel);
+src\main\java\org\dcsim\DcSimScenarioLoader.java:169:            Map<String, List<PowerPoint>> byTplNormalised = new LinkedHashMap<>();
+src\main\java\org\dcsim\DcSimScenarioLoader.java:173:                final List<PowerPoint> dst = new ArrayList<>(src.size());
+src\main\java\org\dcsim\DcSimScenarioLoader.java:191:            Map<String, PowerProfile> profileByTemplate = new HashMap<>();
+src\main\java\org\dcsim\DcSimScenarioLoader.java:193:                profileByTemplate.put(e.getKey(), new PointsPowerProfile(e.getValue()));
+src\main\java\org\dcsim\DcSimScenarioLoader.java:201:            List<SimulationInputModel.TrainSpawn> spawns = new ArrayList<>();
+src\main\java\org\dcsim\DcSimScenarioLoader.java:221:                        spawns.add(new SimulationInputModel.TrainSpawn(
+src\main\java\org\dcsim\DcSimScenarioLoader.java:228:            List<EdgeRef> raw = new ArrayList<>();
+src\main\java\org\dcsim\DcSimScenarioLoader.java:232:                    raw.add(new EdgeRef(
+src\main\java\org\dcsim\DcSimScenarioLoader.java:271:                    .powerProfiles(new PowerProfiles())
+src\main\java\org\dcsim\DcSimScenarioLoader.java:276:            throw new RuntimeException("Failed to load simulation input", e);
+src\main\java\org\dcsim\DcSimScenarioLoader.java:300:        Set<Integer> froms = new HashSet<>(), tos = new HashSet<>();
+src\main\java\org\dcsim\DcSimScenarioLoader.java:310:        List<EdgeRef> remaining = new ArrayList<>(edges);
+src\main\java\org\dcsim\DcSimScenarioLoader.java:311:        List<EdgeRef> out = new ArrayList<>();
+src\main\java\org\dcsim\DcSimScenarioLoader.java:322:            if (hit < 0) throw new IllegalStateException("Path not contiguous from node " + cur);
+src\main\java\org\dcsim\DcSimScenarioLoader.java:325:            if (flip) e = new EdgeRef(e.j, e.i, e.R, e.lengthM);
+src\main\java\org\dcsim\DcSimScenarioLoader.java:346:        Set<Integer> bus = new HashSet<>();
+src\main\java\org\dcsim\DcSimScenarioLoader.java:378:            throw new IllegalArgumentException("Top-level 'dcsim' section is missing in: " + confFile.toAbsolutePath());
+src\main\java\org\dcsim\DcSimScenarioLoader.java:391:            throw new IllegalArgumentException("Config must be a .conf or .hocon file: " + conf);
+src\main\java\org\dcsim\DcSimScenarioLoader.java:402:            throw new IllegalArgumentException("Config not found: " + conf);
+src\main\java\org\dcsim\DcSimScenarioLoader.java:406:            throw new IllegalArgumentException("Config is not a file: " + conf);
+src\main\java\org\dcsim\electric\DcElectricSolver.java:26:        final Map<Integer, Integer> nodeIndex = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\DcElectricSolver.java:54:        RealMatrix Y = new Array2DRowRealMatrix(N, N);
+src\main\java\org\dcsim\electric\DcElectricSolver.java:55:        RealVector J = new ArrayRealVector(N);
+src\main\java\org\dcsim\electric\DcElectricSolver.java:56:        RealVector X = new ArrayRealVector(N); // provided to stampers if they need it
+src\main\java\org\dcsim\electric\DcElectricSolver.java:94:        RealVector V = new LUDecomposition(Y).getSolver().solve(J);
+src\main\java\org\dcsim\electric\DcElectricSolver.java:99:        GridResult result = new GridResult(Y, J);
+src\main\java\org\dcsim\electric\DcIterativeAdapterSolver.java:30:    private final Map<String, Double> lastRequestedPowerW = new HashMap<>();
+src\main\java\org\dcsim\electric\DcIterativeAdapterSolver.java:76:        DcIterativeSolver solver = new DcIterativeSolver();
+src\main\java\org\dcsim\electric\DcIterativeAdapterSolver.java:81:        GridResult res = new GridResult(null, V);
+src\main\java\org\dcsim\electric\DcLine.java:52:        throw new UnsupportedOperationException("Use computeCurrent(from, to)");
+src\main\java\org\dcsim\electric\DynamicLineTopologyBuilder.java:32:        Map<Integer, List<NodePos>> byTrack = new HashMap<>();
+src\main\java\org\dcsim\electric\DynamicLineTopologyBuilder.java:34:            byTrack.computeIfAbsent(n.trackId, k -> new ArrayList<>()).add(n);
+src\main\java\org\dcsim\electric\DynamicLineTopologyBuilder.java:37:        List<Device<Real>> out = new ArrayList<>();
+src\main\java\org\dcsim\electric\DynamicLineTopologyBuilder.java:52:                out.add(new DcLine(
+src\main\java\org\dcsim\electric\GridModel.java:15:    private final List<Node<F>> nodes = new ArrayList<>();
+src\main\java\org\dcsim\electric\GridModel.java:16:    private final Map<Integer, Node<F>> nodesById = new HashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:19:    private final List<Device<Real>> devices = new ArrayList<>();
+src\main\java\org\dcsim\electric\GridModel.java:20:    private final List<Substation> substations = new ArrayList<>();
+src\main\java\org\dcsim\electric\GridModel.java:25:    private final Map<String, List<PowerPoint>> powerProfiles = new HashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:26:    private final List<GridResult> results = new ArrayList<>();
+src\main\java\org\dcsim\electric\GridModel.java:29:    private final Map<Integer, List<VoltageSample>> voltageResults = new HashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:30:    private final Map<String, List<CurrentPowerSample>> currentPowerResults = new HashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:31:    private final Map<String, List<PowerPoint>> updatedPowerCurves = new HashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:37:    private final Map<String, List<Real>> updatedTrainVoltages  = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:38:    private final Map<String, List<Real>> updatedTrainPositions = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:39:    private final Map<String, List<Real>> updatedTrainSpeeds    = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:47:        m.computeIfAbsent(id, k -> new ArrayList<>()).add(v);
+src\main\java\org\dcsim\electric\GridModel.java:83:        if (n == null) throw new IllegalArgumentException("No node with id " + id);
+src\main\java\org\dcsim\electric\GridModel.java:88:        if (n == null) throw new NoSuchElementException("Node id=" + id + " not found");
+src\main\java\org\dcsim\electric\GridModel.java:112:                .findFirst().orElseThrow(() -> new IllegalArgumentException("No device with id " + id));
+src\main\java\org\dcsim\electric\GridModel.java:121:        List<Device<Real>> merged = new ArrayList<>(devices.size() + dynamicLineDevices.size());
+src\main\java\org\dcsim\electric\GridModel.java:178:        Map<Integer, List<Real>> allVoltages = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:180:            List<Real> series = new ArrayList<>();
+src\main\java\org\dcsim\electric\GridModel.java:188:        Map<String, List<Real>> out = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:190:            List<Real> series = new ArrayList<>();
+src\main\java\org\dcsim\electric\GridModel.java:198:        Map<String, List<Real>> out = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:200:            List<Real> series = new ArrayList<>();
+src\main\java\org\dcsim\electric\GridModel.java:209:        catch (IOException e) { throw new RuntimeException("Failed to export electrical results", e); }
+src\main\java\org\dcsim\electric\GridModel.java:213:        voltageResults.computeIfAbsent(nodeId, k -> new ArrayList<>()).add(new VoltageSample(time, voltage));
+src\main\java\org\dcsim\electric\GridModel.java:217:        currentPowerResults.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(new CurrentPowerSample(time, current, power));
+src\main\java\org\dcsim\electric\GridModel.java:221:        updatedPowerCurves.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(point);
+src\main\java\org\dcsim\electric\GridModel.java:232:        List<String> ids = new ArrayList<>(devices.size());
+src\main\java\org\dcsim\electric\GridModel.java:248:        LinkedHashSet<String> ids = new LinkedHashSet<>();
+src\main\java\org\dcsim\electric\GridModel.java:256:        List<String> out = new ArrayList<>(ids);
+src\main\java\org\dcsim\electric\GridModel.java:263:        LinkedHashSet<String> ids = new LinkedHashSet<>();
+src\main\java\org\dcsim\electric\GridModel.java:268:        List<String> out = new ArrayList<>(ids);
+src\main\java\org\dcsim\electric\GridModel.java:276:        Set<String> valid = new LinkedHashSet<>(getVirtualTrainIds());
+src\main\java\org\dcsim\electric\GridModel.java:277:        Map<String, List<Real>> out = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:287:        Set<String> valid = new LinkedHashSet<>(getVirtualTrainIds());
+src\main\java\org\dcsim\electric\GridModel.java:288:        Map<String, List<Real>> out = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridModel.java:298:        Set<String> valid = new LinkedHashSet<>(getVirtualTrainIds());
+src\main\java\org\dcsim\electric\GridModel.java:299:        Map<String, List<Real>> out = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridModelLoader.java:102:        GridModel model = new GridModel(groundNodeId);
+src\main\java\org\dcsim\electric\GridModelLoader.java:113:            Node node = new Node(id, voltage, position);
+src\main\java\org\dcsim\electric\GridModelLoader.java:135:            Substation ss = new Substation(
+src\main\java\org\dcsim\electric\GridModelLoader.java:202:                    l = new Line(from, to, resistancePerKm.times(lenM / 1000),
+src\main\java\org\dcsim\electric\GridModelLoader.java:222:                // Older configs may have fromNode/toNode; newer ones use nodeId→ground
+src\main\java\org\dcsim\electric\GridModelLoader.java:230:                TrainLoad train = new TrainLoad(id, fromNode, toNode);
+src\main\java\org\dcsim\electric\GridResult.java:12:    private final Map<String, Real> devicePowers          = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridResult.java:13:    private final Map<String, Real> deviceCurrents        = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridResult.java:14:    private final Map<String, Real> deviceRequestedPowers = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\GridResult.java:15:    private final Map<Integer, Real> nodeVoltages         = new LinkedHashMap<>();
+src\main\java\org\dcsim\electric\Line.java:31:        return new Line(fromNode, toNode, resistance, "line", "catenary1", length);
+src\main\java\org\dcsim\electric\Line.java:35:        return new Line(fromNode, toNode, resistance, description, "catenary1", length);
+src\main\java\org\dcsim\electric\Line.java:39:        return new Line(fromNode, toNode, resistance, "line", category, length);
+src\main\java\org\dcsim\electric\Line.java:44:    @Override public int getConnectedNode() { throw new UnsupportedOperationException("Line is two-node device"); }
+src\main\java\org\dcsim\electric\Line.java:50:        throw new UnsupportedOperationException("Use computeCurrent(fromV, toV) for two-node device");
+src\main\java\org\dcsim\electric\NearestNodeTopology.java:10:    private final Map<Integer, List<Entry>> byLine = new HashMap<>();
+src\main\java\org\dcsim\electric\NearestNodeTopology.java:30:            throw new IllegalArgumentException("infraNodePositions is empty");
+src\main\java\org\dcsim\electric\NearestNodeTopology.java:33:        Map<Integer, List<Entry>> tmp = new HashMap<>();
+src\main\java\org\dcsim\electric\NearestNodeTopology.java:37:            tmp.computeIfAbsent(parsed[0], k -> new ArrayList<>()).add(new Entry(id, parsed));
+src\main\java\org\dcsim\electric\NearestNodeTopology.java:73:            return new int[] { n, n };
+src\main\java\org\dcsim\electric\NearestNodeTopology.java:79:            return new int[] { n, n };
+src\main\java\org\dcsim\electric\NearestNodeTopology.java:83:            return new int[] { n, n };
+src\main\java\org\dcsim\electric\NearestNodeTopology.java:86:        return new int[] { list.get(idx-1).nodeId, list.get(idx).nodeId };
+src\main\java\org\dcsim\electric\NearestNodeTopology.java:110:        if (bestId < 0) throw new IllegalStateException("No infrastructure nodes available");
+src\main\java\org\dcsim\electric\PowerAccounting.java:51:        GridResult.Totals totals = new GridResult.Totals(
+src\main\java\org\dcsim\electric\PowerAccounting.java:62:        List<String> ids = new ArrayList<>();
+src\main\java\org\dcsim\electric\ReportingUtils.java:36:        List<Boundary> b = new ArrayList<>(boundaries);
+src\main\java\org\dcsim\electric\SegmentStamp.java:25:        if (lengthM <= 0) throw new IllegalArgumentException("lengthM must be > 0");
+src\main\java\org\dcsim\electric\SegmentStamp.java:27:        final List<Boundary> b = new ArrayList<>(boundaries);
+src\main\java\org\dcsim\electric\Substation.java:129:        throw new UnsupportedOperationException("Substation is a two-node device");
+src\main\java\org\dcsim\electric\Substation.java:135:        throw new UnsupportedOperationException("Use computeCurrent(fromV, toV)");
+src\main\java\org\dcsim\electric\TrainLoad.java:50:    private final List<Double> brakeCurrents = new ArrayList<>();
+src\main\java\org\dcsim\electric\TrainLoad.java:51:    private final List<Double> lineCurrents  = new ArrayList<>();
+src\main\java\org\dcsim\electric\TrainLoad.java:52:    private final List<Double> brakePowers   = new ArrayList<>();
+src\main\java\org\dcsim\electric\TrainLoad.java:53:    private final List<Double> linePowers    = new ArrayList<>();
+src\main\java\org\dcsim\electric\TrainLoad.java:54:    private final List<Double> times         = new ArrayList<>();
+src\main\java\org\dcsim\electric\TrainLoad.java:63:            new java.util.concurrent.atomic.AtomicInteger(0);
+src\main\java\org\dcsim\electric\TrainLoad.java:69:    private static final AtomicInteger DBG_STAMP_COUNT = new AtomicInteger(0);
+src\main\java\org\dcsim\electric\TrainLoad.java:121:        return new double[] { pLine, pBrake };
+src\main\java\org\dcsim\electric\TrainLoad.java:135:    public void setFromNode(int newFromNode) { this.fromNode = newFromNode; }
+src\main\java\org\dcsim\electric\TrainLoad.java:136:    public void setToNode(int newToNode) { this.toNode = newToNode; }
+src\main\java\org\dcsim\electric\TrainLoad.java:168:    @Override public int getConnectedNode() { throw new UnsupportedOperationException("TrainLoad is a two-node device"); }
+src\main\java\org\dcsim\electric\TrainLoad.java:170:    @Override public Real getPower()   { throw new UnsupportedOperationException("Use getPower(from,to)"); }
+src\main\java\org\dcsim\electric\TrainLoad.java:174:        throw new UnsupportedOperationException("TrainLoad is a two-node device; use computeCurrent(fromVoltage, toVoltage)");
+src\main\java\org\dcsim\electric\TrainLoad.java:256:        try (BufferedWriter writer = new BufferedWriter(new FileWriter(path))) {
+src\main\java\org\dcsim\electric\TrainLoad.java:278:            System.out.println("[TrainLoad.stamp] USING v0.4-baseline: pLineW = mot + aux, no braking on network");
+src\main\java\org\dcsim\electric\TrainLoad.java:299:        final double pLineW = Math.max(0.0, motW + auxW);
+src\main\java\org\dcsim\electric\TrainLoad.java:301:        if (pLineW <= 1e-9) {
+src\main\java\org\dcsim\electric\TrainLoad.java:309:        final double g = pLineW / (nominalV * nominalV);
+src\main\java\org\dcsim\electric\TrainLoad.java:317:        final double I = pLineW / nominalV;
+src\main\java\org\dcsim\electric\TrainLoad.java:327:        return new Real[] { pLine, pBrake, pTotal };
+src\main\java\org\dcsim\ExcelExport.java:17:        Workbook workbook = new XSSFWorkbook();
+src\main\java\org\dcsim\ExcelExport.java:67:        try (FileOutputStream out = new FileOutputStream(filename)) {
+src\main\java\org\dcsim\export\ElectricalExcelExport.java:22:            throw new IllegalArgumentException("ElectricalExcelExport.export: filePath is null/empty");
+src\main\java\org\dcsim\export\ElectricalExcelExport.java:25:            throw new IllegalArgumentException("ElectricalExcelExport.export: model is null");
+src\main\java\org\dcsim\export\ElectricalExcelExport.java:31:        File outFile = new File(outPath);
+src\main\java\org\dcsim\export\ElectricalExcelExport.java:38:        try (Workbook workbook = new XSSFWorkbook()) {
+src\main\java\org\dcsim\export\ElectricalExcelExport.java:103:            try (FileOutputStream fileOut = new FileOutputStream(outFile)) {
+src\main\java\org\dcsim\export\LongCsv.java:11: *   new LongTableWriter(String path, boolean overwrite, String project, String scenario, String baseHash)
+src\main\java\org\dcsim\export\LongCsv.java:19:    private static final Object LOCK = new Object();
+src\main\java\org\dcsim\export\LongCsv.java:55:            throw new IllegalStateException(
+src\main\java\org\dcsim\export\LongCsv.java:62:            throw new IllegalStateException("[LongCsv] results root must be ABSOLUTE. Got: " + resultsRoot);
+src\main\java\org\dcsim\export\LongCsv.java:82:                    WRITER = new LongTableWriter(longPath, overwrite, projectName, scenarioName, baseHash);
+src\main\java\org\dcsim\export\LongCsv.java:86:                    throw new RuntimeException("Failed to init LongTableWriter at " + longPath, e);
+src\main\java\org\dcsim\export\LongFiles.java:19:    private static final Object LOCK = new Object();
+src\main\java\org\dcsim\export\LongFiles.java:81:            throw new IllegalStateException("LongFiles not bootstrapped. Call LongFiles.bootstrapFromConfig(...) early in DcSimApp.");
+src\main\java\org\dcsim\export\LongTableWriter.java:23:            throw new IllegalArgumentException("LongTableWriter: path is null/empty");
+src\main\java\org\dcsim\export\LongTableWriter.java:25:        File f = new File(path);
+src\main\java\org\dcsim\export\LongTableWriter.java:28:        if (overwrite) try (FileOutputStream trunc = new FileOutputStream(f, false)) { /* truncate */ }
+src\main\java\org\dcsim\export\LongTableWriter.java:29:        this.bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f, true), StandardCharsets.UTF_8));
+src\main\java\org\dcsim\export\LongTableWriter.java:33:            bw.newLine(); bw.flush();
+src\main\java\org\dcsim\export\LongTableWriter.java:46:            bw.newLine();
+src\main\java\org\dcsim\export\NetworkCsvWriters.java:38:        try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8, CREATE, TRUNCATE_EXISTING, WRITE)) {
+src\main\java\org\dcsim\export\NetworkCsvWriters.java:54:        try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8, CREATE, TRUNCATE_EXISTING, WRITE)) {
+src\main\java\org\dcsim\export\NetworkCsvWriters.java:73:        try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8, CREATE, TRUNCATE_EXISTING, WRITE)) {
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:25:            throw new IllegalArgumentException("NetworkInputCsvWriter.writeAll: outDir is null");
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:28:            throw new IllegalStateException(
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:45:        try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:56:        try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:65:        try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:81:        try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:99:        try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:122:            throw new IllegalStateException("extent is null");
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:127:            if (arr.length < 2) throw new IllegalStateException("extent double[] length < 2");
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:128:            return new double[]{arr[0], arr[1]};
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:133:            if (list.size() < 2) throw new IllegalStateException("extent list size < 2");
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:134:            return new double[]{toDouble(list.get(0)), toDouble(list.get(1))};
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:137:            if (coll.size() < 2) throw new IllegalStateException("extent collection size < 2");
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:139:            return new double[]{toDouble(a[0]), toDouble(a[1])};
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:143:        String[][] methodPairs = new String[][]{
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:152:            if (a != null && b != null) return new double[]{a, b};
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:156:        String[][] fieldPairs = new String[][]{
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:163:            if (a != null && b != null) return new double[]{a, b};
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:166:        throw new IllegalStateException(
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:195:        if (v == null) throw new IllegalStateException("extent value is null");
+src\main\java\org\dcsim\export\NetworkInputCsvWriter.java:200:            throw new IllegalStateException("extent value not numeric: " + v + " (" + v.getClass().getName() + ")");
+src\main\java\org\dcsim\export\ResultCsvWriter.java:49:    private final List<Substation> substations = new ArrayList<>();
+src\main\java\org\dcsim\export\ResultCsvWriter.java:50:    private final List<Line>       lines       = new ArrayList<>();
+src\main\java\org\dcsim\export\ResultCsvWriter.java:53:    private final LinkedHashSet<String> knownTrainIds = new LinkedHashSet<>();
+src\main\java\org\dcsim\export\ResultCsvWriter.java:65:            throw new IllegalArgumentException("ResultCsvWriter: path is null/empty");
+src\main\java\org\dcsim\export\ResultCsvWriter.java:68:        File f = new File(path);
+src\main\java\org\dcsim\export\ResultCsvWriter.java:75:            try (FileOutputStream trunc = new FileOutputStream(f, false)) { /* truncate */ }
+src\main\java\org\dcsim\export\ResultCsvWriter.java:78:        this.bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f, true), StandardCharsets.UTF_8));
+src\main\java\org\dcsim\export\ResultCsvWriter.java:107:            bw.newLine();
+src\main\java\org\dcsim\export\ResultCsvWriter.java:164:        List<String> cols = new ArrayList<>();
+src\main\java\org\dcsim\export\ResultCsvWriter.java:272:        StringBuilder h = new StringBuilder(2048);
+src\main\java\org\dcsim\export\ResultCsvWriter.java:388:        Map<String,Double> out = new HashMap<>();
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:37:        RunCsvWriter writer = new RunCsvWriter(schema);
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:42:RunCsvWriter writer = new RunCsvWriter(schema);
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:47:        try (InputStream in = Files.newInputStream(excelXlsx);
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:48:             Workbook wb = new XSSFWorkbook(in)) {
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:53:                throw new IllegalArgumentException("Workbook must contain sheets named 'run' and 'track': " + excelXlsx);
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:63:        if (!it.hasNext()) throw new IllegalArgumentException("Empty 'track' sheet");
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:72:        List<Double> pos = new ArrayList<>();
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:73:        List<String> section = new ArrayList<>();
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:74:        List<String> track = new ArrayList<>();
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:88:        if (pos.isEmpty()) throw new IllegalArgumentException("No numeric rows parsed in 'track' sheet");
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:91:        return new TrackIndex(posArr, section.toArray(new String[0]), track.toArray(new String[0]));
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:96:        if (!it.hasNext()) throw new IllegalArgumentException("Empty 'run' sheet");
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:106:        List<Map<String, String>> out = new ArrayList<>();
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:130:            Map<String, String> row = new LinkedHashMap<>();
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:140:        if (out.isEmpty()) throw new IllegalArgumentException("No numeric rows parsed in 'run' sheet");
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:147:        Map<String, Integer> idx = new HashMap<>();
+src\main\java\org\dcsim\export\RunCsvFromExcel.java:158:        if (i == null) throw new IllegalArgumentException("Missing required column: '" + name + "'");
+src\main\java\org\dcsim\export\RunCsvWriter.java:31:        try (BufferedWriter w = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\export\RunCsvWriter.java:39:                List<String> values = new ArrayList<>(schema.headers().size());
+src\main\java\org\dcsim\export\RunCsvWriter.java:43:                        throw new ValidationInputException(schema.fileName()
+src\main\java\org\dcsim\export\ScenarioMaterializer.java:16:            throw new IllegalArgumentException("ScenarioMaterializer.materializeScenario: outDir is null");
+src\main\java\org\dcsim\export\ScenarioMaterializer.java:19:            throw new IllegalStateException(
+src\main\java\org\dcsim\Main.java:30:        List<Train> trains = new ArrayList<>();
+src\main\java\org\dcsim\Main.java:33:            trains.add(new Train(trainId++, true, upStartTime + i * upHeadway));
+src\main\java\org\dcsim\Main.java:35:            trains.add(new Train(trainId++, false, downStartTime + i * downHeadway));
+src\main\java\org\dcsim\Main.java:37:        Map<Integer, List<double[]>> trainData = new LinkedHashMap<>();
+src\main\java\org\dcsim\Main.java:39:            trainData.put(train.id, new ArrayList<>());
+src\main\java\org\dcsim\Main.java:41:        List<Train> active = new ArrayList<>();
+src\main\java\org\dcsim\Main.java:52:            List<Train> next = new ArrayList<>();
+src\main\java\org\dcsim\Main.java:82:                trainData.get(train.id).add(new double[]{t, pos, speed, power});
+src\main\java\org\dcsim\math\Real.java:9:    public static final Real ZERO = new Real(0.0);
+src\main\java\org\dcsim\math\Real.java:10:    public static final Real ONE = new Real(1.0);
+src\main\java\org\dcsim\math\Real.java:41:        return new Real(this.value + other.value);
+src\main\java\org\dcsim\math\Real.java:45:        return new Real(this.value - other.value);
+src\main\java\org\dcsim\math\Real.java:49:        return new Real(this.value * other.value);
+src\main\java\org\dcsim\math\Real.java:53:        return new Real(this.value * scalar);
+src\main\java\org\dcsim\math\Real.java:57:        if (other.value == 0.0) throw new ArithmeticException("Divide by zero");
+src\main\java\org\dcsim\math\Real.java:58:        return new Real(this.value / other.value);
+src\main\java\org\dcsim\math\Real.java:62:        if (scalar == 0.0) throw new ArithmeticException("Divide by zero");
+src\main\java\org\dcsim\math\Real.java:63:        return new Real(this.value / scalar);
+src\main\java\org\dcsim\math\Real.java:67:        return new Real(-this.value);
+src\main\java\org\dcsim\math\Real.java:71:        return new Real(Math.abs(this.value));
+src\main\java\org\dcsim\math\Real.java:75:        if (value == 0.0) throw new ArithmeticException("Reciprocal of zero");
+src\main\java\org\dcsim\math\Real.java:76:        return new Real(1.0 / this.value);
+src\main\java\org\dcsim\math\Real.java:109:        return new Real(value);
+src\main\java\org\dcsim\math\Real.java:127:        return new Real(s);
+src\main\java\org\dcsim\math\SimMatrixUtils.java:17:        return MatrixUtils.createRealVector(new double[size]);
+src\main\java\org\dcsim\math\SimMatrixUtils.java:21:        return new LUDecomposition(a).getSolver().solve(b);
+src\main\java\org\dcsim\math\SimMatrixUtils.java:26:        RealMatrix result = new Array2DRowRealMatrix(n - 1, n);
+src\main\java\org\dcsim\opt\RegenAllocator.java:44:        public final Map<String, Double> netBySourceKW = new LinkedHashMap<>();
+src\main\java\org\dcsim\opt\RegenAllocator.java:46:        public final Map<String, Double> flowsKW = new LinkedHashMap<>();
+src\main\java\org\dcsim\opt\RegenAllocator.java:57:        Result empty = new Result(0.0);
+src\main\java\org\dcsim\opt\RegenAllocator.java:68:        double[][] cost = new double[nS][nT];
+src\main\java\org\dcsim\opt\RegenAllocator.java:79:        final List<Var> vars = new ArrayList<>();
+src\main\java\org\dcsim\opt\RegenAllocator.java:83:                    vars.add(new Var(i, j, cost[i][j]));
+src\main\java\org\dcsim\opt\RegenAllocator.java:90:        double[] c = new double[vars.size()];
+src\main\java\org\dcsim\opt\RegenAllocator.java:92:        LinearObjectiveFunction obj = new LinearObjectiveFunction(c, 0.0);
+src\main\java\org\dcsim\opt\RegenAllocator.java:94:        Collection<LinearConstraint> cons = new ArrayList<>();
+src\main\java\org\dcsim\opt\RegenAllocator.java:98:            double[] a = new double[vars.size()];
+src\main\java\org\dcsim\opt\RegenAllocator.java:100:            cons.add(new LinearConstraint(a, Relationship.LEQ, sources.get(i).supplyKW));
+src\main\java\org\dcsim\opt\RegenAllocator.java:105:            double[] a = new double[vars.size()];
+src\main\java\org\dcsim\opt\RegenAllocator.java:107:            cons.add(new LinearConstraint(a, Relationship.LEQ, sinks.get(j).demandKW));
+src\main\java\org\dcsim\opt\RegenAllocator.java:113:            double[] a = new double[vars.size()];
+src\main\java\org\dcsim\opt\RegenAllocator.java:115:            cons.add(new LinearConstraint(a, Relationship.GEQ, 0.0));
+src\main\java\org\dcsim\opt\RegenAllocator.java:120:            sol = new SimplexSolver().optimize(
+src\main\java\org\dcsim\opt\RegenAllocator.java:121:                    new MaxIter(2000),
+src\main\java\org\dcsim\opt\RegenAllocator.java:123:                    new LinearConstraintSet(cons),
+src\main\java\org\dcsim\opt\RegenAllocator.java:125:                    new NonNegativeConstraint(true)
+src\main\java\org\dcsim\opt\RegenAllocator.java:133:        Result out = new Result(sol.getValue());
+src\main\java\org\dcsim\opt\RegenAllocator.java:161:        Map<Integer, List<Edge>> g = new HashMap<>();
+src\main\java\org\dcsim\opt\RegenAllocator.java:168:                g.computeIfAbsent(u, k -> new ArrayList<>()).add(new Edge(v, R));
+src\main\java\org\dcsim\opt\RegenAllocator.java:169:                g.computeIfAbsent(v, k -> new ArrayList<>()).add(new Edge(u, R));
+src\main\java\org\dcsim\opt\RegenAllocator.java:175:            g.computeIfAbsent(n, k -> new ArrayList<>());
+src\main\java\org\dcsim\opt\RegenAllocator.java:181:        Map<Integer, Double> dist = new HashMap<>();
+src\main\java\org\dcsim\opt\RegenAllocator.java:185:        PriorityQueue<int[]> pq = new PriorityQueue<>(Comparator.comparingDouble(a -> Double.longBitsToDouble(a[1])));
+src\main\java\org\dcsim\opt\RegenAllocator.java:186:        pq.add(new int[]{src, Double.valueOf(0.0).hashCode()}); // vi packar inte double i int[] egentligen, men ok
+src\main\java\org\dcsim\opt\RegenAllocator.java:190:        PriorityQueue<Node> Q = new PriorityQueue<>(Comparator.comparingDouble(n -> n.d));
+src\main\java\org\dcsim\opt\RegenAllocator.java:191:        Q.add(new Node(src, 0.0));
+src\main\java\org\dcsim\opt\RegenAllocator.java:200:                    Q.add(new Node(e.to, nd));
+src\main\java\org\dcsim\pivot\ConfigUtil.java:18:        Map<String,String> m = new HashMap<>();
+src\main\java\org\dcsim\pivot\Csvs.java:14:    static Writer newUtf8Writer(Path p) throws IOException {
+src\main\java\org\dcsim\pivot\Csvs.java:16:        return new OutputStreamWriter(Files.newOutputStream(p), StandardCharsets.UTF_8);
+src\main\java\org\dcsim\pivot\Csvs.java:20:        return new CSVWriter(newUtf8Writer(p));
+src\main\java\org\dcsim\pivot\EnergyAggregator.java:9:    private final TrapzAccumulator trac = new TrapzAccumulator();
+src\main\java\org\dcsim\pivot\EnergyAggregator.java:10:    private final TrapzAccumulator aux = new TrapzAccumulator();
+src\main\java\org\dcsim\pivot\EnergyAggregator.java:11:    private final TrapzAccumulator regen = new TrapzAccumulator();
+src\main\java\org\dcsim\pivot\EnergyAggregator.java:12:    private final TrapzAccumulator burn = new TrapzAccumulator();
+src\main\java\org\dcsim\pivot\EnergyAggregator.java:13:    private final TrapzAccumulator subs = new TrapzAccumulator();
+src\main\java\org\dcsim\pivot\EnergyAggregator.java:42:            w.writeNext(new String[] {"E_trac_J","E_aux_J","E_regen_J","E_burn_J","E_line_J","E_subs_J","E_total_J","imbalance_J"});
+src\main\java\org\dcsim\pivot\EnergyAggregator.java:43:            w.writeNext(new String[] {
+src\main\java\org\dcsim\pivot\LinesAggregator.java:11:        final TrapzAccumulator loss = new TrapzAccumulator();
+src\main\java\org\dcsim\pivot\LinesAggregator.java:12:        final TrapzAccumulator avgVA = new TrapzAccumulator();
+src\main\java\org\dcsim\pivot\LinesAggregator.java:13:        final TrapzAccumulator avgVB = new TrapzAccumulator();
+src\main\java\org\dcsim\pivot\LinesAggregator.java:14:        final TrapzAccumulator timeAcc = new TrapzAccumulator();
+src\main\java\org\dcsim\pivot\LinesAggregator.java:17:    private final Map<String, LineState> byId = new TreeMap<>();
+src\main\java\org\dcsim\pivot\LinesAggregator.java:20:        LineState s = byId.computeIfAbsent(r.id, k -> new LineState());
+src\main\java\org\dcsim\pivot\LinesAggregator.java:37:            w.writeNext(new String[]{"line_id","V_min_V","E_loss_J","V_A_mean_V","V_B_mean_V"});
+src\main\java\org\dcsim\pivot\LinesAggregator.java:46:                w.writeNext(new String[]{id, vmin, eloss, vAmean, vBmean});
+src\main\java\org\dcsim\pivot\LongtableReader.java:24:        this.in  = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8);
+src\main\java\org\dcsim\pivot\LongtableReader.java:25:        this.csv = new CSVReaderBuilder(in).withSkipLines(0).build();
+src\main\java\org\dcsim\pivot\LongtableReader.java:31:            throw new IOException("Invalid CSV header in " + csvPath, e);
+src\main\java\org\dcsim\pivot\LongtableReader.java:33:        if (header == null) throw new IOException("Empty longtable: " + csvPath);
+src\main\java\org\dcsim\pivot\LongtableReader.java:35:        this.idx = new HashMap<>();
+src\main\java\org\dcsim\pivot\LongtableReader.java:41:        this.lowerIdx = new HashMap<>();
+src\main\java\org\dcsim\pivot\LongtableReader.java:55:            throw new RuntimeException("Failed reading CSV row", e);
+src\main\java\org\dcsim\pivot\LongtableReader.java:83:        Record r = new Record();
+src\main\java\org\dcsim\pivot\LongtableReader.java:130:        return new Iterator<Record>() {
+src\main\java\org\dcsim\pivot\LongtableReader.java:134:                if (row == null) throw new NoSuchElementException();
+src\main\java\org\dcsim\pivot\PivotApp.java:54:                throw new IllegalStateException(
+src\main\java\org\dcsim\pivot\PivotApp.java:82:            try (LongtableReader r = new LongtableReader(longtable, conf)) {
+src\main\java\org\dcsim\pivot\PivotApp.java:83:                StationsAggregator stations = new StationsAggregator(stationsCsv);
+src\main\java\org\dcsim\pivot\PivotApp.java:84:                TrainsAggregator   trains   = new TrainsAggregator(trainsCsv);
+src\main\java\org\dcsim\pivot\PivotApp.java:85:                LinesAggregator    lines    = new LinesAggregator();
+src\main\java\org\dcsim\pivot\PivotApp.java:86:                EnergyAggregator   energy   = new EnergyAggregator();
+src\main\java\org\dcsim\pivot\PivotApp.java:141:        new CommandLine(new PivotApp()).execute(args);
+src\main\java\org\dcsim\pivot\StationsAggregator.java:12:        w.writeNext(new String[]{"time_s","station_id","V_V","I_A","P_W"});
+src\main\java\org\dcsim\pivot\StationsAggregator.java:21:        w.writeNext(new String[]{t, r.id==null?"":r.id, v, i, p});
+src\main\java\org\dcsim\pivot\TrainsAggregator.java:12:        w.writeNext(new String[]{"time_s","train_id","req_W","P_W","pos_m","speed_mps"});
+src\main\java\org\dcsim\pivot\TrainsAggregator.java:22:        w.writeNext(new String[]{t, r.id==null?"":r.id, req, p, pos, spd});
+src\main\java\org\dcsim\power\ExcelProfileReader.java:27:            List<PowerPoint> all = new ArrayList<>();
+src\main\java\org\dcsim\power\ExcelProfileReader.java:28:            try (DirectoryStream<Path> ds = Files.newDirectoryStream(path, "*.xlsx")) {
+src\main\java\org\dcsim\power\ExcelProfileReader.java:38:        List<PowerPoint> out = new ArrayList<>();
+src\main\java\org\dcsim\power\ExcelProfileReader.java:39:        try (FileInputStream fis = new FileInputStream(file);
+src\main\java\org\dcsim\power\ExcelProfileReader.java:40:             Workbook wb = new XSSFWorkbook(fis)) {
+src\main\java\org\dcsim\power\ExcelProfileReader.java:116:        Map<String, Integer> m = new HashMap<>();
+src\main\java\org\dcsim\power\PowerTemplateParser.java:42:        Map<String, List<PowerPoint>> out = new HashMap<>();
+src\main\java\org\dcsim\power\PowerTemplateParser.java:65:                List<PowerPoint> pts = new ArrayList<>(2);
+src\main\java\org\dcsim\power\PowerTemplateParser.java:79:                List<PowerPoint> merged = new ArrayList<>();
+src\main\java\org\dcsim\power\PowerTemplateParser.java:83:                     List<PowerPoint> points = ExcelProfileReader.read(new File(folder, fileName));
+src\main\java\org\dcsim\power\ProfilePositionSampler.java:48:            return (a < 0.5) ? new PositionAtTime(pLo.lineId, pLo.absMeters)
+src\main\java\org\dcsim\power\ProfilePositionSampler.java:49:                    : new PositionAtTime(pHi.lineId, pHi.absMeters);
+src\main\java\org\dcsim\power\ProfilePositionSampler.java:52:        return new PositionAtTime(pLo.lineId, abs);
+src\main\java\org\dcsim\power\TablePowerProfile.java:36:            this.T_s  = new double[0];
+src\main\java\org\dcsim\power\TablePowerProfile.java:37:            this.X_m  = new double[0];
+src\main\java\org\dcsim\power\TablePowerProfile.java:38:            this.V_mps= new double[0];
+src\main\java\org\dcsim\power\TablePowerProfile.java:39:            this.P_W  = new double[0];
+src\main\java\org\dcsim\power\TablePowerProfile.java:40:            this.U_V  = new double[0];
+src\main\java\org\dcsim\power\TablePowerProfile.java:41:            this.I_A  = new double[0];
+src\main\java\org\dcsim\power\TablePowerProfile.java:46:        List<PowerPoint> pts = new ArrayList<>(in);
+src\main\java\org\dcsim\power\TablePowerProfile.java:50:        double[] T = new double[n];
+src\main\java\org\dcsim\power\TablePowerProfile.java:51:        double[] X = new double[n];
+src\main\java\org\dcsim\power\TablePowerProfile.java:52:        double[] V = new double[n];
+src\main\java\org\dcsim\power\TablePowerProfile.java:53:        double[] P = new double[n];
+src\main\java\org\dcsim\power\TablePowerProfile.java:54:        double[] U = new double[n];
+src\main\java\org\dcsim\power\TablePowerProfile.java:55:        double[] I = new double[n];
+src\main\java\org\dcsim\PowerPoint.java:57:        return new PowerPoint(timeS, powerW, voltageV, currentA, null, null, null, null, null);
+src\main\java\org\dcsim\PowerPoint.java:65:        return new PowerPoint(timeS, powerW, voltageV, currentA,
+src\main\java\org\dcsim\PowerPoint.java:78:        return new PowerPoint(timeS, powerW, voltageV, currentA,
+src\main\java\org\dcsim\PowerPoint.java:89:        return new PowerPoint(timeS, powerW, voltageV, currentA,
+src\main\java\org\dcsim\PowerPoint.java:128:        throw new UnsupportedOperationException("PowerPoint is immutable; set speed at construction.");
+src\main\java\org\dcsim\PowerPoint.java:151:        // Keep immutability: return a new instance with one field changed.
+src\main\java\org\dcsim\PowerPoint.java:153:        // if (!Double.isFinite(positionM)) throw new IllegalArgumentException("positionM must be finite");
+src\main\java\org\dcsim\PowerPoint.java:154:        return new PowerPoint(
+src\main\java\org\dcsim\PowerPoint.java:189:            return new ParsedBis(km, m);
+src\main\java\org\dcsim\RunLayoutFactory.java:17:            throw new IllegalArgumentException("Config file has no parent directory: " + configFile);
+src\main\java\org\dcsim\RunLayoutFactory.java:32:        return new RunLayout(
+src\main\java\org\dcsim\RunLayoutFactory.java:64:        throw new IllegalArgumentException("Config not found: " + raw);
+src\main\java\org\dcsim\RunLayoutFactory.java:78:            throw new IllegalArgumentException("Config must be a .conf or .hocon file: " + configFile);
+src\main\java\org\dcsim\RunLayoutFactory.java:81:            throw new IllegalArgumentException("Config not found: " + configFile);
+src\main\java\org\dcsim\RunLayoutFactory.java:84:            throw new IllegalArgumentException("Config is not a file: " + configFile);
+src\main\java\org\dcsim\runtime\DwellDetector.java:29:        return new DwellDetector(List.of());
+src\main\java\org\dcsim\runtime\Runner.java:22:        DcElectricSolver solver = new DcElectricSolver(); // instance call
+src\main\java\org\dcsim\sim\DenseYJ.java:9:    DenseYJ(int n) { Y = new double[n][n]; J = new double[n]; }
+src\main\java\org\dcsim\sim\OneTrainRunner.java:30:            DenseYJ sys = new DenseYJ(nNodes);
+src\main\java\org\dcsim\sim\OneTrainRunner.java:59:                throw new IllegalStateException("Invalid Va at t=" + t + " (check ground, Rmin, sources)");
+src\main\java\org\dcsim\sim\TrainAnchorComponent.java:42:        if (path.isEmpty()) throw new IllegalArgumentException("path is empty");
+src\main\java\org\dcsim\sim\TrainAnchorComponent.java:57:        cumLen = new double[path.size() + 1];
+src\main\java\org\dcsim\sim\TrainAnchorComponent.java:117:        double VaNew = (anchorNode >= 0 && anchorNode < V.length) ? V[anchorNode] : VaPrev;
+src\main\java\org\dcsim\sim\TrainAnchorComponent.java:119:        this.VaPrev = this.VaPrev + vaBlend * (VaNew - this.VaPrev);
+src\main\java\org\dcsim\SimpleExcelExport.java:15:        Workbook wb = new XSSFWorkbook();
+src\main\java\org\dcsim\SimpleExcelExport.java:35:        try (FileOutputStream out = new FileOutputStream("output/" + sheetName + ".xlsx")) {
+src\main\java\org\dcsim\SimulationInputModel.java:72:        return new Builder<>();
+src\main\java\org\dcsim\SimulationInputModel.java:96:        private List<TrainSpawn> spawns = new ArrayList<>();
+src\main\java\org\dcsim\SimulationInputModel.java:180:            this.spawns = (spawns == null) ? new ArrayList<>() : new ArrayList<>(spawns);
+src\main\java\org\dcsim\SimulationInputModel.java:190:            return new SimulationInputModel<>(this);
+src\main\java\org\dcsim\solver\api\DcNet.java:9: *  - New code should use accessor methods (n(), groundIndex(), ...).
+src\main\java\org\dcsim\solver\api\DcNet.java:50:            throw new IllegalArgumentException("n must be > 0");
+src\main\java\org\dcsim\solver\api\DcNet.java:53:            throw new IllegalArgumentException("nodeIds size must equal n");
+src\main\java\org\dcsim\solver\api\DcNet.java:56:            throw new IllegalArgumentException("groundIndex out of range");
+src\main\java\org\dcsim\solver\api\DcNet.java:62:                throw new IllegalArgumentException("indexById missing or out of range for nodeId " + id);
+src\main\java\org\dcsim\solver\api\DcNet.java:68:                throw new IllegalArgumentException("Line " + L.id() + " endpoints out of range");
+src\main\java\org\dcsim\solver\api\DcNet.java:73:                throw new IllegalArgumentException("Substation " + ss.id() + " endpoints out of range");
+src\main\java\org\dcsim\solver\api\DcNet.java:78:                throw new IllegalArgumentException("Train " + tr.id() + " endpoints out of range");
+src\main\java\org\dcsim\solver\api\DcNet.java:95:        Map<Integer, Integer> out = new HashMap<>(ids.size() * 2);
+src\main\java\org\dcsim\solver\api\DcNet.java:112:            throw new IllegalArgumentException("Unknown nodeId: " + nodeId);
+src\main\java\org\dcsim\solver\api\DcSolveResult.java:18:    private final Map<String, Double> IbyId = new HashMap<>();
+src\main\java\org\dcsim\solver\api\DcSolveResult.java:19:    private final Map<String, Double> PbyId = new HashMap<>();
+src\main\java\org\dcsim\solver\api\DcSolveResult.java:22:        this.V = new double[n];
+src\main\java\org\dcsim\solver\api\SubstationData.java:14:        return new Real(rint_ohm);
+src\main\java\org\dcsim\solver\api\SubstationData.java:18:        return new Real(emf_V);
+src\main\java\org\dcsim\solver\build\MatrixBuilder.java:12:        RealMatrix G = new Array2DRowRealMatrix(n, n);
+src\main\java\org\dcsim\solver\build\MatrixBuilder.java:13:        RealVector J = new ArrayRealVector(n);
+src\main\java\org\dcsim\solver\build\MatrixBuilder.java:25:        return new DcSystem(G, J);
+src\main\java\org\dcsim\solver\build\NetBuilder.java:43:        final List<Node<Real>> modelNodes = new ArrayList<>(model.getNodes());
+src\main\java\org\dcsim\solver\build\NetBuilder.java:45:            throw new IllegalArgumentException("Model has no nodes.");
+src\main\java\org\dcsim\solver\build\NetBuilder.java:49:        final List<Integer> nodeIds = new ArrayList<>(n);
+src\main\java\org\dcsim\solver\build\NetBuilder.java:50:        final Map<Integer, Integer> idxById = new HashMap<>(n * 2);
+src\main\java\org\dcsim\solver\build\NetBuilder.java:61:            throw new IllegalArgumentException("Model ground node is null.");
+src\main\java\org\dcsim\solver\build\NetBuilder.java:64:            throw new IllegalArgumentException("Ground node " + groundNodeId + " is not present in node list.");
+src\main\java\org\dcsim\solver\build\NetBuilder.java:67:        final List<LineData> lines = new ArrayList<>();
+src\main\java\org\dcsim\solver\build\NetBuilder.java:68:        final List<SubstationData> substations = new ArrayList<>();
+src\main\java\org\dcsim\solver\build\NetBuilder.java:69:        final List<TrainData> trains = new ArrayList<>();
+src\main\java\org\dcsim\solver\build\NetBuilder.java:75:            lineDevices = new ArrayList<>(model.getDynamicLineDevices());
+src\main\java\org\dcsim\solver\build\NetBuilder.java:79:            lineDevices = new ArrayList<>(model.getLines());
+src\main\java\org\dcsim\solver\build\NetBuilder.java:100:                lines.add(new LineData(l.getId(), a, b, R));
+src\main\java\org\dcsim\solver\build\NetBuilder.java:118:                lines.add(new LineData(l.getId(), a, b, R));
+src\main\java\org\dcsim\solver\build\NetBuilder.java:139:                    throw new IllegalArgumentException("Substation " + ss.getId() + " has non-positive internal R: " + R);
+src\main\java\org\dcsim\solver\build\NetBuilder.java:141:                    throw new IllegalArgumentException("Substation " + ss.getId() + " has non-finite EMF: " + E);
+src\main\java\org\dcsim\solver\build\NetBuilder.java:143:                    throw new IllegalArgumentException("Substation " + ss.getId() + " must have distinct terminals");
+src\main\java\org\dcsim\solver\build\NetBuilder.java:145:                substations.add(new SubstationData(ss.getId(), a, b, E, R, allow));
+src\main\java\org\dcsim\solver\build\NetBuilder.java:164:                    throw new IllegalArgumentException("Train " + tr.getId() + " has negative Imax: " + imaxA);
+src\main\java\org\dcsim\solver\build\NetBuilder.java:166:                    throw new IllegalArgumentException("Train " + tr.getId() + " has non-positive vmax: " + vmaxV);
+src\main\java\org\dcsim\solver\build\NetBuilder.java:168:                    throw new IllegalArgumentException("Train " + tr.getId() + " has negative cutoff voltage: " + cutV);
+src\main\java\org\dcsim\solver\build\NetBuilder.java:170:                trains.add(new TrainData(tr.getId(), a, b, reqW, imaxA, cutV, vmaxV));
+src\main\java\org\dcsim\solver\build\NetBuilder.java:177:        DcNet net = new DcNet(
+src\main\java\org\dcsim\solver\build\Seed.java:14:        double[] V = new double[net.n];
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:54:        if (nNodes < 2) throw new IllegalArgumentException("nNodes >= 2 required");
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:55:        if (groundIndex < 0 || groundIndex >= nNodes) throw new IllegalArgumentException("groundIndex out of range");
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:60:        List<Integer> nodeIds = new ArrayList<>(nNodes);
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:64:        Map<Integer,Integer> idxById = new HashMap<>(nNodes * 2);
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:68:        List<LineData> lines = new ArrayList<>(Math.max(0, nNodes - 1));
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:71:            lines.add(new LineData("L_"+i+"_"+(i+1), i, i+1, R));
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:75:        List<SubstationData> ss = new ArrayList<>(subs != null ? subs.size() : 0);
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:79:                    throw new IllegalArgumentException("Substation nodeIndex out of range: " + c.nodeIndex);
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:80:                ss.add(new SubstationData(c.id, c.nodeIndex, groundIndex, c.emf_V, c.rint_ohm, c.allowBackfeed));
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:85:        List<TrainData> trs = new ArrayList<>(trains != null ? trains.size() : 0);
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:89:                    throw new IllegalArgumentException("Train nodes out of range: " + t.a + "," + t.b);
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:90:                trs.add(new TrainData(t.id, t.a, t.b, t.req_W, t.iMax_A, t.cut_V, t.vmax_V));
+src\main\java\org\dcsim\solver\build\StraightTrackBuilder.java:94:        return new DcNet(
+src\main\java\org\dcsim\solver\impl\DcDebug.java:103:                    StringBuilder sb = new StringBuilder();
+src\main\java\org\dcsim\solver\impl\DcDebug.java:117:                    StringBuilder sb = new StringBuilder();
+src\main\java\org\dcsim\solver\impl\DcDebug.java:120:                                new Class[]{int.class, int.class}, new Object[]{i, j});
+src\main\java\org\dcsim\solver\impl\DcDebug.java:133:                    StringBuilder sb = new StringBuilder();
+src\main\java\org\dcsim\solver\impl\DcDebug.java:135:                        double v = (double) invoke(M, "get", new Class[]{int.class, int.class},
+src\main\java\org\dcsim\solver\impl\DcDebug.java:136:                                new Object[]{i, j});
+src\main\java\org\dcsim\solver\impl\DcDebug.java:149:                    StringBuilder sb = new StringBuilder();
+src\main\java\org\dcsim\solver\impl\DcDebug.java:151:                        double v = (double) invoke(M, "get", new Class[]{int.class, int.class},
+src\main\java\org\dcsim\solver\impl\DcDebug.java:152:                                new Object[]{i, j});
+src\main\java\org\dcsim\solver\impl\DcDebug.java:171:                StringBuilder sb = new StringBuilder();
+src\main\java\org\dcsim\solver\impl\DcDebug.java:182:                StringBuilder sb = new StringBuilder();
+src\main\java\org\dcsim\solver\impl\DcDebug.java:185:                            new Class[]{int.class}, new Object[]{i});
+src\main\java\org\dcsim\solver\impl\DcDebug.java:237:            var b = new StringBuilder();
+src\main\java\org\dcsim\solver\impl\DcIslands.java:87:        final int[] parent = new int[n];
+src\main\java\org\dcsim\solver\impl\DcIslands.java:88:        final int[] rank   = new int[n];
+src\main\java\org\dcsim\solver\impl\DcIslands.java:97:        final List<SubstationData> activeFeeders = new ArrayList<>();
+src\main\java\org\dcsim\solver\impl\DcIslands.java:98:        final List<SubstationData> allFeeders    = new ArrayList<>(net.substations());
+src\main\java\org\dcsim\solver\impl\DcIslands.java:107:        final Map<Integer,Integer> compMap = new HashMap<>();
+src\main\java\org\dcsim\solver\impl\DcIslands.java:109:        final int[] compOfNode = new int[n];
+src\main\java\org\dcsim\solver\impl\DcIslands.java:118:        final boolean[] compHasActive = new boolean[compCnt];
+src\main\java\org\dcsim\solver\impl\DcIslands.java:119:        final boolean[] compBackfeed  = new boolean[compCnt];
+src\main\java\org\dcsim\solver\impl\DcIslands.java:131:        return new Result(compCnt, compOfNode, compHasActive, compBackfeed, groundComp);
+src\main\java\org\dcsim\solver\impl\DcIslands.java:138:        final boolean[] present = new boolean[isl.components];
+src\main\java\org\dcsim\solver\impl\DcIslands.java:150:        final boolean[] res = new boolean[isl.components];
+src\main\java\org\dcsim\solver\impl\DcIterativeSolver.java:39:    private static final java.util.LinkedHashMap<String, Integer> sTrainNodeById = new java.util.LinkedHashMap<>();
+src\main\java\org\dcsim\solver\impl\DcIterativeSolver.java:40:    private static final java.util.LinkedHashMap<String, Integer> sProbeNodesByName = new java.util.LinkedHashMap<>();
+src\main\java\org\dcsim\solver\impl\DcIterativeSolver.java:42:    private static final java.util.LinkedHashMap<String, int[]> sProbeBranches = new java.util.LinkedHashMap<>();
+src\main\java\org\dcsim\solver\impl\DcIterativeSolver.java:44:    private static final java.util.LinkedHashMap<String, Double> sBranchR = new java.util.LinkedHashMap<>();
+src\main\java\org\dcsim\solver\impl\DcIterativeSolver.java:55:        sProbeBranches.put(name, new int[]{i, j});
+src\main\java\org\dcsim\solver\impl\DcIterativeSolver.java:108:        return solveVoltages(net, new ArrayRealVector(net.n()));
+src\main\java\org\dcsim\solver\impl\DcIterativeSolver.java:195:            boolean[] clamped = new boolean[n];
+src\main\java\org\dcsim\solver\impl\DcIterativeSolver.java:211:            final RealVector Vnext = new LUDecomposition(G).getSolver().solve(J);
+src\main\java\org\dcsim\solver\impl\DcIterativeSolver.java:437:        StringBuilder sb = new StringBuilder();
+src\main\java\org\dcsim\solver\impl\DcIterativeSolver.java:450:        StringBuilder sb = new StringBuilder();
+src\main\java\org\dcsim\solver\impl\DcLinearSolver.java:70:        DecompositionSolver solver = new LUDecomposition(G).getSolver();
+src\main\java\org\dcsim\solver\impl\DcLinearSolver.java:74:        double[] out = new double[net.n];
+src\main\java\org\dcsim\solver\impl\DcLinearSolver.java:131:            Double E = resolveDouble(ss, new String[]{
+src\main\java\org\dcsim\solver\impl\DcLinearSolver.java:137:            Double R = resolveDouble(ss, new String[]{
+src\main\java\org\dcsim\solver\impl\DcLinearSolver.java:336:            StringBuilder gm = new StringBuilder();
+src\main\java\org\dcsim\solver\impl\DcLinearSolver.java:347:            StringBuilder gf = new StringBuilder();
+src\main\java\org\dcsim\solver\impl\DcPost.java:21:        public final Map<Integer, Double> nodeV = new HashMap<>();
+src\main\java\org\dcsim\solver\impl\DcPost.java:22:        public final Map<String, Double>  curByDeviceId = new HashMap<>();
+src\main\java\org\dcsim\solver\impl\DcPost.java:23:        public final Map<String, Double>  powByDeviceId = new HashMap<>();
+src\main\java\org\dcsim\solver\impl\DcPost.java:28:        Result r = new Result(V);
+src\main\java\org\dcsim\solver\impl\SolverFactory.java:23:            case "new":
+src\main\java\org\dcsim\solver\impl\SolverFactory.java:25:                return new DcIterativeAdapterSolver();
+src\main\java\org\dcsim\solver\impl\SolverFactory.java:30:                return new DcElectricSolver();
+src\main\java\org\dcsim\solver\impl\SolverFactory.java:33:                return new DcIterativeAdapterSolver();
+src\main\java\org\dcsim\solver\profile\CsvProfiles.java:22:        Map<String, List<double[]>> map = new LinkedHashMap<>();
+src\main\java\org\dcsim\solver\profile\CsvProfiles.java:23:        try (BufferedReader br = Files.newBufferedReader(csv)) {
+src\main\java\org\dcsim\solver\profile\CsvProfiles.java:39:                map.computeIfAbsent(id, k -> new ArrayList<>()).add(new double[]{t, p});
+src\main\java\org\dcsim\solver\profile\CsvProfiles.java:42:        Map<String, TrainProfile> out = new LinkedHashMap<>();
+src\main\java\org\dcsim\solver\profile\CsvProfiles.java:46:            double[] t = new double[rows.size()];
+src\main\java\org\dcsim\solver\profile\CsvProfiles.java:47:            double[] p = new double[rows.size()];
+src\main\java\org\dcsim\solver\profile\CsvProfiles.java:52:            out.put(e.getKey(), new TrainProfile(t, p));
+src\main\java\org\dcsim\solver\profile\TrainProfile.java:11:            throw new IllegalArgumentException("Invalid profile arrays.");
+src\main\java\org\dcsim\solver\scenario\DcScenario.java:17:        this.playersByTrainId = new LinkedHashMap<>(playersByTrainId);
+src\main\java\org\dcsim\tools\DebugPowerProfile.java:44:        try (BufferedWriter w = Files.newBufferedWriter(csv)) {
+src\main\java\org\dcsim\tools\LongtablePivot.java:55:        try (Workbook wb = new XSSFWorkbook()) {
+src\main\java\org\dcsim\tools\LongtablePivot.java:73:            try (OutputStream os = Files.newOutputStream(outPath)) {
+src\main\java\org\dcsim\tools\LongtablePivot.java:81:            try (OutputStream os = Files.newOutputStream(
+src\main\java\org\dcsim\tools\LongtablePivot.java:134:        try (Reader r = Files.newBufferedReader(path)) {
+src\main\java\org\dcsim\tools\LongtablePivot.java:141:            List<LTRow> out = new ArrayList<>();
+src\main\java\org\dcsim\tools\LongtablePivot.java:153:                out.add(new LTRow(time, project, scenario, baseHash, objectType, objectId, signal, value, unit, stage));
+src\main\java\org\dcsim\tools\LongtablePivot.java:182:        SortedSet<Double> times = new TreeSet<>(filtered.stream().map(r -> r.timeS).collect(Collectors.toSet()));
+src\main\java\org\dcsim\tools\LongtablePivot.java:183:        SortedSet<String> columns = new TreeSet<>();
+src\main\java\org\dcsim\tools\LongtablePivot.java:184:        Map<Double, Map<String, Double>> grid = new LinkedHashMap<>();
+src\main\java\org\dcsim\tools\LongtablePivot.java:185:        for (Double t : times) grid.put(t, new LinkedHashMap<>());
+src\main\java\org\dcsim\tools\LongtablePivot.java:192:                default -> throw new IllegalArgumentException("Unknown column key: " + columnKeyField);
+src\main\java\org\dcsim\tools\LongtablePivot.java:195:            grid.computeIfAbsent(r.timeS, k -> new LinkedHashMap<>()).put(col, r.value);
+src\main\java\org\dcsim\tools\LongtablePivot.java:197:        return new PivotResult(times, columns, grid);
+src\main\java\org\dcsim\tools\LongtablePivot.java:205:        SortedSet<Double> times = new TreeSet<>(filtered.stream().map(r -> r.timeS).collect(Collectors.toSet()));
+src\main\java\org\dcsim\tools\LongtablePivot.java:206:        SortedSet<String> columns = new TreeSet<>();
+src\main\java\org\dcsim\tools\LongtablePivot.java:207:        Map<Double, Map<String, Double>> grid = new LinkedHashMap<>();
+src\main\java\org\dcsim\tools\LongtablePivot.java:208:        for (Double t : times) grid.put(t, new LinkedHashMap<>());
+src\main\java\org\dcsim\tools\LongtablePivot.java:212:            grid.computeIfAbsent(r.timeS, k -> new LinkedHashMap<>()).put(col, r.value);
+src\main\java\org\dcsim\tools\LongtablePivot.java:214:        return new PivotResult(times, columns, grid);
+src\main\java\org\dcsim\tools\LongtablePivot.java:228:        List<String> headers = new ArrayList<>();
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:87:        Map<String, Integer> m = new HashMap<>();
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:194:            return new Config(input, out, project, scenario, hash, excel, debug);
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:223:            return new Filter(proj, scen, hash);
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:244:                throw new IOException("Longtable file not found: " + input.toAbsolutePath());
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:246:            try (BufferedReader br = Files.newBufferedReader(input, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:249:                    return new LongTable(List.of(), null, List.of());
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:255:                ArrayList<Row> rows = new ArrayList<>(4096);
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:264:                        meta = new RunMeta(r.project, r.scenario, r.baseHash);
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:268:                return new LongTable(headerCols, meta, rows);
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:277:            ArrayList<Row> out = new ArrayList<>(allRows.size());
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:294:            Map<String, TreeMap<Double, StationTuple>> byStation = new HashMap<>();
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:305:                TreeMap<Double, StationTuple> series = byStation.computeIfAbsent(s, k -> new TreeMap<>());
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:306:                StationTuple t = series.computeIfAbsent(r.time_s, k -> new StationTuple());
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:324:            try (BufferedWriter bw = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:343:            Map<String, TreeMap<Double, TrainTuple>> byTrain = new HashMap<>();
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:354:                TreeMap<Double, TrainTuple> series = byTrain.computeIfAbsent(id, k -> new TreeMap<>());
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:355:                TrainTuple t = series.computeIfAbsent(r.time_s, k -> new TrainTuple());
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:374:            try (BufferedWriter bw = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:393:            try (BufferedWriter bw = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:399:            try (BufferedWriter bw = Files.newBufferedWriter(out, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:424:        Map<String,Integer> m = new HashMap<>();
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:456:        return new int[]{ time, proj, scen, hash, objT, objId, sig, val, unit, stage, iter, note };
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:474:            return new Row(time, proj, scen, hash, objT, objId, sig, val, unit, stage, iter, note);
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:481:        ArrayList<String> out = new ArrayList<>();
+src\main\java\org\dcsim\tools\LongtablePivotTool.java:482:        StringBuilder cur = new StringBuilder();
+src\main\java\org\dcsim\tools\LongtableTrainSubWideExcel.java:80:        WideData trains = new WideData();
+src\main\java\org\dcsim\tools\LongtableTrainSubWideExcel.java:81:        WideData subs   = new WideData();
+src\main\java\org\dcsim\tools\LongtableTrainSubWideExcel.java:125:        try (Workbook wb = new XSSFWorkbook()) {
+src\main\java\org\dcsim\tools\LongtableTrainSubWideExcel.java:248:            try (OutputStream out = Files.newOutputStream(Paths.get(outPath))) {
+src\main\java\org\dcsim\tools\LongtableTrainSubWideExcel.java:262:        throw new IllegalStateException("[LT-WIDE] Column not found: " + name);
+src\main\java\org\dcsim\tools\LongtableTrainSubWideExcel.java:267:        private final TreeSet<Double> times = new TreeSet<>();
+src\main\java\org\dcsim\tools\LongtableTrainSubWideExcel.java:268:        private final TreeSet<String> ids = new TreeSet<>();
+src\main\java\org\dcsim\tools\LongtableTrainSubWideExcel.java:269:        private final TreeSet<String> signals = new TreeSet<>();
+src\main\java\org\dcsim\tools\LongtableTrainSubWideExcel.java:270:        private final Map<String, Double> values = new HashMap<>();
+src\main\java\org\dcsim\tools\LongtableTrainSubWideExcel.java:291:            List<String> idList = new ArrayList<>(ids);
+src\main\java\org\dcsim\tools\LongtableTrainSubWideExcel.java:292:            List<String> sigList = new ArrayList<>(signals);
+src\main\java\org\dcsim\tools\LongtableWideExcel.java:39:        try (Workbook wb = new XSSFWorkbook()) {
+src\main\java\org\dcsim\tools\LongtableWideExcel.java:40:            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, "*.csv")) {
+src\main\java\org\dcsim\tools\LongtableWideExcel.java:54:            try (OutputStream out = Files.newOutputStream(Paths.get(outPath))) {
+src\main\java\org\dcsim\tools\LongtableWideExcel.java:88:        List<Integer> signalIdx = new ArrayList<>();
+src\main\java\org\dcsim\tools\LongtableWideExcel.java:89:        List<String> signalNames = new ArrayList<>();
+src\main\java\org\dcsim\tools\LongtableWideExcel.java:96:        TreeSet<Double> times = new TreeSet<>();
+src\main\java\org\dcsim\tools\LongtableWideExcel.java:97:        TreeSet<String> ids = new TreeSet<>();
+src\main\java\org\dcsim\tools\LongtableWideExcel.java:99:        Map<String, Double> values = new HashMap<>();
+src\main\java\org\dcsim\tools\LongtableWideExcel.java:136:        List<String> idList = new ArrayList<>(ids);
+src\main\java\org\dcsim\tools\TrainsWidePivot.java:43:            throw new IllegalStateException("Missing time_s or train_id columns in trains.csv");
+src\main\java\org\dcsim\tools\TrainsWidePivot.java:47:        Map<Integer, Map<String, double[]>> byTime = new TreeMap<>();
+src\main\java\org\dcsim\tools\TrainsWidePivot.java:48:        Set<String> trainIds = new TreeSet<>();
+src\main\java\org\dcsim\tools\TrainsWidePivot.java:67:            byTime.computeIfAbsent(t, k -> new HashMap<>())
+src\main\java\org\dcsim\tools\TrainsWidePivot.java:68:                    .put(id, new double[]{ req, pNet, pos, speed });
+src\main\java\org\dcsim\tools\TrainsWidePivot.java:72:        try (BufferedWriter w = Files.newBufferedWriter(out)) {
+src\main\java\org\dcsim\tools\TrainsWidePivot.java:74:            StringBuilder h = new StringBuilder();
+src\main\java\org\dcsim\tools\TrainsWidePivot.java:83:            w.newLine();
+src\main\java\org\dcsim\tools\TrainsWidePivot.java:90:                StringBuilder row = new StringBuilder();
+src\main\java\org\dcsim\tools\TrainsWidePivot.java:107:                w.newLine();
+src\main\java\org\dcsim\track\TrackPosition.java:26:            throw new IllegalArgumentException("TrackPosition values must be non-negative");
+src\main\java\org\dcsim\track\TrackPosition.java:43:        double newM = m - extraKm * 1000.0;
+src\main\java\org\dcsim\track\TrackPosition.java:44:        return new TrackPosition(section, km + extraKm, newM);
+src\main\java\org\dcsim\track\TrackPosition.java:55:        if (text == null) throw new IllegalArgumentException("null");
+src\main\java\org\dcsim\track\TrackPosition.java:59:        if (parts.length != 2) throw new IllegalArgumentException("Expected: 's km+m'");
+src\main\java\org\dcsim\track\TrackPosition.java:62:        if (kmM.length != 2) throw new IllegalArgumentException("Expected: 's km+m'");
+src\main\java\org\dcsim\track\TrackPosition.java:65:        return new TrackPosition(section, km, m).normalized();
+src\main\java\org\dcsim\train\SimpleTrainController.java:21:            throw new IllegalArgumentException("vminThrottleBandFrac must be >= 0");
+src\main\java\org\dcsim\train\TrainDevice.java:30:        if (port == null) throw new IllegalArgumentException("port must not be null");
+src\main\java\org\dcsim\train\TrainDevice.java:31:        if (controller == null) throw new IllegalArgumentException("controller must not be null");
+src\main\java\org\dcsim\TrainState.java:12: * — New multi-line fields —
+src\main\java\org\dcsim\TrainState.java:25:    public final int lineId;            // NEW: current line identifier
+src\main\java\org\dcsim\TrainState.java:27:    public final double positionMeters; // NEW: meters along the line (replaces old 'position')
+src\main\java\org\dcsim\TrainState.java:63:    // -------- New accessors --------
+src\main\java\org\dcsim\TrainState.java:75:    public TrainState withPosition(int newLineId, double newMeters) {
+src\main\java\org\dcsim\TrainState.java:76:        return new TrainState(id, isUp, newLineId, newMeters, speed, power, time, startTime);
+src\main\java\org\dcsim\TrainState.java:80:        return new TrainState(id, isUp, lineId, positionMeters + deltaMeters, speed, power, time, startTime);
+src\main\java\org\dcsim\TrainState.java:83:    public TrainState withSpeed(double newSpeed) {
+src\main\java\org\dcsim\TrainState.java:84:        return new TrainState(id, isUp, lineId, positionMeters, newSpeed, power, time, startTime);
+src\main\java\org\dcsim\TrainState.java:87:    public TrainState withPower(double newPower) {
+src\main\java\org\dcsim\TrainState.java:88:        return new TrainState(id, isUp, lineId, positionMeters, speed, newPower, time, startTime);
+src\main\java\org\dcsim\TrainState.java:91:    public TrainState atTime(double newTime) {
+src\main\java\org\dcsim\TrainState.java:92:        return new TrainState(id, isUp, lineId, positionMeters, speed, power, newTime, startTime);
+src\main\java\org\dcsim\TrainState.java:96:        return new TrainState(id, !isUp, lineId, positionMeters, speed, power, time, startTime);
+src\main\java\org\dcsim\utils\Canon.java:89:        StringBuilder b = new StringBuilder();
+src\main\java\org\dcsim\utils\MatrixPrinter.java:16:            StringBuilder sb = new StringBuilder();
+src\main\java\org\dcsim\utils\MatrixPrinter.java:30:        StringBuilder sb = new StringBuilder();
+src\main\java\org\dcsim\utils\Objects\LongFileReader.java:61:        try (BufferedReader br = Files.newBufferedReader(csvPath)) {
+src\main\java\org\dcsim\utils\Objects\LongFileReader.java:63:            if (header == null) return new Data(new Meta(null, null, null), List.of());
+src\main\java\org\dcsim\utils\Objects\LongFileReader.java:70:            List<Signal> list = new ArrayList<>(1024);
+src\main\java\org\dcsim\utils\Objects\LongFileReader.java:96:                list.add(new Signal(time, objectType, objId, sig, val, unit, stage, iter, note));
+src\main\java\org\dcsim\utils\Objects\LongFileReader.java:99:            return new Data(new Meta(project, scenario, hash), list);
+src\main\java\org\dcsim\utils\Objects\LongFileReader.java:118:        Map<String,Integer> map = new HashMap<>();
+src\main\java\org\dcsim\utils\Objects\LongFileReader.java:142:        return new int[]{ time, objT, objId, sig, val, unit, stage, iter, note };
+src\main\java\org\dcsim\utils\Objects\LongFileReader.java:147:        ArrayList<String> out = new ArrayList<>();
+src\main\java\org\dcsim\utils\Objects\LongFileReader.java:148:        StringBuilder cur = new StringBuilder();
+src\main\java\org\dcsim\utils\Objects\LongFileWriter.java:39:                        .newInstance(path, overwrite, project, scenario, hash);
+src\main\java\org\dcsim\utils\Objects\LongFileWriter.java:45:                throw new RuntimeException("Failed to bind to org.dcsim.export.LongTableWriter", e);
+src\main\java\org\dcsim\utils\Objects\LongFileWriter.java:55:                throw new RuntimeException("signalRow failed", e);
+src\main\java\org\dcsim\utils\Objects\LongFileWriter.java:85:        return new LongFileWriter(new DcsimSink(csvPath, overwrite, project, scenario, hash),
+src\main\java\org\dcsim\utils\PositionUtils.java:17: * New (optional) features:
+src\main\java\org\dcsim\utils\PositionUtils.java:59:            return new int[] { section, posM };
+src\main\java\org\dcsim\utils\PositionUtils.java:61:            throw new IllegalArgumentException("Unexpected parsed position length "
+src\main\java\org\dcsim\utils\PositionUtils.java:81:        if (!m.matches()) throw new IllegalArgumentException("Expected 'line km+mmm': " + pos);
+src\main\java\org\dcsim\utils\PositionUtils.java:89:        return new int[]{ line, km, meters };
+src\main\java\org\dcsim\utils\PositionUtils.java:102:        return new TrackPosition(p[0], p[1], p[2]).normalized();
+src\main\java\org\dcsim\utils\PositionUtils.java:134:            if (m < 0) throw new IllegalArgumentException("Bad meters: " + s);
+src\main\java\org\dcsim\utils\PositionUtils.java:144:            if (section < 0 || km < 0) throw new IllegalArgumentException("Bad km+m: " + s);
+src\main\java\org\dcsim\utils\PositionUtils.java:145:            return new int[]{section, km, clampM(m)};
+src\main\java\org\dcsim\utils\PositionUtils.java:155:            if (m < 0) throw new IllegalArgumentException("Bad meters: " + s);
+src\main\java\org\dcsim\utils\PositionUtils.java:165:            if (section < 0 || km < 0) throw new IllegalArgumentException("Bad km,m: " + s);
+src\main\java\org\dcsim\utils\PositionUtils.java:166:            return new int[]{section, km, clampM(m)};
+src\main\java\org\dcsim\utils\PositionUtils.java:177:            if (section < 0 || km < 0) throw new IllegalArgumentException("Bad 'section km': " + s);
+src\main\java\org\dcsim\utils\PositionUtils.java:178:            return new int[]{section, km, 0};
+src\main\java\org\dcsim\utils\PositionUtils.java:185:                catch (NumberFormatException e) { throw new IllegalArgumentException("Unrecognized position: " + s, e); }
+src\main\java\org\dcsim\utils\PositionUtils.java:186:                if (kmD < 0) throw new IllegalArgumentException("Negative position not allowed: " + s);
+src\main\java\org\dcsim\utils\PositionUtils.java:189:                return new int[]{1, km, clampM(m)};
+src\main\java\org\dcsim\utils\PositionUtils.java:194:            catch (NumberFormatException e) { throw new IllegalArgumentException("Unrecognized position: " + s, e); }
+src\main\java\org\dcsim\utils\PositionUtils.java:195:            if (val < 0) throw new IllegalArgumentException("Negative position not allowed: " + s);
+src\main\java\org\dcsim\utils\PositionUtils.java:198:                return new int[]{1, (int)kmL, (int)mL};
+src\main\java\org\dcsim\utils\PositionUtils.java:200:                return new int[]{1, (int)val, 0};
+src\main\java\org\dcsim\utils\PositionUtils.java:266:        if (km < 0 || meters < 0) throw new IllegalArgumentException("Negative values not allowed");
+src\main\java\org\dcsim\utils\PositionUtils.java:271:        if (lkm == null || lkm.length < 3) throw new IllegalArgumentException("Expected {line,km,m}");
+src\main\java\org\dcsim\utils\PositionUtils.java:281:        if (meters < 0) throw new IllegalArgumentException("meters must be >= 0");
+src\main\java\org\dcsim\utils\PositionUtils.java:306:    // New: value type + section chain for multi-line/section routes
+src\main\java\org\dcsim\utils\PositionUtils.java:316:            if (line < 0 || km < 0 || m < 0) throw new IllegalArgumentException("Negative values not allowed");
+src\main\java\org\dcsim\utils\PositionUtils.java:328:            double newM = m - extraKm * 1000.0;
+src\main\java\org\dcsim\utils\PositionUtils.java:329:            return new TrackPosition(line, km + extraKm, newM);
+src\main\java\org\dcsim\utils\PositionUtils.java:358:            return new TrackPosition(p[0], p[1], p[2]).normalized();
+src\main\java\org\dcsim\utils\PositionUtils.java:367:            if (id < 0 || lengthMeters < 0) throw new IllegalArgumentException("Invalid section");
+src\main\java\org\dcsim\utils\PositionUtils.java:383:                throw new IllegalArgumentException("sections must not be empty");
+src\main\java\org\dcsim\utils\PositionUtils.java:384:            this.sections = Collections.unmodifiableList(new ArrayList<>(inOrder));
+src\main\java\org\dcsim\utils\PositionUtils.java:385:            this.prefix = new double[sections.size() + 1];
+src\main\java\org\dcsim\utils\PositionUtils.java:386:            this.indexById = new HashMap<>();
+src\main\java\org\dcsim\utils\PositionUtils.java:391:                    throw new IllegalArgumentException("duplicate section id: " + s.id);
+src\main\java\org\dcsim\utils\PositionUtils.java:406:            if (idx == null) throw new IllegalArgumentException("Unknown section id: " + n.line);
+src\main\java\org\dcsim\utils\PositionUtils.java:410:                if (inLine > max + 1e-3) throw new IllegalArgumentException("Position exceeds section length");
+src\main\java\org\dcsim\utils\PositionUtils.java:434:            return new TrackPosition(sec.id, km, m).normalized();
+src\main\java\org\dcsim\utils\TimeUtils.java:22:            throw new IllegalArgumentException("Empty simulation time string");
+src\main\java\org\dcsim\utils\TimeUtils.java:34:        throw new IllegalArgumentException("Unsupported time format: " + text);
+src\main\java\org\dcsim\validation\CsvSchema.java:26:        return new CsvSchema(
+src\main\java\org\dcsim\validation\CsvSchema.java:43:            throw new ValidationInputException(fileName + " schema mismatch: empty file");
+src\main\java\org\dcsim\validation\CsvSchema.java:50:                    throw new ValidationInputException(
+src\main\java\org\dcsim\validation\CsvSchema.java:62:            throw new ValidationInputException(
+src\main\java\org\dcsim\validation\CsvSchema.java:72:                throw new ValidationInputException(
+src\main\java\org\dcsim\validation\ProcessMatlabRunner.java:32:        Process p = new ProcessBuilder(args)
+src\main\java\org\dcsim\validation\ProcessMatlabRunner.java:40:            throw new RuntimeException("MATLAB failed with exit code " + code);
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:50:            throw new ValidationInputException("Missing results file: " + resultsCsv.getFileName());
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:53:        try (BufferedReader r = Files.newBufferedReader(resultsCsv, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:56:                throw new ValidationInputException(resultsCsv.getFileName() + " is empty");
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:67:                    throw new CsvSchemaException(resultsCsv.getFileName() + " missing required column: " + req);
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:72:            Map<String, Integer> idx = new HashMap<>();
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:76:            List<String> numericToCheck = new ArrayList<>();
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:94:                    throw new ValidationInputException(resultsCsv.getFileName()
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:109:                        throw new ValidationInputException(resultsCsv.getFileName()
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:113:                        throw new ValidationInputException(resultsCsv.getFileName()
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:122:                        throw new ValidationInputException(resultsCsv.getFileName()
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:130:                throw new ValidationInputException(resultsCsv.getFileName() + " contains no data rows");
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:138:        List<String> out = new ArrayList<>(raw.size());
+src\main\java\org\dcsim\validation\ResultsCsvValidator.java:154:        List<String> out = new ArrayList<>(parts.length);
+src\main\java\org\dcsim\validation\RunCsvReader.java:22:        try (BufferedReader r = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+src\main\java\org\dcsim\validation\RunCsvReader.java:26:                throw new CsvSchemaException(schema.fileName() + " schema mismatch: empty file");
+src\main\java\org\dcsim\validation\RunCsvReader.java:32:            List<Map<String, String>> rows = new ArrayList<>();
+src\main\java\org\dcsim\validation\RunCsvReader.java:41:                    throw new ValidationInputException(
+src\main\java\org\dcsim\validation\RunCsvReader.java:45:                Map<String, String> row = new HashMap<>();
+src\main\java\org\dcsim\validation\RunCsvReader.java:59:        List<String> headers = new ArrayList<>(raw.size());
+src\main\java\org\dcsim\validation\RunCsvReader.java:74:        List<String> out = new ArrayList<>(parts.length);
+src\main\java\org\dcsim\validation\RunInputNormalizer.java:31:        List<Row> parsed = new ArrayList<>(rows.size());
+src\main\java\org\dcsim\validation\RunInputNormalizer.java:49:        List<Map<String, String>> out = new ArrayList<>(parsed.size());
+src\main\java\org\dcsim\validation\RunInputNormalizer.java:57:                throw new ValidationInputException(
+src\main\java\org\dcsim\validation\RunInputNormalizer.java:66:        Set<String> seen = new HashSet<>();
+src\main\java\org\dcsim\validation\RunInputNormalizer.java:70:                throw new ValidationInputException(
+src\main\java\org\dcsim\validation\RunInputNormalizer.java:95:                throw new ValidationInputException("run.csv missing train_id at row=" + rowIndex);
+src\main\java\org\dcsim\validation\RunInputNormalizer.java:101:                throw new ValidationInputException("run.csv invalid time at row=" + rowIndex + " value=" + ts);
+src\main\java\org\dcsim\validation\RunInputNormalizer.java:103:            return new Row(raw, rowIndex, t, trainId);
+src\main\java\org\dcsim\validation\Schemas.java:10:    public static final CsvSchema RUN_V0_9 = new CsvSchema("run.csv", List.of(
+src\test\java\AnchorStampTest.java:13:        TestMatrix tm = new TestMatrix(3);
+src\test\java\AnchorStampTest.java:27:        return new Result(V[i], V[a], V[j], V);
+src\test\java\AnchorStampTest.java:70:        TestMatrix ref = new TestMatrix(2);
+src\test\java\AnchorStampTest.java:89:        TestMatrix tm1 = new TestMatrix(3);
+src\test\java\AnchorStampTest.java:95:        TestMatrix tm2 = new TestMatrix(3);
+src\test\java\AnchorStampTest.java:113:        TestMatrix tA = new TestMatrix(4);
+src\test\java\AnchorStampTest.java:122:        TestMatrix tB = new TestMatrix(4);
+src\test\java\OneTrainRunnerMovementTest.java:29:                new EdgeProps(S, J, rPerM, L),
+src\test\java\OneTrainRunnerMovementTest.java:30:                new EdgeProps(J, K, rPerM, L)
+src\test\java\OneTrainRunnerMovementTest.java:36:        TrainRuntime train = new TrainRuntime(A, vMS, pW);
+src\test\java\org\dcsim\actors\GridModelActorSplitTest.java:37:    private TestHarness newHarnessLinearVerbose() {
+src\test\java\org\dcsim\actors\GridModelActorSplitTest.java:45:    private TestHarness newHarnessIterativeVerbose() {
+src\test\java\org\dcsim\actors\GridModelActorSplitTest.java:55:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\actors\GridModelActorSplitTest.java:56:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\actors\GridModelActorSplitTest.java:57:        gm.addNode(new Node(1, Real.fromDouble(10.0), "ND1"));
+src\test\java\org\dcsim\actors\GridModelActorSplitTest.java:79:        var h = newHarnessLinearVerbose();
+src\test\java\org\dcsim\actors\GridModelActorSplitTest.java:109:        var h = newHarnessLinearVerbose();
+src\test\java\org\dcsim\actors\GridModelActorSplitTest.java:144:        var h = newHarnessLinearVerbose();
+src\test\java\org\dcsim\actors\GridModelActorSplitTest.java:175:        var h = newHarnessLinearVerbose();
+src\test\java\org\dcsim\actors\GridModelActorSplitTest.java:202:        var h = newHarnessLinearVerbose();
+src\test\java\org\dcsim\electric\HoconFileTest.java:9:        File file = new File("src/test/resources/MinimalTest.conf");
+src\test\java\org\dcsim\electric\LineLossNoLoadTest.java:13:        GridModel m = new GridModel(0);
+src\test\java\org\dcsim\electric\LineLossNoLoadTest.java:14:        m.addNode(new Node(0, Real.ZERO, "GND"));
+src\test\java\org\dcsim\electric\LineLossNoLoadTest.java:15:        m.addNode(new Node(1, Real.ZERO, "1 0+000"));
+src\test\java\org\dcsim\electric\LineLossNoLoadTest.java:16:        m.addNode(new Node(2, Real.ZERO, "1 1+000"));
+src\test\java\org\dcsim\electric\LineLossNoLoadTest.java:18:        m.addDevice(new Substation("S1", 0, 1, 1, Real.fromDouble(1000), Real.fromDouble(0.05), null));
+src\test\java\org\dcsim\electric\LineLossNoLoadTest.java:19:        m.addDevice(new Substation("S2", 0, 2, 2, Real.fromDouble(1000), Real.fromDouble(0.05), null));
+src\test\java\org\dcsim\electric\LineLossNoLoadTest.java:22:        DcElectricSolver solver = new DcElectricSolver(); // din befintliga
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:58:        return Arrays.asList(new Object[][]{
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:101:        return new Object[]{ name, supplier, solver, expectedGridAbsorptionW, tolW };
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:150:            var gm = new GridModel<>(0);
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:153:            gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:154:            gm.addNode(new Node(1, Real.fromDouble(10.0), "Tregen"));
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:155:            gm.addNode(new Node(2, Real.fromDouble(20.0), "Tmotor"));
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:174:            var gm = new GridModel<>(0);
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:177:            gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:178:            gm.addNode(new Node(1, Real.fromDouble(10.0), "TrainA"));
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:179:            gm.addNode(new Node(2, Real.fromDouble(20.0), "TrainB"));
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:199:            var gm = new GridModel<>(0);
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:202:            gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:203:            gm.addNode(new Node(1, Real.fromDouble(10.0), "Tregen"));
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:204:            gm.addNode(new Node(2, Real.fromDouble(20.0), "Tmotor"));
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:223:            var gm = new GridModel<>(0);
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:226:            gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:227:            gm.addNode(new Node(1, Real.fromDouble(10.0), "A1"));
+src\test\java\org\dcsim\integration\DcIntegrationScenariosTest.java:232:            gm.addNode(new Node(2, Real.fromDouble(20.0), "B1"));
+src\test\java\org\dcsim\integration\DiodeRegenScenarioTests.java:73:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\integration\DiodeRegenScenarioTests.java:74:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\integration\DiodeRegenScenarioTests.java:75:        gm.addNode(new Node(1, Real.fromDouble(10.0), n1Label));
+src\test\java\org\dcsim\integration\DiodeRegenScenarioTests.java:76:        gm.addNode(new Node(2, Real.fromDouble(20.0), n2Label));
+src\test\java\org\dcsim\integration\DiodeRegenScenarioTests.java:98:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\integration\DiodeRegenScenarioTests.java:99:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\integration\DiodeRegenScenarioTests.java:100:        gm.addNode(new Node(1, Real.fromDouble(10.0), "A1"));
+src\test\java\org\dcsim\integration\DiodeRegenScenarioTests.java:101:        gm.addNode(new Node(2, Real.fromDouble(20.0), "B1"));
+src\test\java\org\dcsim\integration\DiodeRegenScenarioTests.java:219:    //     // creating a "new" test name in this file.
+src\test\java\org\dcsim\integration\OneStationOneTrainTests.java:74:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\integration\OneStationOneTrainTests.java:75:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\integration\OneStationOneTrainTests.java:76:        gm.addNode(new Node(1, Real.fromDouble(10.0), "T1"));
+src\test\java\org\dcsim\integration\OneStationOneTrainTests.java:148:        // gm.addDevice(new Train(... vmin ...));
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:62:            throw new IllegalStateException("Expected TrainLoad with id " + trainId + " but got " + d);
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:65:            throw new IllegalStateException("No device with id " + trainId + ". Available: " + ids, ex);
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:99:            throw new IllegalStateException("Expected Substation with id " + ssId + " but got " + d);
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:117:        Node loadNode = new Node(loadNodeId, Real.fromDouble(0.0), "0 0+200");
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:121:            throw new IllegalStateException("Adapt ensureLoadNodeAfterSS1(...) to your GridModel API (addNode(Node)).", t);
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:130:            Line tie = new Line(ndSS1, loadNodeId, Real.fromDouble(0.010), idTie, "u", 1500.);
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:152:            load = new TrainLoad(loadId, nodeId, g);
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:193:        Set<Integer> nodeIds = new LinkedHashSet<>();
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:305:        DcElectricSolver solver = new DcElectricSolver();
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:360:        DcElectricSolver solver = new DcElectricSolver();
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:454:        DcElectricSolver solver = new DcElectricSolver();
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:481:        DcElectricSolver solver = new DcElectricSolver();
+src\test\java\org\dcsim\it\PowerFlowIntegrationIT.java:503:        DcElectricSolver solver = new DcElectricSolver();
+src\test\java\org\dcsim\it\TestSupport.java:20:        Node GRD = new Node(grdId, new Real(0.), "0 0+100");
+src\test\java\org\dcsim\it\TestSupport.java:21:        Node ND0 = new Node(nd0Id, new Real(0.), "0 0+000");
+src\test\java\org\dcsim\it\TestSupport.java:22:        Node ND1 = new Node(nd1Id, new Real(0.), "0 1+500");
+src\test\java\org\dcsim\it\TestSupport.java:23://        Node ND2 = new Node(nd2Id, new Real(0.), "3 0+000");
+src\test\java\org\dcsim\it\TestSupport.java:24:        Node ANK = new Node(ankId, new Real(0.), "0 0+200");
+src\test\java\org\dcsim\it\TestSupport.java:25:        GridModel<Real> m = new GridModel<>(grdId);
+src\test\java\org\dcsim\it\TestSupport.java:35:        m.addDevice(new Line(nd0Id, ankId, Real.fromDouble(0.1), "L0", "u", 1500));
+src\test\java\org\dcsim\it\TestSupport.java:36:        m.addDevice(new Line(ankId, nd1Id, Real.fromDouble(0.2), "L1", "u", 1500));
+src\test\java\org\dcsim\it\TestSupport.java:39:        m.addDevice(new Substation("SS0", nd0Id, grdId, grdId, Real.fromDouble(emfV), Real.fromDouble(rInt)));
+src\test\java\org\dcsim\it\TestSupport.java:40:        m.addDevice(new Substation("SS1", nd1Id, grdId, grdId, Real.fromDouble(emfV), Real.fromDouble(rInt)));
+src\test\java\org\dcsim\it\TestSupport.java:44:            TrainLoad t1 = new TrainLoad("T1", ankId, grdId);
+src\test\java\org\dcsim\it\TestSupport.java:60:        TrainLoad tl = new TrainLoad(id, grdId, nodeId);
+src\test\java\org\dcsim\it\TestSupport.java:72:        DcElectricSolver solver = new DcElectricSolver();
+src\test\java\org\dcsim\OutputPathsResolutionTest.java:16:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\OutputPathsResolutionTest.java:20:        Path confDir = tmp.newFolder("scenario").toPath();
+src\test\java\org\dcsim\OutputPathsResolutionTest.java:35:            System.setProperty("user.dir", tmp.newFolder("wd1").getAbsolutePath());
+src\test\java\org\dcsim\OutputPathsResolutionTest.java:38:            System.setProperty("user.dir", tmp.newFolder("wd2").getAbsolutePath());
+src\test\java\org\dcsim\RunLayoutFactoryTest.java:15:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\RunLayoutFactoryTest.java:20:        File dir = tmp.newFolder("A", "B", "C");
+src\test\java\org\dcsim\RunLayoutFactoryTest.java:21:        File conf = new File(dir, "x.conf");
+src\test\java\org\dcsim\RunLayoutFactoryTest.java:22:        conf.createNewFile();
+src\test\java\org\dcsim\RunLayoutFactoryTest.java:40:        File dir = tmp.newFolder("A", "B", "C");
+src\test\java\org\dcsim\RunLayoutFactoryTest.java:41:        File conf = new File(dir, "x.conf");
+src\test\java\org\dcsim\RunLayoutFactoryTest.java:42:        conf.createNewFile();
+src\test\java\org\dcsim\RunLayoutFactoryTest.java:44:        File outRoot = tmp.newFolder("distribution");
+src\test\java\org\dcsim\RunLayoutFactoryTest.java:64:        File base = tmp.newFolder("myProject");
+src\test\java\org\dcsim\RunLayoutFactoryTest.java:65:        File conf = new File(base, "myFirstScenario.conf");
+src\test\java\org\dcsim\RunLayoutFactoryTest.java:66:        conf.createNewFile();
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:82:        final List<LineData> lines = new ArrayList<>();
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:83:        lines.add(new LineData("L_1_2", 1, 2, r12));
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:84:        lines.add(new LineData("L_2_3", 2, 3, r23));
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:86:        final List<SubstationData> subs = new ArrayList<>();
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:87:        subs.add(new SubstationData("SS1", 1, 0, emfV, rint, allowBackfeed));
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:88:        subs.add(new SubstationData("SS2", 3, 0, emfV, rint, allowBackfeed));
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:90:        final List<TrainData> trains = new ArrayList<>();
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:92:        return new DcNet(n, groundIndex, nodeIds, idxById, lines, subs, trains);
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:122:                new SubstationData("SS", 1, 0, emfV, rint, allowBackfeed)
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:131:                new TrainData("Tregen", 1, 0, -Math.abs(regenW), imax, vmin, vmax)
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:134:        return new DcNet(n, groundIndex, nodeIds, idxById, lines, subs, trains);
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:144:        List<TrainData> ts = new ArrayList<>(net.trains());
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:145:        ts.add(new TrainData("Tregen", 2, 0, -Math.abs(regenW), I_MAX_HI, V_MIN, V_MAX));
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:146:        return new DcNet(net.n(), net.groundIndex(), net.nodeIds(), net.indexById(),
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:158:        List<TrainData> ts = new ArrayList<>(net.trains());
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:159:        ts.add(new TrainData("Tregen", 2, 0, -Math.abs(regenAbsW), I_MAX_HI, V_MIN, V_MAX));
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:160:        ts.add(new TrainData("Tmotor", 3, 0, +Math.abs(regenAbsW), I_MAX_HI, V_MIN, V_MAX));
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:161:        return new DcNet(net.n(), net.groundIndex(), net.nodeIds(), net.indexById(),
+src\test\java\org\dcsim\solver\fixtures\NetFixtures.java:194:        return new ArrayRealVector(n); // zeros
+src\test\java\org\dcsim\testing\Devices.java:23:            gm.addDevice(new Substation(id, anchorNode, g, g,
+src\test\java\org\dcsim\testing\Devices.java:27:            // gm.addDevice(new DiodeSubstation(id, anchorNode, g, g, Real.of(emfV), Real.of(rintOhm), description));
+src\test\java\org\dcsim\testing\Devices.java:29:            gm.addDevice(new Substation(id, anchorNode, g, g,
+src\test\java\org\dcsim\testing\Devices.java:37:        gm.addDevice(new Line(a, b, Real.fromDouble(rOhm), id, "n", lengthM));
+src\test\java\org\dcsim\testing\ElectricBuilders.java:11:        Node n = new Node(id, Real.fromDouble(pos), name);
+src\test\java\org\dcsim\train\SimpleTrainControllerEdgeEpsilonTest.java:16:        SimpleTrainController ctrl = new SimpleTrainController(0.10);
+src\test\java\org\dcsim\train\SimpleTrainControllerEdgeEpsilonTest.java:31:        SimpleTrainController ctrl = new SimpleTrainController(0.10);
+src\test\java\org\dcsim\train\SimpleTrainControllerEdgeEpsilonTest.java:43:        SimpleTrainController ctrl = new SimpleTrainController(0.10);
+src\test\java\org\dcsim\train\SimpleTrainControllerTest.java:13:        SimpleTrainController ctrl = new SimpleTrainController(0.10); // 10% band
+src\test\java\org\dcsim\train\SimpleTrainControllerTest.java:21:        SimpleTrainController ctrl = new SimpleTrainController(0.10);
+src\test\java\org\dcsim\train\SimpleTrainControllerTest.java:33:        SimpleTrainController ctrl = new SimpleTrainController(0.10);
+src\test\java\org\dcsim\train\SimpleTrainControllerTest.java:43:        SimpleTrainController ctrl = new SimpleTrainController(0.10);
+src\test\java\org\dcsim\train\SimpleTrainControllerTest.java:51:        SimpleTrainController ctrl = new SimpleTrainController(0.10);
+src\test\java\org\dcsim\train\TrainDeviceControllerLoopTest.java:31:        TestPort port = new TestPort(610.0); // inside throttle band
+src\test\java\org\dcsim\train\TrainDeviceControllerLoopTest.java:32:        TrainController ctrl = new SimpleTrainController(0.10);
+src\test\java\org\dcsim\train\TrainDeviceControllerLoopTest.java:33:        TrainDevice dev = new TrainDevice(port, ctrl, vmin, vmax);
+src\test\java\org\dcsim\train\TrainDeviceControllerLoopTest.java:45:        TestPort port = new TestPort(905.0); // at/above vmax
+src\test\java\org\dcsim\train\TrainDeviceControllerLoopTest.java:46:        TrainController ctrl = new SimpleTrainController(0.10);
+src\test\java\org\dcsim\train\TrainDeviceControllerLoopTest.java:47:        TrainDevice dev = new TrainDevice(port, ctrl, vmin, vmax);
+src\test\java\org\dcsim\unit\AdditionalMiniSolverTests.java:14: * Extra, compact tests to complement the new solver stack.
+src\test\java\org\dcsim\unit\AdditionalMiniSolverTests.java:76:        net = new DcNet(
+src\test\java\org\dcsim\unit\AdditionalMiniSolverTests.java:80:                        new org.dcsim.solver.api.TrainData("Tregen", 2, 0, -PREGEN, NetFixtures.I_MAX_HI, NetFixtures.V_MIN, NetFixtures.V_MAX),
+src\test\java\org\dcsim\unit\AdditionalMiniSolverTests.java:81:                        new org.dcsim.solver.api.TrainData("Tmotor", 3, 0, +PMOTOR, NetFixtures.I_MAX_HI, NetFixtures.V_MIN, NetFixtures.V_MAX)
+src\test\java\org\dcsim\unit\AdditionalMiniSolverTests.java:104:        net = new DcNet(
+src\test\java\org\dcsim\unit\AdditionalMiniSolverTests.java:108:                        new org.dcsim.solver.api.TrainData("Tregen", 2, 0, -PREGEN, NetFixtures.I_MAX_HI, NetFixtures.V_MIN, NetFixtures.V_MAX),
+src\test\java\org\dcsim\unit\AdditionalMiniSolverTests.java:109:                        new org.dcsim.solver.api.TrainData("Tmotor", 3, 0, +PMOTOR, NetFixtures.I_MAX_HI, NetFixtures.V_MIN, NetFixtures.V_MAX)
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:73:        final Map<Integer,Integer> idx = new HashMap<>();
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:77:        List<LineData> lines = new ArrayList<>();
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:78:        lines.add(new LineData("L12", idx.get(1), idx.get(2), Rline));
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:79:        lines.add(new LineData("L23", idx.get(2), idx.get(3), Rline));
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:81:        List<SubstationData> subs = new ArrayList<>();
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:82:        subs.add(new SubstationData("SS1", idx.get(1), idx.get(0), Emf, Rint, /*allowBackfeed=*/false));
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:84:        List<TrainData> trains = new ArrayList<>();
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:86:        trains.add(new TrainData("Tregen", idx.get(1), idx.get(2), regenW, imax, vmin, vmax));
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:88:        trains.add(new TrainData("Tmotor", idx.get(2), idx.get(3), motorW, imax, vmin, vmax));
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:90:        return new DcNet(
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:108:        final Map<Integer,Integer> idx = new HashMap<>();
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:112:        List<LineData> lines = new ArrayList<>();
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:113:        lines.add(new LineData("L12", idx.get(1), idx.get(2), Rline));
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:114:        lines.add(new LineData("L23", idx.get(2), idx.get(3), Rline));
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:116:        List<SubstationData> subs = new ArrayList<>();
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:117:        subs.add(new SubstationData("SS1", idx.get(1), idx.get(0), Emf, Rint, /*allowBackfeed=*/false));
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:118:        subs.add(new SubstationData("SS2", idx.get(2), idx.get(0), Emf, Rint, /*allowBackfeed=*/false));
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:119:        subs.add(new SubstationData("SS3", idx.get(3), idx.get(0), Emf, Rint, /*allowBackfeed=*/false));
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:121:        List<TrainData> trains = new ArrayList<>();
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:122:        trains.add(new TrainData("Tregen", idx.get(1), idx.get(2), regenW, imax, vmin, vmax));
+src\test\java\org\dcsim\unit\DiodeRegenSolverTests.java:124:        return new DcNet(
+src\test\java\org\dcsim\unit\DiodeSubstationStampTests.java:36:        RealVector V = new ArrayRealVector(new double[]{ E + 50.0, 0.0 });
+src\test\java\org\dcsim\unit\DiodeSubstationStampTests.java:37:        RealMatrix G = new Array2DRowRealMatrix(2, 2);
+src\test\java\org\dcsim\unit\DiodeSubstationStampTests.java:38:        RealVector J = new ArrayRealVector(2);
+src\test\java\org\dcsim\unit\DiodeSubstationStampTests.java:40:        SubstationData ss = new SubstationData("hej!", a, b, E, R, allowBackfeed);
+src\test\java\org\dcsim\unit\DiodeSubstationStampTests.java:63:        RealVector V = new ArrayRealVector(new double[]{ E - 50.0, 0.0 });
+src\test\java\org\dcsim\unit\DiodeSubstationStampTests.java:64:        RealMatrix G = new Array2DRowRealMatrix(2, 2);
+src\test\java\org\dcsim\unit\DiodeSubstationStampTests.java:65:        RealVector J = new ArrayRealVector(2);
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderOrderingTest.java:18:                new DynamicLineTopologyBuilder.NodePos(2, 1, 1500),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderOrderingTest.java:19:                new DynamicLineTopologyBuilder.NodePos(1, 1, 0),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderOrderingTest.java:20:                new DynamicLineTopologyBuilder.NodePos(3, 1, 3000),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderOrderingTest.java:21:                new DynamicLineTopologyBuilder.NodePos(99, 1, 2000)
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderOrderingTest.java:50:        Set<Long> s = new LinkedHashSet<>();
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:23:                new DynamicLineTopologyBuilder.NodePos(20, 1, 1000),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:24:                new DynamicLineTopologyBuilder.NodePos(10, 1, 0),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:25:                new DynamicLineTopologyBuilder.NodePos(99, 1, 200)
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:51:                new DynamicLineTopologyBuilder.NodePos(10, 1, 0),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:52:                new DynamicLineTopologyBuilder.NodePos(99, 1, 200),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:53:                new DynamicLineTopologyBuilder.NodePos(20, 1, 1000)
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:57:                new DynamicLineTopologyBuilder.NodePos(10, 1, 0),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:58:                new DynamicLineTopologyBuilder.NodePos(99, 1, 800),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:59:                new DynamicLineTopologyBuilder.NodePos(20, 1, 1000)
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:97:                new DynamicLineTopologyBuilder.NodePos(10, 1, 0),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:98:                new DynamicLineTopologyBuilder.NodePos(99, 1, 500),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:100:                new DynamicLineTopologyBuilder.NodePos(30, 2, 0),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:101:                new DynamicLineTopologyBuilder.NodePos(31, 2, 100),
+src\test\java\org\dcsim\unit\electric\DynamicLineTopologyBuilderTest.java:102:                new DynamicLineTopologyBuilder.NodePos(32, 2, 200)
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TAnchorNearSubstationTest.java:67:        File f = new File("project/3subs1train/scenario1/application.conf");
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TAnchorNearSubstationTest.java:80:        List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TAnchorNearSubstationTest.java:83:            nodePos.add(new DynamicLineTopologyBuilder.NodePos(
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TAnchorNearSubstationTest.java:112:        Set<Long> s = new LinkedHashSet<>();
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TAnchorOnSubstationTest.java:54:        File f = new File("project/3subs1train/scenario1/application.conf");
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TAnchorOnSubstationTest.java:68:        List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TAnchorOnSubstationTest.java:71:            nodePos.add(new DynamicLineTopologyBuilder.NodePos(
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TAnchorOnSubstationTest.java:88:        Set<Long> s = new LinkedHashSet<>();
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TInvariantsTest.java:45:        File f = new File("project/3subs1train/scenario1/application.conf");
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TInvariantsTest.java:64:        List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TInvariantsTest.java:67:            nodePos.add(new DynamicLineTopologyBuilder.NodePos(n.getId(), n.getTrackId(), n.getPositionM()));
+src\test\java\org\dcsim\unit\electric\DynamicTopology3S1TInvariantsTest.java:99:        Set<Long> s = new LinkedHashSet<>();
+src\test\java\org\dcsim\unit\electric\SolverDeterminism3S1TTest.java:56:        TrainLoad tl = new TrainLoad("TrainLoadSynthetic", trainNodeId, gnd);
+src\test\java\org\dcsim\unit\electric\SolverDeterminism3S1TTest.java:67:        File f = new File("project/3subs1train/scenario1/application.conf");
+src\test\java\org\dcsim\unit\electric\SolverDeterminism3S1TTest.java:79:        List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
+src\test\java\org\dcsim\unit\electric\SolverDeterminism3S1TTest.java:82:            nodePos.add(new DynamicLineTopologyBuilder.NodePos(n.getId(), n.getTrackId(), n.getPositionM()));
+src\test\java\org\dcsim\unit\electric\SolverKcl3S1TTest.java:86:        File f = new File("project/3subs1train/scenario1/application.conf");
+src\test\java\org\dcsim\unit\electric\SolverKcl3S1TTest.java:98:        List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
+src\test\java\org\dcsim\unit\electric\SolverKcl3S1TTest.java:101:            nodePos.add(new DynamicLineTopologyBuilder.NodePos(n.getId(), n.getTrackId(), n.getPositionM()));
+src\test\java\org\dcsim\unit\electric\SolverLosses3S1TTest.java:61:        File f = new File("project/3subs1train/scenario1/application.conf");
+src\test\java\org\dcsim\unit\electric\SolverLosses3S1TTest.java:73:        List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
+src\test\java\org\dcsim\unit\electric\SolverLosses3S1TTest.java:76:            nodePos.add(new DynamicLineTopologyBuilder.NodePos(n.getId(), n.getTrackId(), n.getPositionM()));
+src\test\java\org\dcsim\unit\electric\SolverTrainPowerSanity3S1TTest.java:51:        RealMatrix Gt = new Array2DRowRealMatrix(n, n);
+src\test\java\org\dcsim\unit\electric\SolverTrainPowerSanity3S1TTest.java:52:        RealVector Jt = new ArrayRealVector(n);
+src\test\java\org\dcsim\unit\electric\SolverTrainPowerSanity3S1TTest.java:96:        TrainLoad tl = new TrainLoad("TrainLoadSynthetic", trainNodeId, gnd);
+src\test\java\org\dcsim\unit\electric\SolverTrainPowerSanity3S1TTest.java:108:        File f = new File("project/3subs1train/scenario1/application.conf");
+src\test\java\org\dcsim\unit\electric\SolverTrainPowerSanity3S1TTest.java:120:        List<DynamicLineTopologyBuilder.NodePos> nodePos = new ArrayList<>();
+src\test\java\org\dcsim\unit\electric\SolverTrainPowerSanity3S1TTest.java:123:            nodePos.add(new DynamicLineTopologyBuilder.NodePos(n.getId(), n.getTrackId(), n.getPositionM()));
+src\test\java\org\dcsim\unit\IslandSeparationMiniTests.java:58:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\unit\IslandSeparationMiniTests.java:61:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\unit\IslandSeparationMiniTests.java:62:        gm.addNode(new Node(1, Real.fromDouble(10.0), "A1"));
+src\test\java\org\dcsim\unit\IslandSeparationMiniTests.java:63:        gm.addNode(new Node(2, Real.fromDouble(20.0), "B1"));
+src\test\java\org\dcsim\unit\IslandsMiniTests.java:23:        Map<Integer,Integer> idx = new HashMap<>();
+src\test\java\org\dcsim\unit\IslandsMiniTests.java:25:        List<LineData> lines = new ArrayList<>();            // no lines
+src\test\java\org\dcsim\unit\IslandsMiniTests.java:26:        List<SubstationData> subs = new ArrayList<>();
+src\test\java\org\dcsim\unit\IslandsMiniTests.java:27:        subs.add(new SubstationData("SS", 1, 0, E, Rint, allowBackfeed));
+src\test\java\org\dcsim\unit\IslandsMiniTests.java:28:        List<TrainData> trains = new ArrayList<>();
+src\test\java\org\dcsim\unit\IslandsMiniTests.java:29:        return new DcNet(n, gnd, nodeIds, idx, lines, subs, trains);
+src\test\java\org\dcsim\unit\IslandsMiniTests.java:38:        RealVector V = new ArrayRealVector(new double[]{0.0, 800.0});
+src\test\java\org\dcsim\unit\IslandsMiniTests.java:49:        RealVector V = new ArrayRealVector(new double[]{0.0, 950.0});
+src\test\java\org\dcsim\unit\IslandsMiniTests.java:60:        RealVector V = new ArrayRealVector(new double[]{0.0, 1100.0});
+src\test\java\org\dcsim\unit\IslandsPureTopologyTests.java:21:        RealVector V = new ArrayRealVector(net.n());
+src\test\java\org\dcsim\unit\IslandsPureTopologyTests.java:42:        RealVector V = new ArrayRealVector(net.n());
+src\test\java\org\dcsim\unit\logging\TrainVoltageLongtableLoggingTest.java:38:        GridModel<Real> model = new GridModel<>(GND);
+src\test\java\org\dcsim\unit\logging\TrainVoltageLongtableLoggingTest.java:39:        model.addNode(new Node(SUB, Real.fromDouble(0), "0+0"));
+src\test\java\org\dcsim\unit\logging\TrainVoltageLongtableLoggingTest.java:40:        model.addNode(new Node(TRAIN_NODE, Real.fromDouble(0), "0+200"));
+src\test\java\org\dcsim\unit\logging\TrainVoltageLongtableLoggingTest.java:41:        model.addNode(new Node(GND, Real.fromDouble(0), "0+0"));   // <-- VIKTIGT
+src\test\java\org\dcsim\unit\logging\TrainVoltageLongtableLoggingTest.java:43://        model.addDevice(new Substation("S1", SUB, SUB, GND,
+src\test\java\org\dcsim\unit\logging\TrainVoltageLongtableLoggingTest.java:46:        model.addDevice(new Substation(
+src\test\java\org\dcsim\unit\logging\TrainVoltageLongtableLoggingTest.java:70:        TrainLoad trainLoad = new TrainLoad("Train1", TRAIN_NODE, GND);
+src\test\java\org\dcsim\unit\logging\TrainVoltageLongtableLoggingTest.java:81:                                new DynamicLineTopologyBuilder.NodePos(SUB, trackId, 0),
+src\test\java\org\dcsim\unit\logging\TrainVoltageLongtableLoggingTest.java:82:                                new DynamicLineTopologyBuilder.NodePos(TRAIN_NODE, trackId, 200)
+src\test\java\org\dcsim\unit\logging\TrainVoltageLongtableLoggingTest.java:122:        LongTableWriter lw = new LongTableWriter(
+src\test\java\org\dcsim\unit\logging\TrainVoltageLongtableLoggingTest.java:133:        RealVector V = DcIterativeSolver.solveVoltages(net, new ArrayRealVector(net.n(), emf_V));
+src\test\java\org\dcsim\unit\MiniMiniSolverTests.java:43:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\unit\MiniMiniSolverTests.java:44:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\unit\MiniMiniSolverTests.java:45:        gm.addNode(new Node(1, Real.fromDouble(10.0), "ND1"));
+src\test\java\org\dcsim\unit\MiniMiniSolverTests.java:65:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\unit\MiniMiniSolverTests.java:66:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\unit\MiniMiniSolverTests.java:67:        gm.addNode(new Node(1, Real.fromDouble(10.0), "ND1"));
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:18: *   GridResult res = solver.solve(new MiniModelBuilder()
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:27:    private final Map<Integer, Node<Real>> nodes = new LinkedHashMap<>();
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:28:    private final List<Device<Real>> devs = new ArrayList<>();
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:29:    private final Set<String> deviceIds = new HashSet<>();
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:35:        nodes.put(id, new Node<>(id, Real.ZERO, "0 0+00" + id));
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:42:        nodes.put(id, new Node<>(id, Real.ZERO, positionKmPlusM));
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:57:        // Signatur enligt din snutt: new Line(a,b,R,"id","u",1000)
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:58:        devs.add(new Line(a, b, fromDouble(R_ohm), id, "u", 1000));
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:66:        Substation ss = new Substation(id, a, b, // device-id, from, to
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:85:        TrainLoad tr = new TrainLoad(id, a, b);
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:97:            throw new IllegalStateException("Ground node not set. Call ground(id) before build().");
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:99:            throw new IllegalStateException("Ground node " + groundId + " was not declared via node().");
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:101:        GridModel<Real> m = new GridModel<>(groundId);
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:118:            throw new IllegalArgumentException("Node " + id + " already exists.");
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:123:            throw new IllegalStateException(what + " references missing node(s): " + a + ", " + b +
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:129:            throw new IllegalArgumentException(kind + " id must be non-empty.");
+src\test\java\org\dcsim\unit\MiniModelBuilder.java:131:            throw new IllegalArgumentException(kind + " id already exists: " + id);
+src\test\java\org\dcsim\unit\motor_throttled_near_zero_by_vmin.java:16:        DummyPort port = new DummyPort(610.0); // nära vmin
+src\test\java\org\dcsim\unit\motor_throttled_near_zero_by_vmin.java:17:        SimpleTrainController ctrl = new SimpleTrainController(0.10); // 10% throttle-band
+src\test\java\org\dcsim\unit\motor_throttled_near_zero_by_vmin.java:18:        TrainDevice train = new TrainDevice(port, ctrl, vmin, vmax);
+src\test\java\org\dcsim\unit\NetBuilderMiniTests.java:48:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\unit\NetBuilderMiniTests.java:49:        gm.addNode(new Node(0, Real.fromDouble(0.0), "GND"));
+src\test\java\org\dcsim\unit\NetBuilderMiniTests.java:50:        gm.addNode(new Node(1, Real.fromDouble(10.0), "ND1"));
+src\test\java\org\dcsim\unit\NetBuilderToDcNetTests.java:103:                new SubstationData("X", 1, 0, 800.0, 0.01, false)));
+src\test\java\org\dcsim\unit\NetBuilderToDcNetTests.java:105:                new TrainData("T", 2, 0, -1.0, 1000.0, 500.0, 1000.0)));
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:57:        List<TrackRow> candidates = new ArrayList<>();
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:67:                throw new IllegalArgumentException("Ambiguous junction at pos_m=" + run.pos_m
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:83:            throw new IllegalArgumentException("Run pos out of track range: pos_m=" + run.pos_m);
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:88:            return new JoinResult(left.section, run.pos_m, bisPos, left, right);
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:99:        return new JoinResult(sec, run.pos_m, bisPos, left, right);
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:109:                new TrackRow(1,    0, 0,   0, "1-0"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:110:                new TrackRow(1,  500, 0, 500, "1-1"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:111:                new TrackRow(1, 2000, 2,   0, "1-2"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:112:                new TrackRow(1, 3000, 3,   0, "1-3"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:113:                new TrackRow(1, 4000, 4,   0, "1-4"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:116:                new TrackRow(2, 2500, 2, 500, "2-6"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:117:                new TrackRow(2, 3000, 3,   0, "2-7"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:118:                new TrackRow(2, 3500, 3, 500, "2-8"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:119:                new TrackRow(2, 4000, 4,   0, "2-9"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:120:                new TrackRow(2, 4500, 4, 500, "2-10"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:123:                new TrackRow(3, 3500, 3, 500, "3-12"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:124:                new TrackRow(3, 3000, 3,   0, "3-11"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:125:                new TrackRow(3, 2500, 2, 500, "3-10"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:126:                new TrackRow(3, 2000, 2,   0, "3-9"),
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:127:                new TrackRow(3, 1500, 1, 500, "3-8")
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:138:        JoinResult r = join(track, new RunRow(1, 2250));
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:152:            join(track, new RunRow(null, 2500));
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:164:        JoinResult r2 = join(track, new RunRow(2, 2500));
+src\test\java\org\dcsim\unit\preprocessing\TrackRunCoordinateJoinTest.java:169:        JoinResult r3 = join(track, new RunRow(3, 2500));
+src\test\java\org\dcsim\unit\ProfilesFixture.java:20:        Path csv = tmp.newFile("profiles.csv").toPath();
+src\test\java\org\dcsim\unit\ProfilesFixture.java:34:        Path csv = tmp.newFile("profiles_mixed.csv").toPath();
+src\test\java\org\dcsim\unit\regen_blocked_above_vmax_with_diode_substation.java:23:        DummyPort port = new DummyPort(905.0); // över vmax
+src\test\java\org\dcsim\unit\regen_blocked_above_vmax_with_diode_substation.java:24:        SimpleTrainController ctrl = new SimpleTrainController(0.10);
+src\test\java\org\dcsim\unit\regen_blocked_above_vmax_with_diode_substation.java:25:        TrainDevice train = new TrainDevice(port, ctrl, vmin, vmax);
+src\test\java\org\dcsim\unit\regen_blocked_above_vmax_with_diode_substation.java:36:        MeasuringSubstation diode = new MeasuringSubstation();
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:18:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:69:        try (java.io.BufferedReader br = java.nio.file.Files.newBufferedReader(profilesCsv)) {
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:75:                java.util.List<Double> nums = new java.util.ArrayList<>();
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:91:        final java.util.Map<Integer,Integer> idxById = new java.util.HashMap<>();
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:99:        java.util.List<org.dcsim.solver.api.LineData> lines = new java.util.ArrayList<>();
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:100:        lines.add(new org.dcsim.solver.api.LineData("L12", 1, 2, R_LINE));
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:101:        lines.add(new org.dcsim.solver.api.LineData("L23", 2, 3, R_LINE));
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:103:        java.util.List<org.dcsim.solver.api.SubstationData> subs = new java.util.ArrayList<>();
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:104:        subs.add(new org.dcsim.solver.api.SubstationData("SS1", 1, 0, E, RINT, BACKFEED));
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:105://        subs.add(new org.dcsim.solver.api.SubstationData("SS2", 2, 0, E, RINT, BACKFEED));
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:106://        subs.add(new org.dcsim.solver.api.SubstationData("SS3", 3, 0, E, RINT, BACKFEED));
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:113:        java.util.List<org.dcsim.solver.api.TrainData> trains = new java.util.ArrayList<>();
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:114:        trains.add(new org.dcsim.solver.api.TrainData("Tmotor", 2, 0, motorW, IMAX, CUT, VMAX));
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:115:        trains.add(new org.dcsim.solver.api.TrainData("Tregen", 3, 0, regenW, IMAX, CUT, VMAX));
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:117:        org.dcsim.solver.api.DcNet net = new org.dcsim.solver.api.DcNet(
+src\test\java\org\dcsim\unit\ScenarioSmokeTests.java:152:        return new ScenarioResult(V, pSubSum, pLineSum);
+src\test\java\org\dcsim\unit\solver\build\EndToEndDynamicLinesPositionEffectTest.java:42:        RealVector Vnear = DcIterativeSolver.solveVoltages(nearNet, new ArrayRealVector(nearNet.n(), emfSeed));
+src\test\java\org\dcsim\unit\solver\build\EndToEndDynamicLinesPositionEffectTest.java:52:        RealVector Vfar = DcIterativeSolver.solveVoltages(farNet, new ArrayRealVector(farNet.n(), emfSeed));
+src\test\java\org\dcsim\unit\solver\build\EndToEndDynamicLinesPositionEffectTest.java:65:        nearModel = new GridModel<>(GND);
+src\test\java\org\dcsim\unit\solver\build\EndToEndDynamicLinesPositionEffectTest.java:68:        addNode(nearModel, new Node(GND, Real.fromDouble(0.0), "0+0"));
+src\test\java\org\dcsim\unit\solver\build\EndToEndDynamicLinesPositionEffectTest.java:71:        addNode(nearModel, new Node(SUB, Real.fromDouble(0.0), "0+0"));
+src\test\java\org\dcsim\unit\solver\build\EndToEndDynamicLinesPositionEffectTest.java:72:        addNode(nearModel, new Node(TRAIN, Real.fromDouble(0.0), posString));
+src\test\java\org\dcsim\unit\solver\build\EndToEndDynamicLinesPositionEffectTest.java:76:        addDevice(nearModel, new DcLine(TRAIN, GND, Real.fromDouble(rLoad_ohm)));
+src\test\java\org\dcsim\unit\solver\build\EndToEndDynamicLinesPositionEffectTest.java:79:        Substation ss = new Substation("SS", SUB, GND, 0, Real.fromDouble(750.0),
+src\test\java\org\dcsim\unit\solver\build\EndToEndDynamicLinesPositionEffectTest.java:84:        TrainLoad tl = new TrainLoad("T", TRAIN, GND);
+src\test\java\org\dcsim\unit\solver\build\EndToEndDynamicLinesPositionEffectTest.java:94:                        new DynamicLineTopologyBuilder.NodePos(SUB, trackId, 0),
+src\test\java\org\dcsim\unit\solver\build\EndToEndDynamicLinesPositionEffectTest.java:95:                        new DynamicLineTopologyBuilder.NodePos(TRAIN, trackId, length)
+src\test\java\org\dcsim\unit\solver\build\MatrixBuilderTest.java:33:        DcSystem sys = MatrixBuilder.build(net, new double[net.n()]);
+src\test\java\org\dcsim\unit\solver\build\MatrixBuilderTest.java:65:        DcSystem sys = MatrixBuilder.build(net, new double[net.n()]);
+src\test\java\org\dcsim\unit\solver\build\MatrixBuilderTest.java:101:        throw new AssertionError("Cannot access DcSystem.G. Add getG()/G() to DcSystem.");
+src\test\java\org\dcsim\unit\solver\build\MatrixBuilderTest.java:108:        throw new AssertionError("Cannot access DcSystem.J. Add getJ()/J() to DcSystem.");
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:39:        GridModel<Real> near = new GridModel<>(GND);
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:41:        near.addNode(new Node(GND, Real.fromDouble(0), "0+0"));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:42:        near.addNode(new Node(SUB1, Real.fromDouble(0), "0+0"));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:43:        near.addNode(new Node(TRAIN1, Real.fromDouble(0), "0+200"));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:45:        near.addNode(new Node(SUB2, Real.fromDouble(0), "0+0"));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:46:        near.addNode(new Node(TRAIN2, Real.fromDouble(0), "0+200"));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:48:        near.addDevice(new Substation("S1", SUB1, GND, GND,
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:50:        near.addDevice(new Substation("S2", SUB2, GND, GND,
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:54:        near.addDevice(new DcLine(TRAIN1, GND, Real.fromDouble(rLoad)));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:59:                                new DynamicLineTopologyBuilder.NodePos(SUB1, TRACK1, 0),
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:60:                                new DynamicLineTopologyBuilder.NodePos(TRAIN1, TRACK1, 200),
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:62:                                new DynamicLineTopologyBuilder.NodePos(SUB2, TRACK2, 0),
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:63:                                new DynamicLineTopologyBuilder.NodePos(TRAIN2, TRACK2, 200)
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:71:                netNear, new ArrayRealVector(netNear.n(), emf_V)
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:78:        GridModel<Real> far = new GridModel<>(GND);
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:80:        far.addNode(new Node(GND, Real.fromDouble(0), "0+0"));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:81:        far.addNode(new Node(SUB1, Real.fromDouble(0), "0+0"));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:82:        far.addNode(new Node(TRAIN1, Real.fromDouble(0), "0+800"));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:84:        far.addNode(new Node(SUB2, Real.fromDouble(0), "0+0"));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:85:        far.addNode(new Node(TRAIN2, Real.fromDouble(0), "0+200"));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:87:        far.addDevice(new Substation("S1", SUB1, GND, GND,
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:89:        far.addDevice(new Substation("S2", SUB2, GND, GND,
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:92:        far.addDevice(new DcLine(TRAIN1, GND, Real.fromDouble(rLoad)));
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:97:                                new DynamicLineTopologyBuilder.NodePos(SUB1, TRACK1, 0),
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:98:                                new DynamicLineTopologyBuilder.NodePos(TRAIN1, TRACK1, 800),
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:100:                                new DynamicLineTopologyBuilder.NodePos(SUB2, TRACK2, 0),
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:101:                                new DynamicLineTopologyBuilder.NodePos(TRAIN2, TRACK2, 200)
+src\test\java\org\dcsim\unit\solver\build\MultiTrackNoLeakageEndToEndTest.java:109:                netFar, new ArrayRealVector(netFar.n(), emf_V)
+src\test\java\org\dcsim\unit\solver\build\NetBuilderDynamicLinesIncludesSubstationsTest.java:27:        GridModel<Real> model = new GridModel<>(GND);
+src\test\java\org\dcsim\unit\solver\build\NetBuilderDynamicLinesIncludesSubstationsTest.java:31:        model.addNode(new Node<>(SUB,   Real.ZERO, "SUB"));
+src\test\java\org\dcsim\unit\solver\build\NetBuilderDynamicLinesIncludesSubstationsTest.java:32:        model.addNode(new Node<>(TRAIN, Real.ZERO, "TRAIN"));
+src\test\java\org\dcsim\unit\solver\build\NetBuilderDynamicLinesIncludesSubstationsTest.java:33:        model.addNode(new Node<>(GND,   Real.ZERO, "GND"));
+src\test\java\org\dcsim\unit\solver\build\NetBuilderDynamicLinesIncludesSubstationsTest.java:36:        model.addDevice(new Substation(
+src\test\java\org\dcsim\unit\solver\build\NetBuilderDynamicLinesIncludesSubstationsTest.java:46:        TrainLoad tr = new TrainLoad("Train1", TRAIN, GND);
+src\test\java\org\dcsim\unit\solver\build\NetBuilderDynamicLinesIncludesSubstationsTest.java:54:        List<org.dcsim.electric.Device<Real>> dyn = new ArrayList<>();
+src\test\java\org\dcsim\unit\solver\build\NetBuilderDynamicLinesIncludesSubstationsTest.java:55:        dyn.add(new DcLine(SUB, TRAIN, Real.fromDouble(2.0)));
+src\test\java\org\dcsim\unit\solver\build\NetBuilderUsesDynamicLinesTest.java:28:        GridModel<Real> model = new GridModel<>(GND);
+src\test\java\org\dcsim\unit\solver\build\NetBuilderUsesDynamicLinesTest.java:32:        model.addNode(new Node(GND, Real.fromDouble(0.0), "0+0"));
+src\test\java\org\dcsim\unit\solver\build\NetBuilderUsesDynamicLinesTest.java:33:        model.addNode(new Node(SUB, Real.fromDouble(0.0), "0+0"));
+src\test\java\org\dcsim\unit\solver\build\NetBuilderUsesDynamicLinesTest.java:34:        model.addNode(new Node(TRAIN, Real.fromDouble(0.0), "0+200"));
+src\test\java\org\dcsim\unit\solver\build\NetBuilderUsesDynamicLinesTest.java:39:                new DcLine(SUB, TRAIN, Real.fromDouble(R))
+src\test\java\org\dcsim\unit\solver\build\NetBuilderValidTrainLoadMappingTest.java:24:        GridModel<Real> model = new GridModel<>(GND); // ADAPT: use your real ctor/factory
+src\test\java\org\dcsim\unit\solver\build\NetBuilderValidTrainLoadMappingTest.java:28:        model.addNode(new Node<>(GND, Real.fromDouble(0), /*positionM*/"1 0+0"));      // ADAPT Node ctor
+src\test\java\org\dcsim\unit\solver\build\NetBuilderValidTrainLoadMappingTest.java:29:        model.addNode(new Node<>(TRAIN, Real.fromDouble(0), /*positionM*/" 0+1000")); // ADAPT Node ctor
+src\test\java\org\dcsim\unit\solver\build\NetBuilderValidTrainLoadMappingTest.java:32:        TrainLoad tl = new TrainLoad("Train1", TRAIN, GND); // ADAPT ctor if needed
+src\test\java\org\dcsim\unit\solver\build\StraightTrackBuilderTest.java:82:        for (int nNodes : new int[]{2, 3, 5, 10}) {
+src\test\java\org\dcsim\unit\solver\build\SubstationMustHaveDistinctTerminalsTest.java:19:        GridModel<Real> model = new GridModel<>(GND);
+src\test\java\org\dcsim\unit\solver\build\SubstationMustHaveDistinctTerminalsTest.java:22:        model.addNode(new Node<>(SUB, Real.ZERO, "SUB"));
+src\test\java\org\dcsim\unit\solver\build\SubstationMustHaveDistinctTerminalsTest.java:23:        model.addNode(new Node<>(GND, Real.ZERO, "GND"));
+src\test\java\org\dcsim\unit\solver\build\SubstationMustHaveDistinctTerminalsTest.java:26:        model.addDevice(new Substation(
+src\test\java\org\dcsim\unit\solver\impl\SolverPositionEffectLinearLoadTest.java:43:                new SubCfg("S1", SUB, emf_V, rint_ohm, true)
+src\test\java\org\dcsim\unit\solver\impl\SolverPositionEffectLinearLoadTest.java:68:        RealVector V0near = new ArrayRealVector(near.n(), emf_V);
+src\test\java\org\dcsim\unit\solver\impl\SolverPositionEffectLinearLoadTest.java:69:        RealVector V0far = new ArrayRealVector(far.n(), emf_V);
+src\test\java\org\dcsim\unit\solver\impl\SolverPositionEffectLinearLoadTest.java:84:    private static DcNet rebuildWithLines(DcNet base, List<LineData> newLines) {
+src\test\java\org\dcsim\unit\solver\impl\SolverPositionEffectLinearLoadTest.java:85:        return new DcNet(
+src\test\java\org\dcsim\unit\solver\impl\SolverPositionEffectLinearLoadTest.java:90:                new ArrayList<>(newLines),
+src\test\java\org\dcsim\unit\solver\impl\SolverPositionEffectLinearLoadTest.java:98:        return new LineData("id", a, b, rOhm);
+src\test\java\org\dcsim\unit\solver\impl\TrainVoltageLoggedWhenTrainExistsTest.java:32:        GridModel<Real> model = new GridModel<>(GND);
+src\test\java\org\dcsim\unit\solver\impl\TrainVoltageLoggedWhenTrainExistsTest.java:35:        model.addNode(new Node<>(SUB,   Real.ZERO, "SUB"));
+src\test\java\org\dcsim\unit\solver\impl\TrainVoltageLoggedWhenTrainExistsTest.java:36:        model.addNode(new Node<>(TRAIN, Real.ZERO, "TRAIN"));
+src\test\java\org\dcsim\unit\solver\impl\TrainVoltageLoggedWhenTrainExistsTest.java:37:        model.addNode(new Node<>(GND,   Real.ZERO, "GND"));
+src\test\java\org\dcsim\unit\solver\impl\TrainVoltageLoggedWhenTrainExistsTest.java:40:        model.addDevice(new Substation(
+src\test\java\org\dcsim\unit\solver\impl\TrainVoltageLoggedWhenTrainExistsTest.java:50:        TrainLoad tr = new TrainLoad("Train1", TRAIN, GND);
+src\test\java\org\dcsim\unit\solver\impl\TrainVoltageLoggedWhenTrainExistsTest.java:58:        List<org.dcsim.electric.Device<Real>> dyn = new ArrayList<>();
+src\test\java\org\dcsim\unit\solver\impl\TrainVoltageLoggedWhenTrainExistsTest.java:59:        dyn.add(new DcLine(SUB, TRAIN, Real.fromDouble(2.0)));
+src\test\java\org\dcsim\unit\solver\impl\TrainVoltageLoggedWhenTrainExistsTest.java:67:        LongTableWriter w = new LongTableWriter(
+src\test\java\org\dcsim\unit\SolverMiniTests.java:42:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\unit\SolverMiniTests.java:43:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\unit\SolverMiniTests.java:44:        gm.addNode(new Node(1, Real.fromDouble(10.0), "ND1"));
+src\test\java\org\dcsim\unit\SolveStaticMiniTests.java:19:        var gm = new org.dcsim.electric.GridModel<>(0);
+src\test\java\org\dcsim\unit\StampMiniTests.java:36:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\unit\StampMiniTests.java:37:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\unit\StampMiniTests.java:38:        gm.addNode(new Node(1, Real.fromDouble(10.0), "ND1"));
+src\test\java\org\dcsim\unit\StampMiniTests.java:39:        gm.addNode(new Node(2, Real.fromDouble(20.0), "MID"));
+src\test\java\org\dcsim\unit\StampMiniTests.java:56:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\unit\StampMiniTests.java:57:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\unit\StampMiniTests.java:58:        gm.addNode(new Node(1, Real.fromDouble(10.0), "ND1"));
+src\test\java\org\dcsim\unit\ThreeSubsProfilesTest.java:23:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\unit\ThreeSubsProfilesTest.java:28:        Path csv = tmp.newFile("profiles.csv").toPath();
+src\test\java\org\dcsim\unit\TrainStampTests.java:58:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\unit\TrainStampTests.java:59:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\unit\TrainStampTests.java:60:        gm.addNode(new Node(1, Real.fromDouble(10.0), "T1"));
+src\test\java\org\dcsim\unit\TrainStampTests.java:67:        // gm.addDevice(new Train(/* setpoints incl. vmin */));
+src\test\java\org\dcsim\unit\TrainStampTests.java:90:        var gm = new GridModel<>(0);
+src\test\java\org\dcsim\unit\TrainStampTests.java:91:        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
+src\test\java\org\dcsim\unit\TrainStampTests.java:92:        gm.addNode(new Node(1, Real.fromDouble(10.0), "Tregen"));
+src\test\java\org\dcsim\utils\PositionUtilsParseTest.java:13:        assertArrayEquals(new int[]{3, 13, 5}, p);
+src\test\java\org\dcsim\utils\PositionUtilsParseTest.java:16:    @Ignore("Legacy format '3 12.345 km' is no longer supported. New spec is 'km+m' with truncated meters.")
+src\test\java\org\dcsim\utils\PositionUtilsParseTest.java:20:        assertArrayEquals(new int[]{3, 12, 345}, p);
+src\test\java\org\dcsim\utils\PositionUtilsParseTest.java:31:        PositionUtils.TrackPosition tp = new PositionUtils.TrackPosition(1, 5, 1000.0).normalized();
+src\test\java\org\dcsim\utils\SectionChainAddDistanceTest.java:13:                new PositionUtils.Section(10, 3_000.0),
+src\test\java\org\dcsim\utils\SectionChainAddDistanceTest.java:14:                new PositionUtils.Section(11, 1_500.0),
+src\test\java\org\dcsim\utils\SectionChainAddDistanceTest.java:15:                new PositionUtils.Section(12, 500.0)
+src\test\java\org\dcsim\utils\SectionChainAddDistanceTest.java:17:        return new PositionUtils.SectionChain(secs);
+src\test\java\org\dcsim\utils\SectionChainRoundTripTest.java:13:                new PositionUtils.Section(1, 2_500.0),
+src\test\java\org\dcsim\utils\SectionChainRoundTripTest.java:14:                new PositionUtils.Section(2, 1_000.0),
+src\test\java\org\dcsim\utils\SectionChainRoundTripTest.java:15:                new PositionUtils.Section(3, 3_400.0)
+src\test\java\org\dcsim\utils\SectionChainRoundTripTest.java:17:        return new PositionUtils.SectionChain(secs);
+src\test\java\org\dcsim\utils\SectionChainRoundTripTest.java:23:        PositionUtils.TrackPosition tp = new PositionUtils.TrackPosition(1, 1, 200.0);
+src\test\java\org\dcsim\utils\SectionChainRoundTripTest.java:31:        PositionUtils.TrackPosition tp = new PositionUtils.TrackPosition(2, 0, 300.0);
+src\test\java\org\dcsim\validation\A1Generator.java:30:        try (BufferedWriter w = Files.newBufferedWriter(manifest, StandardCharsets.UTF_8)) {
+src\test\java\org\dcsim\validation\A1Generator.java:106:        throw new IllegalArgumentException("Unknown mutation: " + mutation);
+src\test\java\org\dcsim\validation\A1Generator.java:123:        if (lines.isEmpty()) throw new IllegalArgumentException("Empty cases csv: " + file);
+src\test\java\org\dcsim\validation\A1Generator.java:125:        List<Map<String, String>> out = new ArrayList<>();
+src\test\java\org\dcsim\validation\A1Generator.java:131:            Map<String, String> m = new HashMap<>();
+src\test\java\org\dcsim\validation\A1SchemaMismatchTest.java:17:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\validation\A1SchemaMismatchTest.java:21:        File dir = tmp.newFolder("A1");
+src\test\java\org\dcsim\validation\A1SchemaMismatchTest.java:22:        File run = new File(dir, "run.csv");
+src\test\java\org\dcsim\validation\A1SchemaMismatchTest.java:28:            new RunCsvReader(Schemas.RUN_V0_9).read(run.toPath());
+src\test\java\org\dcsim\validation\A1_InvalidNetworkTest.java:12:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\validation\A1_InvalidNetworkTest.java:16:        Path wd = tmp.newFolder("A1").toPath();
+src\test\java\org\dcsim\validation\A2OutOfRangePositionTest.java:15:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\validation\A2OutOfRangePositionTest.java:19:        File dir = tmp.newFolder("A2");
+src\test\java\org\dcsim\validation\A2OutOfRangePositionTest.java:20:        File run = new File(dir, "run.csv");
+src\test\java\org\dcsim\validation\A2OutOfRangePositionTest.java:24:        ValidationTestDataFactory factory = new ValidationTestDataFactory();
+src\test\java\org\dcsim\validation\A2OutOfRangePositionTest.java:28:            var rows = new RunCsvReader(Schemas.RUN_V0_9).read(run.toPath());
+src\test\java\org\dcsim\validation\A2OutOfRangePositionTest.java:31:            new RunDomainValidator().validatePositions(rows, trackLengthM);
+src\test\java\org\dcsim\validation\A3RunNormalizationTest.java:18:        List<Map<String, String>> rows = new ArrayList<Map<String, String>>();
+src\test\java\org\dcsim\validation\A3RunNormalizationTest.java:25:        RunInputNormalizer n = new RunInputNormalizer(RunInputNormalizer.Mode.SORT_ON_READ);
+src\test\java\org\dcsim\validation\A3RunNormalizationTest.java:44:        List<Map<String, String>> rows = new ArrayList<Map<String, String>>();
+src\test\java\org\dcsim\validation\A3RunNormalizationTest.java:49:        RunInputNormalizer n = new RunInputNormalizer(RunInputNormalizer.Mode.SORT_ON_READ);
+src\test\java\org\dcsim\validation\A3RunNormalizationTest.java:60:        Map<String, String> m = new HashMap<String, String>();
+src\test\java\org\dcsim\validation\B1a_3S2T_MaterializeTest.java:20:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\validation\B1a_3S2T_MaterializeTest.java:31:        Path tempRoot = tmp.newFolder("work").toPath();
+src\test\java\org\dcsim\validation\B1a_3S2T_MaterializeTest.java:33:        ValidationScenarioLoader loader =
+src\test\java\org\dcsim\validation\B1a_3S2T_MaterializeTest.java:34:                new ValidationScenarioLoader(new ValidationTestDataFactory());
+src\test\java\org\dcsim\validation\B1a_3S2T_MaterializeTest.java:50:                new RunCsvReader(Schemas.RUN_V0_9).read(wd.runCsv());
+src\test\java\org\dcsim\validation\B1a_3S2T_MaterializeTest.java:55:                new RunInputNormalizer(RunInputNormalizer.Mode.SORT_ON_READ)
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:19:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:33:        File temp = tmp.newFolder("work");
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:36:        ValidationTestDataFactory factory = new ValidationTestDataFactory();
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:37:        ValidationScenarioLoader loader = new ValidationScenarioLoader(factory);
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:41:        List<Map<String, String>> runRows = new RunCsvReader(Schemas.RUN_V0_9).read(wd.runCsv());
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:43:                new RunInputNormalizer(RunInputNormalizer.Mode.SORT_ON_READ).normalizeAndValidate(runRows);
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:44:        new RunCsvWriter(Schemas.RUN_V0_9).write(wd.runCsv(), normalized);
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:48:        MatlabRunner matlab = new ProcessMatlabRunner(matlabExe, null);
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:52:        ResultsCsvValidator v = new ResultsCsvValidator();
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:53:        ResultsCsvValidator.Rules rules = new ResultsCsvValidator.Rules(
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:55:                new HashSet<String>(Arrays.asList("time_s")), // adjust if your results don't have time_s
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:56:                new HashSet<String>(Arrays.asList("losses_W", "power_W", "voltage_V")), // checked only if present
+src\test\java\org\dcsim\validation\B1_3S1T_EndToEndMatlabTest.java:58:                new HashSet<String>(Arrays.asList("OK", "INFEASIBLE", "ERROR"))
+src\test\java\org\dcsim\validation\B1_3S2T_BaselineHappyPathTest.java:17:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\validation\B1_3S2T_BaselineHappyPathTest.java:24:        Path tempRoot = tmp.newFolder("work").toPath();
+src\test\java\org\dcsim\validation\B1_3S2T_BaselineHappyPathTest.java:26:        ValidationScenarioLoader loader = new ValidationScenarioLoader(new ValidationTestDataFactory());
+src\test\java\org\dcsim\validation\B3_1S5T_ScaleStabilityTest.java:18:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\validation\B3_1S5T_ScaleStabilityTest.java:25:        Path tempRoot = tmp.newFolder("work").toPath();
+src\test\java\org\dcsim\validation\B3_1S5T_ScaleStabilityTest.java:27:        ValidationScenarioLoader loader = new ValidationScenarioLoader(new ValidationTestDataFactory());
+src\test\java\org\dcsim\validation\C1_TrackSeparationTest.java:18:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\validation\C1_TrackSeparationTest.java:25:        Path tempRoot = tmp.newFolder("work").toPath();
+src\test\java\org\dcsim\validation\C1_TrackSeparationTest.java:27:        ValidationScenarioLoader loader = new ValidationScenarioLoader(new ValidationTestDataFactory());
+src\test\java\org\dcsim\validation\C2_CoupledTracksTest.java:17:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\validation\C2_CoupledTracksTest.java:24:        Path tempRoot = tmp.newFolder("work").toPath();
+src\test\java\org\dcsim\validation\C2_CoupledTracksTest.java:26:        ValidationScenarioLoader loader = new ValidationScenarioLoader(new ValidationTestDataFactory());
+src\test\java\org\dcsim\validation\ResultsCsvValidatorTest.java:19:    public TemporaryFolder tmp = new TemporaryFolder();
+src\test\java\org\dcsim\validation\ResultsCsvValidatorTest.java:23:        File dir = tmp.newFolder("results");
+src\test\java\org\dcsim\validation\ResultsCsvValidatorTest.java:24:        File f = new File(dir, "results_train.csv");
+src\test\java\org\dcsim\validation\ResultsCsvValidatorTest.java:31:        ResultsCsvValidator validator = new ResultsCsvValidator();
+src\test\java\org\dcsim\validation\ResultsCsvValidatorTest.java:33:        ResultsCsvValidator.Rules rules = new ResultsCsvValidator.Rules(
+src\test\java\org\dcsim\validation\ResultsCsvValidatorTest.java:35:                new HashSet<String>(Arrays.asList("time_s", "train_id")),
+src\test\java\org\dcsim\validation\ResultsCsvValidatorTest.java:36:                new HashSet<String>(Arrays.asList("losses_W")), // numeric column to check
+src\test\java\org\dcsim\validation\ResultsCsvValidatorTest.java:38:                new HashSet<String>(Arrays.asList("OK", "INFEASIBLE", "ERROR"))
+src\test\java\org\dcsim\validation\RunCsvPositionsMatchModelExtentTest.java:27:        ScenarioLoader<Real> loader = new DcSimScenarioLoader();
+src\test\java\org\dcsim\validation\RunCsvPositionsMatchModelExtentTest.java:54:        ScenarioLoader<Real> loader = new DcSimScenarioLoader();
+src\test\java\org\dcsim\validation\RunCsvPositionsMatchModelExtentTest.java:65:        RunCsvReader reader = new RunCsvReader(schema);
+src\test\java\org\dcsim\validation\RunDomainValidator.java:16:                throw new ValidationInputException("run.csv invalid position at row="
+src\test\java\org\dcsim\validation\TestScenarioPaths.java:23:                throw new RuntimeException("Failed to resolve test resource path for validationTests", e);
+src\test\java\org\dcsim\validation\TestScenarioPaths.java:29:                Paths.get("project/validationTests"),          // preferred new layout: .../validationTests/<scenarioId>
+src\test\java\org\dcsim\validation\TestScenarioPaths.java:39:        throw new IllegalStateException(
+src\test\java\org\dcsim\validation\ValidationScenarioLoader.java:16:public final class ValidationScenarioLoader {
+src\test\java\org\dcsim\validation\ValidationScenarioLoader.java:20:    public ValidationScenarioLoader(ValidationTestDataFactory factory) {
+src\test\java\org\dcsim\validation\ValidationScenarioLoader.java:38:            throw new IllegalArgumentException("Scenario dir not found: " + scenarioDir);
+src\test\java\org\dcsim\validation\ValidationScenarioLoader.java:89:                    throw new IllegalStateException(
+src\test\java\org\dcsim\validation\ValidationScenarioLoader.java:120:        return new ScenarioWorkdir(
+src\test\java\org\dcsim\validation\ValidationScenarioLoader.java:138:            throw new IllegalArgumentException("Missing required file: " + p);
+src\test\java\org\dcsim\validation\ValidationTestDataFactory.java:19:        throw new UnsupportedOperationException("generateNetworkCsvsFromAppConf not implemented yet");
+src\test\java\org\dcsim\validation\ValidationTestDataFactory.java:25:        RunCsvWriter writer = new RunCsvWriter(runSchema);
+src\test\java\org\dcsim\validation\ValidationTestDataFactory.java:27:        List<Map<String, String>> rows = new ArrayList<>();
+src\test\java\SegmentDynDynTest.java:23:                new Boundary(L, 0.0),
+src\test\java\SegmentDynDynTest.java:24:                new Boundary(A, 30.0),
+src\test\java\SegmentDynDynTest.java:25:                new Boundary(B, 60.0),
+src\test\java\SegmentDynDynTest.java:26:                new Boundary(R, Lm)
+src\test\java\SegmentDynDynTest.java:29:        TestMatrix tm = new TestMatrix(n);
+src\test\java\testUtils\LinearSolver.java:9:        double[][] M = new double[n][n];
+src\test\java\testUtils\LinearSolver.java:10:        double[] rhs = new double[n];
+src\test\java\testUtils\LinearSolver.java:21:            if (best < 1e-14) throw new RuntimeException("Singular matrix");
+src\test\java\testUtils\TestMatrix.java:16:        this.Y = new double[n][n];
+src\test\java\testUtils\TestMatrix.java:17:        this.J = new double[n];
+src\testFixtures\java\org\dcsim\testing\GraphExport.java:36:        Set<Integer> nodes = new LinkedHashSet<>();
+src\testFixtures\java\org\dcsim\testing\GraphExport.java:72:        try (Writer w = Files.newBufferedWriter(outDot)) {
+src\testFixtures\java\org\dcsim\testing\GraphExport.java:126:        try (Writer w = Files.newBufferedWriter(outDot)) {
+src\testFixtures\java\org\dcsim\testing\GraphExport.java:186:                StringBuilder label = new StringBuilder();
+src\testFixtures\java\org\dcsim\testing\PowerAsserts.java:67:            for (String m : new String[]{"toDouble", "doubleValue", "value", "get", "asDouble"}) {
+src\testFixtures\java\org\dcsim\testing\TestHarness.java:32:    public static Builder builder() { return new Builder(); }
+src\testFixtures\java\org\dcsim\testing\TestHarness.java:45:        public TestHarness build() { return new TestHarness(source, solver, graph, verbose); }
+src\testFixtures\java\org\dcsim\testing\TestHarness.java:141:            Process p = new ProcessBuilder("dot", "-Tpng", dotFile.toString(), "-o", pngFile.toString())
