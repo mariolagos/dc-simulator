@@ -5,6 +5,8 @@ import org.dcsim.DcSimScenarioLoader;
 import org.supply.io.export.NetworkInputCsvWriter;
 import org.supply.loader.GridModelLoader;
 import org.supply.model.GridModel;
+import org.supply.track.LoadedTrackModel;
+import org.supply.track.TrackConfigLoader;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,10 +26,17 @@ public final class DcExporter {
 
         GridModel model = new GridModelLoader().load(dcsim);
 
+        LoadedTrackModel trackModel = new TrackConfigLoader().load(dcsim);
+
         Path exportDir = outputRoot != null
                 ? outputRoot
                 : confFile.getParent().resolve("dc/exports");
 
         new NetworkInputCsvWriter().writeAll(model, exportDir);
+
+        // Temporary sanity output during integration
+        System.out.println("Loaded track sections: " + trackModel.getSectionsById().keySet());
+        System.out.println("Loaded track junctions: " + trackModel.getJunctions().size());
+        System.out.println("Loaded track stations: " + trackModel.getStations().size());
     }
 }
