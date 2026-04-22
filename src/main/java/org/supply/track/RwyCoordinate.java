@@ -4,20 +4,18 @@ import java.util.Objects;
 
 /**
  * Railway coordinate.
- *
- * Examples:
- * - "23 12+6 U"
- * - "1 0+100"
  */
 public final class RwyCoordinate {
 
     private final String sectionId;
     private final String positionText;
+    private final int positionM;
     private final String trackId; // optional
 
-    public RwyCoordinate(String sectionId, String positionText, String trackId) {
+    public RwyCoordinate(String sectionId, String positionText, int positionM, String trackId) {
         this.sectionId = Objects.requireNonNull(sectionId, "sectionId");
         this.positionText = Objects.requireNonNull(positionText, "positionText");
+        this.positionM = positionM;
         this.trackId = trackId;
     }
 
@@ -27,6 +25,10 @@ public final class RwyCoordinate {
 
     public String getPositionText() {
         return positionText;
+    }
+
+    public int getPositionM() {
+        return positionM;
     }
 
     public String getTrackId() {
