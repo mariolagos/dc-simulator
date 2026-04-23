@@ -41,4 +41,19 @@ public final class RwyCoordinate {
                 ? sectionId + " " + positionText
                 : sectionId + " " + positionText + " " + trackId;
     }
+
+
+    public static String formatKmShort(int positionM) {
+        int km = positionM / 1000;
+        int meters = positionM % 1000;
+        return km + "+" + meters;
+    }
+
+    public String toDisplayString() {
+        String kmTextShort = formatKmShort(positionM);
+        return trackId == null || trackId.isBlank()
+                ? sectionId + " " + kmTextShort
+                : sectionId + " " + kmTextShort + " " + trackId;
+    }
+
 }

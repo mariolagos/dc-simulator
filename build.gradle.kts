@@ -23,9 +23,19 @@ dependencies {
     // ===== Excel (POI) =====
     implementation("org.apache.poi:poi-ooxml:5.2.5")
 
+    // ===== Akka Typed =====
+    implementation("com.typesafe.akka:akka-actor-typed_2.13:2.8.5")
+
+    // ===== CSV / CLI =====
+    implementation("com.opencsv:opencsv:5.9")
+    implementation("info.picocli:picocli:4.7.6")
+    implementation("org.apache.commons:commons-csv:1.10.0")
+
     // ===== Test (JUnit 4) =====
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.hamcrest:hamcrest:2.2")
+
+    testImplementation("org.mockito:mockito-core:5.12.0")
 }
 
 application {
@@ -90,6 +100,61 @@ tasks.register<JavaExec>("trackDebug") {
 
     if (!coordinate.isNullOrBlank()) {
         args(coordinate)
+    }
+
+    jvmArgs("-Dfile.encoding=UTF-8")
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+}
+
+sourceSets {
+    create("trackTest") {
+        java {
+            srcDir("src/test/java")
+            include("org/supply/track/**")
+        }
+
+        compileClasspath += sourceSets["main"].output + configurations["testCompileClasspath"]
+        runtimeClasspath += output + compileClasspath + configurations["testRuntimeClasspath"]
+    }
+}
+
+configurations.named("trackTestImplementation") {
+    extendsFrom(configurations["testImplementation"])
+}
+
+configurations.named("trackTestRuntimeOnly") {
+    extendsFrom(configurations["testRuntimeOnly"])
+}
+
+tasks.register<Test>("trackTest") {
+    description = "Run only track-related tests"
+    group = "verification"
+
+    testClassesDirs = sourceSets["trackTest"].output.classesDirs
+    classpath = sourceSets["trackTest"].runtimeClasspath
+
+    useJUnit()
+}
+
+tasks.register<JavaExec>("trackExport") {
+    group = "application"
+    description = "Export track CSVs without loading grid model"
+
+    mainClass.set("org.supply.app.TrackExporterMain")
+    classpath = sourceSets.main.get().runtimeClasspath
+
+    val confFile = providers.gradleProperty("confFile").orNull
+    val outputDir = providers.gradleProperty("outputDir").orNull
+
+    if (!confFile.isNullOrBlank()) {
+        args(confFile)
+    }
+
+    if (!outputDir.isNullOrBlank()) {
+        args(outputDir)
     }
 
     jvmArgs("-Dfile.encoding=UTF-8")
