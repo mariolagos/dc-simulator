@@ -32,7 +32,7 @@ public final class DcExporter {
                 ? outputRoot
                 : confFile.getParent().resolve("dc/exports");
 
-        new NetworkInputCsvWriter().writeAll(model, exportDir);
+        new NetworkInputCsvWriter().writeAll(model, trackModel,exportDir);
 
         // Temporary sanity output during integration
         System.out.println("Loaded track sections: " + trackModel.getSectionsById().keySet());
