@@ -1,10 +1,6 @@
 package org.supply.io.export;
 
 import com.typesafe.config.Config;
-import org.dcsim.electric.Device;
-import org.supply.domain.Node;
-import org.supply.domain.Line;
-import org.dcsim.math.Real;
 import org.supply.model.GridModel;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
@@ -12,20 +8,13 @@ import org.supply.track.ModelCoordinate;
 import org.supply.track.RouteSegment;
 import org.supply.track.RwyCoordinate;
 import org.supply.track.Station;
-import org.supply.track.TrackSection;
 import org.supply.track.TrackJunction;
+import org.supply.track.TrackSection;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public final class NetworkInputCsvWriter {
 
