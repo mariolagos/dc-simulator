@@ -1,3 +1,4 @@
+git status
 time_s,train_id,track,position_m,p_req_W
 0.0,Train1,1,0.0,20000.0
 1.0,Train1,1,0.5714285714285714,20000.0
