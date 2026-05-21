@@ -1,7 +1,7 @@
 package org.supply.app;
 
 import com.typesafe.config.Config;
-import org.dcsim.DcSimScenarioLoader;
+import org.supply.loader.DcSimConfigLoader;
 import org.supply.io.export.NetworkInputCsvWriter;
 import org.supply.track.LoadedTrackModel;
 import org.supply.track.TrackConfigLoader;
@@ -35,8 +35,8 @@ public final class TrackExporterMain {
         Path confFile = RunLayoutFactory.resolveConfArg(args[0]);
         Path outputRoot = (args.length >= 2) ? Paths.get(args[1]) : null;
 
-        Config scenario = DcSimScenarioLoader.loadScenarioConfig(confFile);
-        Config dcsim = DcSimScenarioLoader.requireDcsim(scenario, confFile);
+        Config scenario = DcSimConfigLoader.loadScenarioConfig(confFile);
+        Config dcsim = DcSimConfigLoader.requireDcsim(scenario, confFile);
 
         LoadedTrackModel trackModel = new TrackConfigLoader().load(dcsim);
 

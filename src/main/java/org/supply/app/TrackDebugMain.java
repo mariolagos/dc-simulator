@@ -1,7 +1,7 @@
 package org.supply.app;
 
 import com.typesafe.config.Config;
-import org.dcsim.DcSimScenarioLoader;
+import org.supply.loader.DcSimConfigLoader;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
 import org.supply.track.RwyCoordinate;
@@ -29,8 +29,8 @@ public final class TrackDebugMain {
 
         Path confFile = RunLayoutFactory.resolveConfArg(args[0]);
 
-        Config scenario = DcSimScenarioLoader.loadScenarioConfig(confFile);
-        Config dcsim = DcSimScenarioLoader.requireDcsim(scenario, confFile);
+        Config scenario = DcSimConfigLoader.loadScenarioConfig(confFile);
+        Config dcsim = DcSimConfigLoader.requireDcsim(scenario, confFile);
 
         LoadedTrackModel trackModel = new TrackConfigLoader().load(dcsim);
 
