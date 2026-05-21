@@ -1,6 +1,7 @@
 package org.supply.app;
 
 import com.typesafe.config.Config;
+import org.supply.io.export.RunCsvWriter;
 import org.supply.loader.DcSimConfigLoader;
 import org.supply.io.export.NetworkInputCsvWriter;
 import org.supply.loader.GridModelLoader;
@@ -33,6 +34,8 @@ public final class DcExporter {
                 : confFile.getParent().resolve("dc/exports");
 
         new NetworkInputCsvWriter().writeAll(dcsim, model, trackModel,exportDir);
+
+        new RunCsvWriter().write(dcsim, confFile, exportDir);
 
         // Temporary sanity output during integration
         System.out.println("Loaded track sections: " + trackModel.getSectionsById().keySet());
