@@ -1,16 +1,15 @@
 package org.supply.app;
 
 import com.typesafe.config.Config;
+import org.supply.io.export.NetworkInputCsvWriter;
 import org.supply.io.export.RunCsvWriter;
 import org.supply.loader.DcSimConfigLoader;
-import org.supply.io.export.NetworkInputCsvWriter;
 import org.supply.loader.GridModelLoader;
 import org.supply.model.GridModel;
 import org.supply.track.LoadedTrackModel;
 import org.supply.track.TrackConfigLoader;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public final class DcExporter {
 
@@ -19,9 +18,13 @@ public final class DcExporter {
     }
 
     public static void run(String[] args) throws Exception {
-        Path confFile = RunLayoutFactory.resolveConfArg(args[0]);
-        Path outputRoot = (args.length >= 2) ? Paths.get(args[1]) : null;
+        ExecutionLayout layout = ExecutionLayoutFactory.fromCliArgs(
+                args[0],
+                args.length >= 2 ? args[1] : null
+        );
 
+        Path confFile = layout.configFile();
+        Path exportDir = layout.exportDir();
         Config scenario = DcSimConfigLoader.loadScenarioConfig(confFile);
         Config dcsim = DcSimConfigLoader.requireDcsim(scenario, confFile);
 
@@ -29,11 +32,7 @@ public final class DcExporter {
 
         LoadedTrackModel trackModel = new TrackConfigLoader().load(dcsim);
 
-        Path exportDir = outputRoot != null
-                ? outputRoot
-                : confFile.getParent().resolve("dc/exports");
-
-        new NetworkInputCsvWriter().writeAll(dcsim, model, trackModel,exportDir);
+        new NetworkInputCsvWriter().writeAll(dcsim, model, trackModel, exportDir);
 
         new RunCsvWriter().write(dcsim, confFile, exportDir);
 

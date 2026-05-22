@@ -4,7 +4,6 @@ import com.typesafe.config.Config;
 import org.supply.loader.DcSimConfigLoader;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
-import org.supply.track.RwyCoordinate;
 import org.supply.track.TrackConfigLoader;
 
 import java.nio.file.Path;
@@ -27,7 +26,7 @@ public final class TrackDebugMain {
             throw new IllegalArgumentException("Expected scenario config path as first argument");
         }
 
-        Path confFile = RunLayoutFactory.resolveConfArg(args[0]);
+        Path confFile = ExecutionLayoutFactory.resolveConfArg(args[0]);
 
         Config scenario = DcSimConfigLoader.loadScenarioConfig(confFile);
         Config dcsim = DcSimConfigLoader.requireDcsim(scenario, confFile);

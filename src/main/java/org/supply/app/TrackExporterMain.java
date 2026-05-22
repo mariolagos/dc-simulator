@@ -32,7 +32,7 @@ public final class TrackExporterMain {
             );
         }
 
-        Path confFile = RunLayoutFactory.resolveConfArg(args[0]);
+        Path confFile = ExecutionLayoutFactory.resolveConfArg(args[0]);
         Path outputRoot = (args.length >= 2) ? Paths.get(args[1]) : null;
 
         Config scenario = DcSimConfigLoader.loadScenarioConfig(confFile);

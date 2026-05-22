@@ -4,12 +4,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public final class RunLayoutFactory {
+public final class ExecutionLayoutFactory {
 
-    private RunLayoutFactory() {
+    private ExecutionLayoutFactory() {
     }
 
-    public static RunLayout fromCliArgs(String confArg, String outputArgOrNull) {
+    public static ExecutionLayout fromCliArgs(String confArg, String outputArgOrNull) {
         Path configFile = resolveConfArg(confArg);
         Path inputDir = configFile.getParent();
 
@@ -29,7 +29,7 @@ public final class RunLayoutFactory {
             outputRoot = resolvePathArg(outputArgOrNull);
         }
 
-        return new RunLayout(
+        return new ExecutionLayout(
                 projectId,
                 scenarioId,
                 configFile,

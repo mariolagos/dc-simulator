@@ -18,8 +18,8 @@ import org.dcsim.math.Real;
 import org.dcsim.power.PointsPowerProfile;
 import org.dcsim.power.PowerProfile;
 import org.dcsim.sim.EdgeRef;
-import org.supply.app.RunLayout;
-import org.supply.app.RunLayoutFactory;
+import org.dcsim.RunLayout;
+import org.dcsim.RunLayoutFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;

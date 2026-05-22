@@ -2,7 +2,7 @@ package org.supply.app;
 
 import java.nio.file.Path;
 
-public final class RunLayout {
+public final class ExecutionLayout {
     private final String projectId;
     private final String scenarioId;
     private final Path configFile;
@@ -11,7 +11,7 @@ public final class RunLayout {
     private final Path exportDir;
     private final Path resultsDir;
 
-    public RunLayout(
+    public ExecutionLayout(
             String projectId,
             String scenarioId,
             Path configFile,
