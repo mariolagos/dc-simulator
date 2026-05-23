@@ -28,10 +28,10 @@ public final class CsvSchema {
                 List.of(
                         "time_s",
                         "train_id",
-                        "section",
+//                        "section",
                         "track",
                         "position_m",
-                        "P_req_W"
+                        "p_req_W"
                 )
         );
     }

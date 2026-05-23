@@ -42,3 +42,9 @@ build/
 .gradle/
 *.patch
 **/~$*.xls*
+tmp/
+**/exports/*.csv
+
+# generated / temporary patch artifacts
+*.patched.*
+*.patch

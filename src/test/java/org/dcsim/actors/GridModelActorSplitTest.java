@@ -52,10 +52,18 @@ public class GridModelActorSplitTest {
 
     /** Minimal model: ground + one active node; shared by the tests below. */
     private GridModel<?> baseModel() {
-        var gm = new GridModel<>(0);
-        gm.addNode(new Node(0, Real.fromDouble(0.0),  "GND"));
-        gm.addNode(new Node(1, Real.fromDouble(10.0), "ND1"));
-        gm.setGroundNodeId(gm.getNodeById(0));
+        var gm = new GridModel<>("GROUND");
+
+        Node gnd = new Node(0, Real.fromDouble(0.0), "GND");
+        gnd.setName("GROUND");
+
+        Node nd1 = new Node(1, Real.fromDouble(10.0), "ND1");
+        nd1.setName("ND1");
+
+        gm.addNode(gnd);
+        gm.addNode(nd1);
+
+        gm.setGroundNodeId(gnd);
         return gm;
     }
 

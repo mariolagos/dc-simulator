@@ -32,10 +32,10 @@ public final class GraphExport {
         return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
     }
 
-    private static Set<Integer> collectNodeIds(GridModel<Real> m) {
-        Set<Integer> nodes = new LinkedHashSet<>();
+    private static Set<String> collectNodeIds(GridModel<Real> m) {
+        Set<String> nodes = new LinkedHashSet<>();
         try {
-            for (int n : m.getNodeIds()) nodes.add(n);
+            for (String n : m.getNodeIds()) nodes.add(n);
         } catch (Throwable ignore) {
             for (Device<Real> d : m.getDevices()) {
                 if (d instanceof Line ln) {
@@ -54,7 +54,7 @@ public final class GraphExport {
         return nodes;
     }
 
-    private static double nodeV(GridResult res, int node) {
+    private static double nodeV(GridResult res, String node) {
         try {
             Real V = res.getLatestNodeVoltage(node);
             return (V == null) ? Double.NaN : V.asDouble();
@@ -78,10 +78,10 @@ public final class GraphExport {
                 w.write("  label=\"" + esc(title) + "\";\n");
             }
 
-            Integer ground = null;
+            String ground = null;
             try { ground = m.getGroundNodeId(); } catch (Throwable ignore) {}
 
-            for (int n : collectNodeIds(m)) {
+            for (String n : collectNodeIds(m)) {
                 boolean isGnd = (ground != null && n == ground);
                 if (isGnd) {
                     w.write("  " + n + " [shape=plaintext,label=\"0\\nGND\",fontcolor=\"#555\"];\n");
@@ -91,7 +91,7 @@ public final class GraphExport {
             }
 
             for (Device<Real> d : m.getDevices()) {
-                int a = -1, b = -1;
+                String a = "", b = "";
                 String color = "#888", style = "solid", pen = "1";
                 String extra = "";
                 if (d instanceof Line ln) {
@@ -107,7 +107,7 @@ public final class GraphExport {
                     color="#2ca02c"; style="dashed"; pen="2.0";
                     extra = "arrowhead=open";
                 }
-                if (a >= 0 && b >= 0) {
+                if (!a.isEmpty() && !b.isEmpty()) {
                     w.write(String.format(
                             "  %d -> %d [label=\"%s\",color=\"%s\",style=\"%s\",penwidth=%s,%s];\n",
                             a, b, esc(d.getId()), color, style, pen, extra));
@@ -131,12 +131,12 @@ public final class GraphExport {
                 w.write("  label=\"" + esc(title) + "\";\n");
             }
 
-            Integer ground = null;
+            String ground = "";
             try { ground = m.getGroundNodeId(); } catch (Throwable ignore) {}
 
             // Nodes with voltage
-            for (int n : collectNodeIds(m)) {
-                boolean isGnd = (ground != null && n == ground);
+            for (String n : collectNodeIds(m)) {
+                boolean isGnd = (ground != null && ground.equals("GROUND"));
                 if (isGnd) {
                     w.write("  " + n + " [shape=plaintext,label=\"0\\nGND\",fontcolor=\"#555\"];\n");
                 } else {
@@ -148,7 +148,7 @@ public final class GraphExport {
 
             // Edges with ΔV and I/P; arrows by direction
             for (Device<Real> d : m.getDevices()) {
-                int a = -1, b = -1;
+                String a = "", b = "";
                 String color = "#888", style = "solid"; double pen = 1.0;
                 if (d instanceof Line ln) {
                     a = ln.getFromNode(); b = ln.getToNode();
@@ -160,7 +160,7 @@ public final class GraphExport {
                     a = tr.getFromNode(); b = tr.getToNode();
                     color = "#2ca02c"; style = "dashed"; pen = 2.0;
                 }
-                if (a < 0 || b < 0) continue;
+                if (a.equals("") || b.equals("")) continue;
 
                 double Va = nodeV(res, a);
                 double Vb = nodeV(res, b);
@@ -170,7 +170,7 @@ public final class GraphExport {
                 try { Real rI = res.getLatestDeviceCurrent(d.getId()); if (rI != null) I = rI.asDouble(); } catch (Throwable ignore) {}
                 try { Real rP = res.getLatestDevicePower(d.getId());   if (rP != null) P = rP.asDouble(); } catch (Throwable ignore) {}
 
-                int from = a, to = b;
+                String from = a, to = b;
                 if (I != null) {
                     if (I < 0) { from = b; to = a; }
                 } else {

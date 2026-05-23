@@ -7,6 +7,7 @@ import org.dcsim.math.Real;
 import org.apache.commons.math3.optim.linear.*;
 import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
 import org.apache.commons.math3.optim.*;
+import org.supply.domain.Node;
 
 import java.util.*;
 
@@ -60,14 +61,14 @@ public final class RegenAllocator {
         if (sources.isEmpty() || sinks.isEmpty()) return empty;
 
         // 1) Bygg resistansgraf (nod -> [granne, R])
-        Map<Integer, List<Edge>> graph = buildResistanceGraph(model);
+        Map<String, List<Edge>> graph = buildResistanceGraph(model);
 
         // 2) Kostnadsmatris (kortaste väg i R-summa)
         final int nS = sources.size();
         final int nT = sinks.size();
         double[][] cost = new double[nS][nT];
         for (int i = 0; i < nS; i++) {
-            Map<Integer, Double> dist = dijkstra(graph, sources.get(i).nodeId);
+            Map<String, Double> dist = dijkstra(graph, String.valueOf(sources.get(i).nodeId));
             for (int j = 0; j < nT; j++) {
                 double d = dist.getOrDefault(sinks.get(j).nodeId, Double.POSITIVE_INFINITY);
                 cost[i][j] = d;
@@ -153,54 +154,66 @@ public final class RegenAllocator {
         Var(int i, int j, double cost) { this.i = i; this.j = j; this.cost = cost; }
     }
     private static final class Edge {
-        final int to; final double R;
-        Edge(int to, double R) { this.to = to; this.R = R; }
+        final String to; final double R;
+        Edge(String to, double R) { this.to = to; this.R = R; }
     }
 
-    private static Map<Integer, List<Edge>> buildResistanceGraph(GridModel<Real> model) {
-        Map<Integer, List<Edge>> g = new HashMap<>();
+    private static Map<String, List<Edge>> buildResistanceGraph(GridModel<Real> model) {
+        Map<String, List<Edge>> g = new HashMap<>();
         for (Object did : model.getDeviceIds()) {
             Device<Real> d = model.getDevice(String.valueOf(did));
             if (d instanceof Line ln) {
-                int u = ln.getFromNode();
-                int v = ln.getToNode();
+                String u = ln.getFromNode();
+                String v = ln.getToNode();
                 double R = ln.getResistance().asDouble();
                 g.computeIfAbsent(u, k -> new ArrayList<>()).add(new Edge(v, R));
                 g.computeIfAbsent(v, k -> new ArrayList<>()).add(new Edge(u, R));
             }
         }
         // säkerställ att alla noder finns
-        for (Object nid : model.getNodeIds()) {
-            int n = (nid instanceof Integer) ? (Integer) nid : Integer.parseInt(nid.toString());
+        for (String n : model.getNodeIds()) {
             g.computeIfAbsent(n, k -> new ArrayList<>());
         }
         return g;
     }
 
-    private static Map<Integer, Double> dijkstra(Map<Integer, List<Edge>> g, int src) {
-        Map<Integer, Double> dist = new HashMap<>();
-        for (Integer n : g.keySet()) dist.put(n, Double.POSITIVE_INFINITY);
+    private static Map<String, Double> dijkstra(Map<String, List<Edge>> g, String src) {
+        Map<String, Double> dist = new HashMap<>();
+        for (String n : g.keySet()) {
+            dist.put(n, Double.POSITIVE_INFINITY);
+        }
         dist.put(src, 0.0);
 
-        PriorityQueue<int[]> pq = new PriorityQueue<>(Comparator.comparingDouble(a -> Double.longBitsToDouble(a[1])));
-        pq.add(new int[]{src, Double.valueOf(0.0).hashCode()}); // vi packar inte double i int[] egentligen, men ok
+        class NodeDist {
+            final String v;
+            final double d;
 
-        // Liten “riktig" variant utan hack:
-        class Node { int v; double d; Node(int v,double d){this.v=v;this.d=d;} }
-        PriorityQueue<Node> Q = new PriorityQueue<>(Comparator.comparingDouble(n -> n.d));
-        Q.add(new Node(src, 0.0));
+            NodeDist(String v, double d) {
+                this.v = v;
+                this.d = d;
+            }
+        }
 
-        while (!Q.isEmpty()) {
-            Node cur = Q.poll();
-            if (cur.d > dist.get(cur.v) + 1e-15) continue;
-            for (Edge e : g.get(cur.v)) {
+        PriorityQueue<NodeDist> q =
+                new PriorityQueue<>(Comparator.comparingDouble(n -> n.d));
+        q.add(new NodeDist(src, 0.0));
+
+        while (!q.isEmpty()) {
+            NodeDist cur = q.poll();
+
+            if (cur.d > dist.get(cur.v) + 1e-15) {
+                continue;
+            }
+
+            for (Edge e : g.getOrDefault(cur.v, List.of())) {
                 double nd = cur.d + e.R;
                 if (nd + 1e-15 < dist.get(e.to)) {
                     dist.put(e.to, nd);
-                    Q.add(new Node(e.to, nd));
+                    q.add(new NodeDist(e.to, nd));
                 }
             }
         }
+
         return dist;
     }
 }

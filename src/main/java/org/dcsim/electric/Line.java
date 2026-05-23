@@ -1,4 +1,3 @@
-// org/dcsim/electric/Line.java
 package org.dcsim.electric;
 
 import org.apache.commons.math3.linear.RealMatrix;
@@ -6,44 +5,127 @@ import org.apache.commons.math3.linear.RealVector;
 import org.dcsim.math.Real;
 
 import java.util.Map;
+import java.util.Objects;
 
+@Deprecated
 public class Line implements Device<Real> {
 
-    private final int fromNode;
-    private final int toNode;
+    // --- Internal / solver-facing ---
+    private final String fromNode;
+    private final String  toNode;
     private final Real resistance;
     private final String description;
     private final String category;
     private final double length;
 
-    // --- Enda "riktiga" konstruktorn ---
-    public Line(int fromNode, int toNode, Real resistance, String description, String category, double length) {
+    // --- Public / contract-facing ---
+    private final String line_id;
+    private final String node_from_id;
+    private final String node_to_id;
+    private final String track_id;
+
+    // --- New main constructor ---
+    public Line(
+            String fromNode,
+            String toNode,
+            Real resistance,
+            String description,
+            String category,
+            double length,
+            String line_id,
+            String node_from_id,
+            String node_to_id,
+            String track_id
+    ) {
         this.fromNode = fromNode;
         this.toNode = toNode;
-        this.resistance = resistance;
+        this.resistance = Objects.requireNonNull(resistance);
         this.description = (description == null || description.isBlank()) ? "line" : description;
         this.category = (category == null || category.isBlank()) ? "catenary1" : category;
         this.length = length;
+
+        this.line_id = (line_id == null || line_id.isBlank())
+                ? "L_" + fromNode + "_" + toNode
+                : line_id;
+        this.node_from_id = node_from_id;
+        this.node_to_id = node_to_id;
+        this.track_id = track_id;
     }
 
-    // --- Fabriksmetoder för vanliga fall ---
-    public static Line of(int fromNode, int toNode, Real resistance, double length) {
+    // --- Legacy constructor kept for backward compatibility ---
+    public Line(String fromNode, String toNode, Real resistance, String description, String category, double length) {
+        this(
+                fromNode,
+                toNode,
+                resistance,
+                description,
+                category,
+                length,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    // --- Factory methods for legacy usage ---
+    public static Line of(String fromNode, String toNode, Real resistance, double length) {
         return new Line(fromNode, toNode, resistance, "line", "catenary1", length);
     }
 
-    public static Line of(int fromNode, int toNode, Real resistance, String description, double length) {
+    public static Line of(String fromNode, String toNode, Real resistance, String description, double length) {
         return new Line(fromNode, toNode, resistance, description, "catenary1", length);
     }
 
-    public static Line ofCategory(int fromNode, int toNode, Real resistance, String category, double length) {
+    public static Line ofCategory(String fromNode, String toNode, Real resistance, String category, double length) {
         return new Line(fromNode, toNode, resistance, "line", category, length);
     }
 
-    // --- Device<Real> impl + getters (oförändrade i övrigt) ---
-    @Override public String getId() { return "L_" + fromNode + "_" + toNode; }
-    @Override public int getConnectedNode() { throw new UnsupportedOperationException("Line is two-node device"); }
-    @Override public Real getCurrent() { return Real.ZERO; }
-    @Override public Real getPower() { return Real.ZERO; }
+    // --- Factory method for new contract-driven code ---
+    public static Line ofContract(
+            String fromNode,
+            String toNode,
+            Real resistance,
+            double length,
+            String line_id,
+            String node_from_id,
+            String node_to_id,
+            String track_id
+    ) {
+        return new Line(
+                fromNode,
+                toNode,
+                resistance,
+                "line",
+                "catenary1",
+                length,
+                line_id,
+                node_from_id,
+                node_to_id,
+                track_id
+        );
+    }
+
+    // --- Device<Real> impl + getters (preserved) ---
+    @Override
+    public String getId() {
+        return line_id;
+    }
+
+    @Override
+    public String getConnectedNode() {
+        throw new UnsupportedOperationException("Line is two-node device");
+    }
+
+    @Override
+    public Real getCurrent() {
+        return Real.ZERO;
+    }
+
+    @Override
+    public Real getPower() {
+        return Real.ZERO;
+    }
 
     @Override
     public Real computeCurrent(Real voltage, double time) {
@@ -61,7 +143,7 @@ public class Line implements Device<Real> {
     }
 
     @Override
-    public void stamp(RealMatrix y, RealVector j, RealVector x, int step, Map<Integer,Integer> nodeIndex) {
+    public void stamp(RealMatrix y, RealVector j, RealVector x, int step, Map<String, Integer> nodeIndex) {
         int i = nodeIndex.get(fromNode);
         int k = nodeIndex.get(toNode);
 
@@ -72,19 +154,62 @@ public class Line implements Device<Real> {
         y.addToEntry(k, i, -g);
     }
 
-    public int getFromNode() { return fromNode; }
-    public int getToNode() { return toNode; }
-    public Real getResistance() { return resistance; }
-    public String getDescription() { return description; }
-    public String getCategory() { return category; }
+    // --- Legacy getters ---
+    public String getFromNode() {
+        return fromNode;
+    }
 
-    @Override
-    public String toString() {
-        return String.format("Line(%d->%d, R=%.6f, desc=%s, cat=%s)",
-                fromNode, toNode, resistance.asDouble(), description, category);
+    public String getToNode() {
+        return toNode;
+    }
+
+    public Real getResistance() {
+        return resistance;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public String getCategory() {
+        return category;
     }
 
     public double getLength() {
         return length;
+    }
+
+    // --- New contract-facing getters ---
+    public String getLineId() {
+        return line_id;
+    }
+
+    public String getNodeFromId() {
+        return node_from_id;
+    }
+
+    public String getNodeToId() {
+        return node_to_id;
+    }
+
+    public String getTrackId() {
+        return track_id;
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "Line(%d->%d, R=%.6f, desc=%s, cat=%s, len=%.3f, lineId=%s, fromId=%s, toId=%s, trackId=%s)",
+                fromNode,
+                toNode,
+                resistance.asDouble(),
+                description,
+                category,
+                length,
+                line_id,
+                node_from_id,
+                node_to_id,
+                track_id
+        );
     }
 }

@@ -2,44 +2,107 @@ package org.dcsim.electric;
 
 import org.dcsim.math.FieldElement;
 import org.dcsim.math.Real;
+import org.dcsim.utils.PositionUtils;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A Node represents a point in the electric network with a voltage.
  * Devices are connected to nodes and inject/extract current based on voltage.
  */
+@Deprecated
 public class Node<T extends FieldElement<T>> {
     private String description; // Optional descriptive text
 
-    private final int id;
-    private final Real voltage;
+    private final int internal_id;
+    private String node_id;
+    private final int section_id;
+    private Real voltage;
     private final String position;
 
     // v0.8 additions (MFE)
-    private NodeKind nodeKind;     // SUBSTATION / TRAIN / GROUND
     private int trackId;           // -1 if not on a track
-    private int positionM;      // numeric coordinate [m] along track
+    private int position_m;      // numeric coordinate [m] along track
 
-    public Node(int id, Real voltage, String position) {
-        this.id = id;
-        this.voltage = voltage;
-        this.position = position;
-
-        // reasonable defaults:
-        this.nodeKind = NodeKind.GROUND;
-        this.trackId = -1;
-        this.positionM = -1;
+    // ?? Main constructor (the only "real" one)
+    public Node(
+            int internal_id,
+            String node_id,
+            int section_id,
+            int position_m,
+            String position
+    ) {
+        this.internal_id = internal_id;
+        this.node_id = Objects.requireNonNull(node_id);
+        this.section_id = section_id;
+        this.position_m = position_m;
+        this.position = position; // may be null in future if removed
+        this.voltage = Real.ZERO;
     }
 
-    public Node(int id, Real voltage, String position, String description) {
-        this(id, voltage, position);
-        this.description = description;
+    @Deprecated
+    public Node(int internal_id, Real voltage, String position) {
+        this(
+                internal_id,
+                "legacy_" + internal_id,
+                legacySectionId(position),
+                legacyPositionM(position),
+                position
+        );
     }
 
+    @Deprecated
+    public Node(int internal_id, Real voltage, String position, String description) {
+        this(
+                internal_id,
+                description != null ? description : "legacy_" + internal_id,
+                legacySectionId(position),
+                legacyPositionM(position),
+                position
+        );
+    }
 
-    public int getId() {
-        return id;
+    private static int legacySectionId(String position) {
+        try {
+            return PositionUtils.parseFlexible(position)[0];
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static int legacyPositionM(String position) {
+        try {
+            int[] p = PositionUtils.parseFlexible(position);
+
+            int base = p[1] * 1000 + p[2];
+
+            return base;
+
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+    @Deprecated
+    public void setName(String name) {
+        this.node_id = name;
+    }
+
+    @Deprecated
+    public String getName() {
+        return this.node_id;
+    }
+
+    public String getNode_id() {
+        return node_id;
+    }
+
+    public String getNameOrDefault() {
+        return node_id != null && !node_id.isBlank() ? node_id : "N" + internal_id;
+    }
+
+    public int get_internal_id() {
+        return internal_id;
     }
 
     public Real getVoltage() {
@@ -50,26 +113,8 @@ public class Node<T extends FieldElement<T>> {
         return position;
     }
 
-    public Real computeNetCurrent(List<Device<Real>> devices, double time) {
-        Real total = Real.ZERO;
-        for (Device<Real> device : devices) {
-            if (device.getConnectedNode() == id) {
-                total = total.plus(device.computeCurrent(voltage, time));
-            }
-        }
-        return total;
-    }
-
     public String getDescription() {
         return description;
-    }
-
-    public NodeKind getNodeKind() {
-        return nodeKind;
-    }
-
-    public void setNodeKind(NodeKind nodeKind) {
-        this.nodeKind = nodeKind;
     }
 
     public int getTrackId() {
@@ -81,11 +126,16 @@ public class Node<T extends FieldElement<T>> {
     }
 
     public int getPositionM() {
-        return positionM;
+        return position_m;
     }
 
     public void setPositionM(int positionM) {
-        this.positionM = positionM;
+        this.position_m = positionM;
     }
+
+    public void setVoltage(Real voltage) {
+        this.voltage = voltage;
+    }
+
 
 }

@@ -7,24 +7,24 @@ import org.dcsim.math.Real;
 import java.util.Map;
 
 public class DcLine implements TwoNodeDevice<Real> {
-    private final int fromNode;
-    private final int toNode;
+    private final String fromNode;
+    private final String toNode;
     private final Real resistance;
     private Real current = Real.ZERO;
     private String description;
 
-    public DcLine(int fromNode, int toNode, Real resistance) {
+    public DcLine(String fromNode, String toNode, Real resistance) {
         this.fromNode = fromNode;
         this.toNode = toNode;
         this.resistance = resistance;
         this.description = description;
     }
 
-    public int getFromNode() {
+    public String getFromNode() {
         return fromNode;
     }
 
-    public int getToNode() {
+    public String getToNode() {
         return toNode;
     }
 
@@ -43,7 +43,7 @@ public class DcLine implements TwoNodeDevice<Real> {
     }
 
     @Override
-    public int getConnectedNode() {
+    public String getConnectedNode() {
         return fromNode; // fallback
     }
 
@@ -63,7 +63,7 @@ public class DcLine implements TwoNodeDevice<Real> {
     }
 
     @Override
-    public void stamp(RealMatrix yMatrix, RealVector jVector, RealVector xVector, int timestep, Map<Integer, Integer> nodeIndexMap) {
+    public void stamp(RealMatrix yMatrix, RealVector jVector, RealVector xVector, int timestep, Map<String, Integer> nodeIndexMap) {
         int i = nodeIndexMap.get(fromNode);
         int j = nodeIndexMap.get(toNode);
         double g = 1.0 / resistance.asDouble();

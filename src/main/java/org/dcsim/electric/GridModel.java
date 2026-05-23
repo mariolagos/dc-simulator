@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+// Legacy electric model.
+// Kept temporarily while node_id-based model loading migrates to org.supply.model.GridModel.
+@Deprecated
 public class GridModel<F extends FieldElement<F>> {
 
     // --- Noder: generiskt typade och indexerade ---
@@ -24,7 +27,7 @@ public class GridModel<F extends FieldElement<F>> {
 
     private final Map<String, List<PowerPoint>> powerProfiles = new HashMap<>();
     private final List<GridResult> results = new ArrayList<>();
-    private int groundNodeId;
+    private String groundNodeId;
 
     private final Map<Integer, List<VoltageSample>> voltageResults = new HashMap<>();
     private final Map<String, List<CurrentPowerSample>> currentPowerResults = new HashMap<>();
@@ -34,14 +37,22 @@ public class GridModel<F extends FieldElement<F>> {
 
     // ---- Virtuella tåg (ankare) – telemetri ----
     // Konvention: nyckeln ska vara "Train:<id>", t.ex. "Train:T1"
-    private final Map<String, List<Real>> updatedTrainVoltages  = new LinkedHashMap<>();
+    private final Map<String, List<Real>> updatedTrainVoltages = new LinkedHashMap<>();
     private final Map<String, List<Real>> updatedTrainPositions = new LinkedHashMap<>();
-    private final Map<String, List<Real>> updatedTrainSpeeds    = new LinkedHashMap<>();
+    private final Map<String, List<Real>> updatedTrainSpeeds = new LinkedHashMap<>();
 
     // Publika, ofiltrerade vyer (behålls för bakåtkomp)
-    public Map<String, List<Real>> getUpdatedTrainVoltages()  { return updatedTrainVoltages; }
-    public Map<String, List<Real>> getUpdatedTrainPositions() { return updatedTrainPositions; }
-    public Map<String, List<Real>> getUpdatedTrainSpeeds()    { return updatedTrainSpeeds; }
+    public Map<String, List<Real>> getUpdatedTrainVoltages() {
+        return updatedTrainVoltages;
+    }
+
+    public Map<String, List<Real>> getUpdatedTrainPositions() {
+        return updatedTrainPositions;
+    }
+
+    public Map<String, List<Real>> getUpdatedTrainSpeeds() {
+        return updatedTrainSpeeds;
+    }
 
     private static void appendTo(Map<String, List<Real>> m, String id, Real v) {
         m.computeIfAbsent(id, k -> new ArrayList<>()).add(v);
@@ -55,42 +66,65 @@ public class GridModel<F extends FieldElement<F>> {
                                      Real V, Real I, Real P,
                                      Real xM, Real vMS) {
         appendResult(id, t, I, P);            // återanvänd dev-resultlagring (för P/I)
-        appendTo(updatedTrainVoltages,  id, V);
+        appendTo(updatedTrainVoltages, id, V);
         appendTo(updatedTrainPositions, id, xM);
-        appendTo(updatedTrainSpeeds,    id, vMS);
+        appendTo(updatedTrainSpeeds, id, vMS);
     }
 
-    public boolean isAnyBackfeedAllowed() { return anyBackfeedAllowed; }
+    public boolean isAnyBackfeedAllowed() {
+        return anyBackfeedAllowed;
+    }
 
     public void recomputeBackfeedFlag() {
         boolean any = false;
         for (Device<Real> d : devices) {
-            if (d instanceof Substation ss && ss.isAllowBackfeed()) { any = true; break; }
+            if (d instanceof Substation ss && ss.isAllowBackfeed()) {
+                any = true;
+                break;
+            }
         }
         anyBackfeedAllowed = any;
     }
 
-    public GridModel(int groundNodeId) { this.groundNodeId = groundNodeId; }
-    public int getGroundNodeId() { return groundNodeId; }
+    public GridModel(String groundNodeId) {
+        this.groundNodeId = groundNodeId;
+    }
+
+    public String getGroundNodeId() {
+        return groundNodeId;
+    }
 
     // -------- Nodes --------
     public void addNode(Node<F> node) {
         nodes.add(node);
-        nodesById.put(node.getId(), node);
+        nodesById.put(node.get_internal_id(), node);
     }
-    public Node<F> getNodeById(int id) {
+
+    public Node<F> getNodeById(String id) {
         Node<F> n = nodesById.get(id);
         if (n == null) throw new IllegalArgumentException("No node with id " + id);
         return n;
     }
-    public Node<F> nodeOrThrow(int id) {
+
+    public Node<F> nodeOrThrow(String id) {
         Node<F> n = nodesById.get(id);
         if (n == null) throw new NoSuchElementException("Node id=" + id + " not found");
         return n;
     }
-    public Optional<Node<F>> findNode(int id) { return Optional.ofNullable(nodesById.get(id)); }
-    public List<Integer> getNodeIds() { return nodes.stream().map(Node::getId).collect(Collectors.toList()); }
-    public List<Node<F>> getNodes() { return Collections.unmodifiableList(nodes); }
+
+    public Optional<Node<F>> findNode(int id) {
+        return Optional.ofNullable(nodesById.get(id));
+    }
+
+    //    public List<Integer> getNodeIds() { return nodes.stream().map(Node::get_internal_id).collect(Collectors.toList()); }
+    public List<String> getNodeIds() {
+        return nodes.stream().map(Node::getNode_id).collect(Collectors.toList());
+    }
+
+
+    public List<Node<F>> getNodes() {
+        return Collections.unmodifiableList(nodes);
+    }
 
     // -------- Devices --------
 //    public void addDevice(Device<Real> device) {
@@ -162,13 +196,29 @@ public class GridModel<F extends FieldElement<F>> {
     }
 
     // -------- Power profiles / results --------
-    public void setPowerProfile(String deviceId, List<PowerPoint> profile) { powerProfiles.put(deviceId, profile); }
-    public void addPowerProfile(String id, List<PowerPoint> profile)       { powerProfiles.put(id, profile); }
-    public List<PowerPoint> getPowerProfile(String id)                     { return powerProfiles.get(id); }
-    public Set<String> getPowerProfileIds()                                { return powerProfiles.keySet(); }
+    public void setPowerProfile(String deviceId, List<PowerPoint> profile) {
+        powerProfiles.put(deviceId, profile);
+    }
 
-    public void storeResult(GridResult result) { results.add(result); }
-    public List<GridResult> getAllResults()    { return results; }
+    public void addPowerProfile(String id, List<PowerPoint> profile) {
+        powerProfiles.put(id, profile);
+    }
+
+    public List<PowerPoint> getPowerProfile(String id) {
+        return powerProfiles.get(id);
+    }
+
+    public Set<String> getPowerProfileIds() {
+        return powerProfiles.keySet();
+    }
+
+    public void storeResult(GridResult result) {
+        results.add(result);
+    }
+
+    public List<GridResult> getAllResults() {
+        return results;
+    }
 
     public int getNumberOfTimesteps() {
         return voltageResults.values().stream().mapToInt(List::size).max().orElse(0);
@@ -205,8 +255,11 @@ public class GridModel<F extends FieldElement<F>> {
     }
 
     public void exportResults(String outputPath) {
-        try { ElectricalExcelExport.export(outputPath, this); }
-        catch (IOException e) { throw new RuntimeException("Failed to export electrical results", e); }
+        try {
+            ElectricalExcelExport.export(outputPath, this);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to export electrical results", e);
+        }
     }
 
     public void appendVoltageResult(int nodeId, double time, Real voltage) {
@@ -220,13 +273,19 @@ public class GridModel<F extends FieldElement<F>> {
     public void appendPowerPoint(String deviceId, PowerPoint point) {
         updatedPowerCurves.computeIfAbsent(deviceId, k -> new ArrayList<>()).add(point);
     }
+
     public List<PowerPoint> getUpdatedPowerPoints(String deviceId) {
         return updatedPowerCurves.getOrDefault(deviceId, List.of());
     }
 
     // --- Vyer (läs-optimiserade) ---
-    public Collection<Node<F>> nodesView() { return Collections.unmodifiableCollection(nodes); }
-    public Collection<Device<Real>> devicesView() { return Collections.unmodifiableCollection(devices); }
+    public Collection<Node<F>> nodesView() {
+        return Collections.unmodifiableCollection(nodes);
+    }
+
+    public Collection<Device<Real>> devicesView() {
+        return Collections.unmodifiableCollection(devices);
+    }
 
     public List<String> getDeviceIds() {
         List<String> ids = new ArrayList<>(devices.size());
@@ -238,12 +297,16 @@ public class GridModel<F extends FieldElement<F>> {
     // NYTT: resultatvänliga getters för tåg-telemetri
     // =======================
 
-    /** Strippar "Train:" för snygg etikett. */
+    /**
+     * Strippar "Train:" för snygg etikett.
+     */
     public static String prettyTrainLabel(String key) {
         return (key != null && key.startsWith("Train:")) ? key.substring("Train:".length()) : key;
     }
 
-    /** Samla alla *virtuella* tåg (ankare) som har telemetri (nycklar "Train:<id>"). */
+    /**
+     * Samla alla *virtuella* tåg (ankare) som har telemetri (nycklar "Train:<id>").
+     */
     public List<String> getVirtualTrainIds() {
         LinkedHashSet<String> ids = new LinkedHashSet<>();
         ids.addAll(updatedTrainPositions.keySet());
@@ -258,7 +321,9 @@ public class GridModel<F extends FieldElement<F>> {
         return out;
     }
 
-    /** Alla "tåg": TrainLoad-devices + virtuella (ankare). */
+    /**
+     * Alla "tåg": TrainLoad-devices + virtuella (ankare).
+     */
     public List<String> getAllTrainIds() {
         LinkedHashSet<String> ids = new LinkedHashSet<>();
         // TrainLoad devices
@@ -270,7 +335,9 @@ public class GridModel<F extends FieldElement<F>> {
         return out;
     }
 
-    /** Telemetri-serier för V per ankartåg. */
+    /**
+     * Telemetri-serier för V per ankartåg.
+     */
     public Map<String, List<Real>> getTrainVoltages() {
         // Begränsa till erkända tågnycklar så vi inte drar omkring skräp
         Set<String> valid = new LinkedHashSet<>(getVirtualTrainIds());
@@ -282,7 +349,9 @@ public class GridModel<F extends FieldElement<F>> {
         return out;
     }
 
-    /** Telemetri-serier för position x[m] per ankartåg. */
+    /**
+     * Telemetri-serier för position x[m] per ankartåg.
+     */
     public Map<String, List<Real>> getTrainPositions() {
         Set<String> valid = new LinkedHashSet<>(getVirtualTrainIds());
         Map<String, List<Real>> out = new LinkedHashMap<>();
@@ -293,7 +362,9 @@ public class GridModel<F extends FieldElement<F>> {
         return out;
     }
 
-    /** Telemetri-serier för hastighet v[m/s] per ankartåg. */
+    /**
+     * Telemetri-serier för hastighet v[m/s] per ankartåg.
+     */
     public Map<String, List<Real>> getTrainSpeeds() {
         Set<String> valid = new LinkedHashSet<>(getVirtualTrainIds());
         Map<String, List<Real>> out = new LinkedHashMap<>();
@@ -305,6 +376,6 @@ public class GridModel<F extends FieldElement<F>> {
     }
 
     public void setGroundNodeId(Node grd) {
-        groundNodeId = grd.getId();
+        groundNodeId = grd.getNode_id();
     }
 }

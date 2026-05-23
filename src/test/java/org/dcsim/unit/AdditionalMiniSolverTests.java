@@ -5,7 +5,7 @@ import org.dcsim.solver.api.DcNet;
 import org.dcsim.solver.api.LineData;
 import org.dcsim.solver.api.SubstationData;
 import org.dcsim.solver.impl.DcIterativeSolver;
-import org.dcsim.solver.fixtures.NetFixtures;
+import org.supply.solver.testSupport.NetFixtures;
 import org.junit.Test;
 
 import static org.junit.Assert.*;

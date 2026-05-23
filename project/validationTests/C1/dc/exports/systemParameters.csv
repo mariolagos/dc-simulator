@@ -1,0 +1,6 @@
+parameter,value
+u_nominal_V,750.0
+u_min_V,600.0
+u_cutoff_V,950.0
+u_max_V,900.0
+i_train_max_A,7000.0

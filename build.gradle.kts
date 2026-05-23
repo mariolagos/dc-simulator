@@ -1,197 +1,161 @@
 plugins {
-    id("java")
-    id("application")
-    id("java-test-fixtures")
-    id("com.github.johnrengelman.shadow") version "8.1.1"
-
+    java
+    application
 }
 
-repositories { mavenCentral() }
+group = "org.supply"
+version = "1.0-SNAPSHOT"
 
 java {
     toolchain {
-        // Anpassa om du behöver en annan version
         languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
+repositories {
+    mavenCentral()
+}
 
 dependencies {
-    // ===== Core dependencies =====
-    // Akka Typed (Java API) + SLF4J integration (2.6.20 = sista Apache 2.0 LTS)
-    implementation("com.typesafe.akka:akka-actor-typed_2.13:2.6.20")
-    implementation("com.typesafe.akka:akka-slf4j_2.13:2.6.20")
-
-    // HOCON config
+    // ===== Core =====
     implementation("com.typesafe:config:1.4.3")
 
-    // Apache Commons Math (för RealMatrix/RealVector m.m.)
-    implementation("org.apache.commons:commons-math3:3.6.1")
+    // ===== Excel (POI) =====
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
 
-    implementation("org.apache.commons:commons-csv:1.11.0")
+    // ===== Akka Typed =====
+    implementation("com.typesafe.akka:akka-actor-typed_2.13:2.8.5")
 
-    // ===== Logging (Log4j2 via SLF4J) =====
-    implementation("org.apache.logging.log4j:log4j-api:2.22.1")
-    implementation("org.apache.logging.log4j:log4j-core:2.22.1")
-    implementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.22.1")
-
-    // ===== Test (JUnit 5) =====
-    // testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
-    // testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
+    // ===== CSV / CLI =====
+    implementation("com.opencsv:opencsv:5.9")
+    implementation("info.picocli:picocli:4.7.6")
+    implementation("org.apache.commons:commons-csv:1.10.0")
 
     // ===== Test (JUnit 4) =====
     testImplementation("junit:junit:4.13.2")
-    // (valfritt) Hamcrest om dina tester använder det
     testImplementation("org.hamcrest:hamcrest:2.2")
 
-    testFixturesImplementation("junit:junit:4.13.2")
-    testFixturesImplementation("org.hamcrest:hamcrest:2.2")
-
-
-    // Aktivera bara om du använder Akka testkit:
-    // testImplementation("com.typesafe.akka:akka-actor-testkit-typed_2.13:2.6.20")
-
-    // Excel (Apache POI)
-    implementation("org.apache.poi:poi:5.2.5")
-    implementation("org.apache.poi:poi-ooxml:5.2.5")
-    implementation("org.apache.poi:poi-ooxml:5.2.5")
-
-    implementation("com.google.guava:guava:33.2.1-jre")
-
-    implementation("com.opencsv:opencsv:5.9")
-    implementation("com.typesafe:config:1.4.3")
-
-    implementation("info.picocli:picocli:4.7.6")
-
-    testImplementation(sourceSets["testFixtures"].output)
-
-    testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:5.12.0")
-
-// (valfritt) om du även skriver/parsar CSV någonstans
-// implementation("org.apache.commons:commons-csv:1.10.0")
 }
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17) // eller din JDK-version
-    }
-}
-
 
 application {
-    // 🟢 Detta fungerar endast om 'application'-pluginet är aktivt (plugins-blocket ovan)
-    mainClass.set("org.dcsim.DcSimApp")
+    // Default program (used by `gradlew run`)
+    mainClass.set("org.supply.app.DcExporter")
 }
 
-
-// Konfigurera den befintliga run-tasken (skapa inte en ny!)
-tasks.named<JavaExec>("run") {
-    standardInput = System.`in`
-
-    // Tillåt gradlew run -PappArgs="..."
-    val appArgs = project.findProperty("appArgs") as String?
-    if (!appArgs.isNullOrBlank()) {
-        args = appArgs.split("\\s+".toRegex())
-    }
+tasks.test {
+    useJUnit() // JUnit 4
 }
 
-tasks.register("printTestCp") {
-    doLast {
-        println("TEST compileClasspath:")
-        println(sourceSets["test"].compileClasspath.asPath)
-        println()
-        println("TEST FIXTURES output:")
-        println(sourceSets["testFixtures"].output.asPath)
-    }
-}
+//
+// ===== Existing run tasks =====
+//
 
 tasks.register<JavaExec>("runPivot") {
     group = "application"
-    description = "Run the A2 pivot tool (project/<proj>/<scen>)"
-    mainClass.set("org.dcsim.tools.LongtablePivotTool")
+    description = "Run PivotToCsvExporter"
+    mainClass.set("org.supply.app.PivotToCsvExporter")
     classpath = sourceSets.main.get().runtimeClasspath
-
-    // -Pargs="--verbose --excel"
-    providers.gradleProperty("args").orNull?.takeIf { it.isNotBlank() }?.let { raw ->
-        args(raw.split(Regex("\\s+")))
-    }
-    // -PconfigFile=project/3subs1train/scenario1/application.conf
-    providers.gradleProperty("configFile").orNull?.takeIf { it.isNotBlank() }?.let { cf ->
-        jvmArgs("-Dconfig.file=$cf")
-    }
     jvmArgs("-Dfile.encoding=UTF-8")
 }
 
 tasks.register<JavaExec>("runDcSim") {
     group = "application"
-    description = "Run the DC simulator (DcSimApp)"
+    description = "Run DcSimApp"
     mainClass.set("org.dcsim.DcSimApp")
     classpath = sourceSets.main.get().runtimeClasspath
-
-    // -Pargs="--verbose --excel"
-    providers.gradleProperty("args").orNull?.takeIf { it.isNotBlank() }?.let { raw ->
-        args(raw.split(Regex("\\s+")))
-    }
-    // -PconfigFile=project/3subs1train/scenario1/application.conf
-    providers.gradleProperty("configFile").orNull?.takeIf { it.isNotBlank() }?.let { cf ->
-        jvmArgs("-Dconfig.file=$cf")
-    }
     jvmArgs("-Dfile.encoding=UTF-8")
 }
 
-tasks.register<JavaExec>("runTrainsPivotWide") {
-    group = "tools"
-    description = "Pivot trains.csv long -> wide"
-    classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set("org.dcsim.tools.TrainsWidePivot")
-    args(
-        "output/pivots/trains.csv",
-        "output/pivots/trains_wide.csv"
-    )
+tasks.register<JavaExec>("dcExporter") {
+    group = "application"
+    description = "Run DcExporter explicitly"
+    mainClass.set("org.supply.app.DcExporter")
+    classpath = sourceSets.main.get().runtimeClasspath
+
+    providers.gradleProperty("args").orNull
+        ?.takeIf { it.isNotBlank() }
+        ?.let { raw -> args(raw.split(Regex("\\s+"))) }
+
+    jvmArgs("-Dfile.encoding=UTF-8")
 }
 
-tasks.register<JavaExec>("runWideExcel") {
-    group = "tools"
-    description = "Export wide Excel (one sheet per pivot CSV) from a pivot directory"
+//
+// ===== NEW: Track Debug =====
+//
 
-    classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set("org.dcsim.tools.LongtableWideExcel")
+tasks.register<JavaExec>("trackDebug") {
+    group = "application"
+    description = "Run TrackDebugMain for simplified track debugging"
 
-    // Använd -Pargs="pivotDir outFile" om du vill, annars default
-    val argsProp = project.findProperty("args") as String?
-    if (argsProp != null) {
-        args(argsProp.split("\\s+".toRegex()))
-    } else {
-        // default för 3subs2train2
-        args(
-            "output/pivots",
-            "output/pivots/wide.xlsx"
-        )
+    mainClass.set("org.supply.app.TrackDebugMain")
+    classpath = sourceSets.main.get().runtimeClasspath
+
+    val confFile = providers.gradleProperty("confFile").orNull
+    val coordinate = providers.gradleProperty("coordinate").orNull
+
+    if (!confFile.isNullOrBlank()) {
+        args(confFile)
     }
-}
 
-tasks.register<JavaExec>("runLongtableTrainSubWide") {
-    group = "tools"
-    description = "Export trains + subs wide Excel directly from longtable.csv"
-
-    classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set("org.dcsim.tools.LongtableTrainSubWideExcel")
-
-    val argsProp = project.findProperty("args") as String?
-    if (argsProp != null) {
-        args(argsProp.split("\\s+".toRegex()))
-    } else {
-        args(
-            "output/pivots/trains.csv",
-            "output/pivots/trains_wide.csv"
-        )
+    if (!coordinate.isNullOrBlank()) {
+        args(coordinate)
     }
-}
 
+    jvmArgs("-Dfile.encoding=UTF-8")
+}
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
 }
 
+sourceSets {
+    create("trackTest") {
+        java {
+            srcDir("src/test/java")
+            include("org/supply/track/**")
+        }
 
+        compileClasspath += sourceSets["main"].output + configurations["testCompileClasspath"]
+        runtimeClasspath += output + compileClasspath + configurations["testRuntimeClasspath"]
+    }
+}
+
+configurations.named("trackTestImplementation") {
+    extendsFrom(configurations["testImplementation"])
+}
+
+configurations.named("trackTestRuntimeOnly") {
+    extendsFrom(configurations["testRuntimeOnly"])
+}
+
+tasks.register<Test>("trackTest") {
+    description = "Run only track-related tests"
+    group = "verification"
+
+    testClassesDirs = sourceSets["trackTest"].output.classesDirs
+    classpath = sourceSets["trackTest"].runtimeClasspath
+
+    useJUnit()
+}
+
+tasks.register<JavaExec>("trackExport") {
+    group = "application"
+    description = "Export track CSVs without loading grid model"
+
+    mainClass.set("org.supply.app.TrackExporterMain")
+    classpath = sourceSets.main.get().runtimeClasspath
+
+    val confFile = providers.gradleProperty("confFile").orNull
+    val outputDir = providers.gradleProperty("outputDir").orNull
+
+    if (!confFile.isNullOrBlank()) {
+        args(confFile)
+    }
+
+    if (!outputDir.isNullOrBlank()) {
+        args(outputDir)
+    }
+
+    jvmArgs("-Dfile.encoding=UTF-8")
+}

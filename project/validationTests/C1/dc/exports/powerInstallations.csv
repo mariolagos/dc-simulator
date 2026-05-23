@@ -1,0 +1,6 @@
+installation_id,installation_type,emf_V,internal_resistance_ohm,rectifier_type
+SS0,SUBSTATION,780.0,0.1,DIODE
+SS1,SUBSTATION,780.0,0.1,DIODE
+SS2,SUBSTATION,780.0,0.1,DIODE
+SS3,SUBSTATION,780.0,0.1,DIODE
+SS4,SUBSTATION,780.0,0.1,DIODE

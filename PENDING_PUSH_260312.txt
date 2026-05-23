@@ -1,0 +1,7 @@
+Pending local commits not pushed to origin/master:
+- 4a3abce fix(validation): remove committed merge conflict markers in A2OutOfRangePositionTest
+- 3534cd9 fix(tests): align RunLayoutFactoryTest with dc/{exports,results} layout
+
+Backup artifacts:
+- master-fixes.bundle
+- full disk copy created on 2026-03-12
