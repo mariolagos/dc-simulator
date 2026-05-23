@@ -9,6 +9,7 @@ import org.supply.model.GridModel;
 import org.supply.track.LoadedTrackModel;
 import org.supply.track.TrackConfigLoader;
 
+
 import java.nio.file.Path;
 
 public final class DcExporter {
@@ -23,8 +24,12 @@ public final class DcExporter {
                 args.length >= 2 ? args[1] : null
         );
 
-        Path confFile = layout.configFile();
-        Path exportDir = layout.exportDir();
+        Path confFile = ExecutionLayoutFactory.resolveConfArg(args[0]);
+
+        Path exportDir = (args.length >= 2)
+                ? ExecutionLayoutFactory.resolvePathArg(args[1])
+                : confFile.getParent().resolve("dc").resolve("exports").normalize();
+
         Config scenario = DcSimConfigLoader.loadScenarioConfig(confFile);
         Config dcsim = DcSimConfigLoader.requireDcsim(scenario, confFile);
 

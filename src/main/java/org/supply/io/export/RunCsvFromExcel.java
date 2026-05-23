@@ -7,7 +7,6 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.dcsim.ScenarioHelpers;
-import org.dcsim.export.RunCsvWriter;
 import org.dcsim.validation.CsvSchema;
 
 import java.io.InputStream;
@@ -322,7 +321,10 @@ public final class RunCsvFromExcel {
                 .thenComparing(r -> r.get(K_TRAIN)));
 
         CsvSchema schema = CsvSchema.runSchema();
-        org.dcsim.export.RunCsvWriter writer = new RunCsvWriter(schema);
+
+        RunCsvFileWriter writer =
+                new RunCsvFileWriter(schema);
+
         writer.write(outRunCsv, allRows);
 
         Path p = outRunCsv.toAbsolutePath();

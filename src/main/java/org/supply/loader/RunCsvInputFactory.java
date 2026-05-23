@@ -1,7 +1,8 @@
-package org.supply.io.export;
+package org.supply.loader;
 
 import com.typesafe.config.Config;
-import org.dcsim.export.RunCsvFromExcel;
+import org.supply.domain.RunCsvInput;
+import org.supply.utils.TimeUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -9,10 +10,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class RunCsvWriter {
+public final class RunCsvInputFactory {
 
-    public void write(Config dcsim, Path confFile, Path exportDir) throws Exception {
-        createParent(exportDir.resolve("run.csv"));
+    public RunCsvInput build(Config dcsim, Path confFile) throws Exception {
 
         List<Path> runExcels = new ArrayList<>();
         List<String> trainIds = new ArrayList<>();
@@ -28,7 +28,7 @@ public final class RunCsvWriter {
         for (Config train : timetable.getConfigList("trains")) {
             String trainId = train.getString("id");
             String templateId = getString(train, "template_id", "templateId");
-            int departureSec = parseHmsToSeconds(train.getString("departure"));
+            int departureSec = TimeUtils.parseHmsToSeconds(train.getString("departure"));
 
             Config template = traffic.getConfig("templates").getConfig(templateId);
 
@@ -50,10 +50,9 @@ public final class RunCsvWriter {
                 ? dcsim.getDouble("export.exportResolution_s")
                 : 0.0;
 
-        RunCsvFromExcel.writeRunCsv(
+        return new RunCsvInput(
                 runExcels,
                 trainIds,
-                exportDir.resolve("run.csv"),
                 departureTimes,
                 exportResolutionS
         );
@@ -82,23 +81,4 @@ public final class RunCsvWriter {
         );
     }
 
-    private static int parseHmsToSeconds(String hms) {
-        String[] parts = hms.trim().split(":");
-        if (parts.length != 3) {
-            throw new IllegalArgumentException("Invalid time format, expected HH:mm:ss: " + hms);
-        }
-
-        int h = Integer.parseInt(parts[0]);
-        int m = Integer.parseInt(parts[1]);
-        int s = Integer.parseInt(parts[2]);
-
-        return h * 3600 + m * 60 + s;
-    }
-
-    private static void createParent(Path file) throws Exception {
-        Path parent = file.getParent();
-        if (parent != null) {
-            Files.createDirectories(parent);
-        }
-    }
 }
