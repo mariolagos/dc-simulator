@@ -1,7 +1,5 @@
 package org.supply.io.export;
 
-import org.dcsim.validation.CsvSchema;
-
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;

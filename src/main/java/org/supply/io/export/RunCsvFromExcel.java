@@ -1,14 +1,16 @@
 package org.supply.io.export;
 
+import org.supply.ScenarioHelpers;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.dcsim.ScenarioHelpers;
-import org.dcsim.validation.CsvSchema;
+import org.supply.track.TrackInterpolationPoint;
+import org.supply.track.TrackPoint;
 
+import javax.xml.validation.TypeInfoProvider;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -180,7 +182,7 @@ public final class RunCsvFromExcel {
 
     private static List<Map<String, String>> readRunSheet(
             Sheet shRun,
-            List<ScenarioHelpers.TrackPoint> trackPoints,
+            List<TrackInterpolationPoint> trackPoints,
             String trainId,
             int departureTime
     ) {
@@ -264,7 +266,7 @@ public final class RunCsvFromExcel {
                 throw new IllegalArgumentException("Workbook must contain sheets named 'run' and 'track': " + excelXlsx);
             }
 
-            List<ScenarioHelpers.TrackPoint> trackPoints = ScenarioHelpers.buildTrackPoints(shTrack);
+            List<TrackInterpolationPoint> trackPoints = ScenarioHelpers.buildTrackInterpolationPoints(shTrack);
             return readRunSheet(shRun, trackPoints, trainId, departureTime);
         }
     }
@@ -320,10 +322,10 @@ public final class RunCsvFromExcel {
                 .comparing((Map<String, String> r) -> Double.parseDouble(r.get(K_TIME)))
                 .thenComparing(r -> r.get(K_TRAIN)));
 
-        CsvSchema schema = CsvSchema.runSchema();
+        org.supply.io.export.CsvSchema schema = org.supply.io.export.CsvSchema.runSchema();
 
-        RunCsvFileWriter writer =
-                new RunCsvFileWriter(schema);
+        org.supply.io.export.RunCsvFileWriter writer =
+                new org.supply.io.export.RunCsvFileWriter(schema);
 
         writer.write(outRunCsv, allRows);
 
