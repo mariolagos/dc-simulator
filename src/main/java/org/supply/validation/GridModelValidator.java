@@ -1,6 +1,6 @@
 package org.supply.validation;
 
-import org.dcsim.math.Real;
+import org.supply.math.Real;
 import org.supply.domain.ConnectionType;
 import org.supply.domain.InstallationType;
 import org.supply.domain.Line;

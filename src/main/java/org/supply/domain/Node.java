@@ -1,6 +1,6 @@
 package org.supply.domain;
 
-import org.dcsim.math.Real;
+import org.supply.math.Real;
 
 import java.util.Objects;
 

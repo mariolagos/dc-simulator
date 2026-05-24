@@ -1,7 +1,7 @@
 package org.supply.model;
 
 
-import org.dcsim.math.Real;
+import org.supply.math.Real;
 
 class VoltageSample {
     public final double time;

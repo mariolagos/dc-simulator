@@ -1,7 +1,7 @@
 package org.supply.loader;
 
 import com.typesafe.config.Config;
-import org.dcsim.math.Real;
+import org.supply.math.Real;
 import org.supply.domain.Line;
 import org.supply.domain.Node;
 import org.supply.model.GridModel;

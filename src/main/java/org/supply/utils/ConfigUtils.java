@@ -1,7 +1,7 @@
 package org.supply.utils;
 
 import com.typesafe.config.Config;
-import org.dcsim.math.Real;
+import org.supply.math.Real;
 
 public class ConfigUtils {
     public static String requireString(Config conf, String path) {
