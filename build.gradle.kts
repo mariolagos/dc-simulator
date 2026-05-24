@@ -67,6 +67,19 @@ tasks.register<JavaExec>("runDcSim") {
     jvmArgs("-Dfile.encoding=UTF-8")
 }
 
+tasks.register<JavaExec>("dcSolver, JavaExec") {
+    group = "application"
+    description = "Run DcSolver"
+    mainClass.set("org.supply.app.DcSolver")
+    classpath = sourceSets.main.get().runtimeClasspath
+
+    providers.gradleProperty("args").orNull
+        ?.takeIf { it.isNotBlank() }
+        ?.let { raw -> args(raw.split(Regex("\\s+"))) }
+
+    jvmArgs("-Dfile.encoding=UTF-8")
+}
+
 tasks.register<JavaExec>("dcExporter") {
     group = "application"
     description = "Run DcExporter explicitly"
