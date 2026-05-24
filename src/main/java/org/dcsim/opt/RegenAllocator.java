@@ -7,7 +7,7 @@ import org.dcsim.math.Real;
 import org.apache.commons.math3.optim.linear.*;
 import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
 import org.apache.commons.math3.optim.*;
-import org.supply.domain.Node;
+import org.dcsim.electric.Node;
 
 import java.util.*;
 

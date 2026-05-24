@@ -6,10 +6,6 @@ import com.typesafe.config.ConfigFactory;
 import org.dcsim.contracts.ContractChecks;
 import org.dcsim.math.Real;
 import org.dcsim.utils.PositionUtils;
-import org.supply.domain.ConnectionType;
-import org.supply.domain.InstallationType;
-import org.supply.domain.InstallationConnection;
-import org.supply.domain.PowerInstallation;
 
 import java.io.IOException;
 import java.util.ArrayList;

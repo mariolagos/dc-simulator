@@ -1,9 +1,6 @@
 package org.dcsim.electric;
 
 import org.dcsim.math.Real;
-import org.supply.domain.InstallationType;
-import org.supply.domain.PowerInstallation;
-import org.supply.domain.RectifierType;
 
 public final class LegacyPowerInstallationAdapter {
 
