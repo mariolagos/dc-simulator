@@ -142,4 +142,54 @@ public final class TrainNodeInserterTest {
             );
         }
     }
+
+    @Test
+    public void treatsTrainExactlyAtExistingNodeAsPlacedWithoutChangingTopology() {
+        CalculationNode a = new CalculationNode(
+                "A",
+                null,
+                "section-1",
+                "track-1",
+                0.0,
+                CalculationNodeType.GRID_NODE
+        );
+
+        CalculationNode b = new CalculationNode(
+                "B",
+                null,
+                "section-1",
+                "track-1",
+                1000.0,
+                CalculationNodeType.GRID_NODE
+        );
+
+        CalculationBranch branch = new CalculationBranch(
+                "branch-1",
+                "source-1",
+                "A",
+                "B",
+                Real.fromDouble(1.0)
+        );
+
+        CalculationNetwork base = new CalculationNetwork(
+                List.of(a, b),
+                List.of(branch)
+        );
+
+        CalculationTrainPosition train = new CalculationTrainPosition(
+                "T1",
+                "section-1",
+                "track-1",
+                0.0
+        );
+
+        CalculationNetwork result = new TrainNodeInserter()
+                .insertTrainNodes(base, List.of(train));
+
+        assertEquals(2, result.nodes().size());
+        assertEquals(1, result.branches().size());
+
+        assertEquals("A", result.branches().get(0).fromNodeId());
+        assertEquals("B", result.branches().get(0).toNodeId());
+    }
 }

@@ -7,6 +7,8 @@ import java.util.*;
 
 public final class TrainNodeInserter {
 
+    private static final double EPS = 1e-9;
+
     public CalculationNetwork insertTrainNodes(
             CalculationNetwork baseNetwork,
             List<CalculationTrainPosition> trains
@@ -15,12 +17,14 @@ public final class TrainNodeInserter {
         List<CalculationBranch> outBranches = new ArrayList<>();
         Set<String> placedTrainIds = new HashSet<>();
 
+        markTrainsAtExistingNodes(baseNetwork.nodes(), trains, placedTrainIds);
+
         for (CalculationBranch branch : baseNetwork.branches()) {
             CalculationNode from = findNode(nodes, branch.fromNodeId());
             CalculationNode to = findNode(nodes, branch.toNodeId());
 
             List<CalculationTrainPosition> trainsOnBranch =
-                    trainsOnBranch(from, to, trains);
+                    trainsOnBranch(from, to, trains, placedTrainIds);
 
             if (trainsOnBranch.isEmpty()) {
                 outBranches.add(branch);
@@ -70,17 +74,39 @@ public final class TrainNodeInserter {
         return new CalculationNetwork(nodes, outBranches);
     }
 
+    private static void markTrainsAtExistingNodes(
+            List<CalculationNode> nodes,
+            List<CalculationTrainPosition> trains,
+            Set<String> placedTrainIds
+    ) {
+        for (CalculationTrainPosition train : trains) {
+            for (CalculationNode node : nodes) {
+                if (sameTrack(node, train)
+                        && Math.abs(node.positionM() - train.positionM()) <= EPS) {
+                    placedTrainIds.add(train.trainId());
+                    break;
+                }
+            }
+        }
+    }
+
     private static List<CalculationTrainPosition> trainsOnBranch(
             CalculationNode from,
             CalculationNode to,
-            List<CalculationTrainPosition> trains
+            List<CalculationTrainPosition> trains,
+            Set<String> placedTrainIds
     ) {
+
         List<CalculationTrainPosition> out = new ArrayList<>();
 
         double min = Math.min(from.positionM(), to.positionM());
         double max = Math.max(from.positionM(), to.positionM());
 
         for (CalculationTrainPosition train : trains) {
+            if (placedTrainIds.contains(train.trainId())) {
+                continue;
+            }
+
             if (!sameTrack(from, train) || !sameTrack(to, train)) {
                 continue;
             }
