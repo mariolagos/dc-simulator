@@ -17,6 +17,9 @@ import java.util.*;
 
 public final class CalculationNetworkBuilder {
 
+    private static final double MAX_CONDUCTANCE_SIEMENS = 1e9;
+    private static final double MIN_RESISTANCE_OHM = 1.0 / MAX_CONDUCTANCE_SIEMENS;
+
     private final TrackTransformService trackTransform;
 
     public CalculationNetworkBuilder(TrackTransformService trackTransform) {
@@ -57,8 +60,11 @@ public final class CalculationNetworkBuilder {
 
             double lengthM = Math.abs(toModel.getPositionM() - fromModel.getPositionM());
 
+            double rawResistanceOhm =
+                    line.getResistanceOhmPerM().asDouble() * lengthM;
+
             Real resistanceOhm = Real.fromDouble(
-                    line.getResistanceOhmPerM().asDouble() * lengthM
+                    Math.max(rawResistanceOhm, MIN_RESISTANCE_OHM)
             );
 
             branches.add(new CalculationBranch(

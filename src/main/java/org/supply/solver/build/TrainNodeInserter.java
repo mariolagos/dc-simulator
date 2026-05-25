@@ -7,7 +7,7 @@ import java.util.*;
 
 public final class TrainNodeInserter {
 
-    private static final double EPS = 1e-9;
+    private static final double EPS = 1e-3;
 
     public CalculationNetwork insertTrainNodes(
             CalculationNetwork baseNetwork,
