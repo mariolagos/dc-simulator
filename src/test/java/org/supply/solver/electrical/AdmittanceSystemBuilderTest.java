@@ -230,4 +230,71 @@ public final class AdmittanceSystemBuilderTest {
         }
     }
 
+    @Test
+    public void preservesDeterministicMatrixIndicesFromCalculationNetworkNodeOrder() {
+
+        CalculationNetwork network = new CalculationNetwork(
+                List.of(
+                        node("return", 0.0),
+                        node("train", 100.0),
+                        node("feed", 200.0)
+                ),
+                List.of()
+        );
+
+        AdmittanceSystem system =
+                new AdmittanceSystemBuilder().build(
+                        network,
+                        "return"
+                );
+
+        assertEquals(0, system.nodeIndex("return"));
+        assertEquals(1, system.nodeIndex("train"));
+        assertEquals(2, system.nodeIndex("feed"));
+
+        assertEquals("return", system.nodeIds().get(0));
+        assertEquals("train", system.nodeIds().get(1));
+        assertEquals("feed", system.nodeIds().get(2));
+    }
+
+    @Test
+    public void preservesMatrixIndicesAcrossRepeatedBuilds() {
+
+        CalculationNetwork network = new CalculationNetwork(
+                List.of(
+                        node("A", 0.0),
+                        node("B", 100.0),
+                        node("C", 200.0)
+                ),
+                List.of()
+        );
+
+        AdmittanceSystem system1 =
+                new AdmittanceSystemBuilder().build(
+                        network,
+                        "A"
+                );
+
+        AdmittanceSystem system2 =
+                new AdmittanceSystemBuilder().build(
+                        network,
+                        "A"
+                );
+
+        assertEquals(system1.size(), system2.size());
+
+        for (int i = 0; i < system1.size(); i++) {
+
+            assertEquals(
+                    system1.nodeIds().get(i),
+                    system2.nodeIds().get(i)
+            );
+
+            assertEquals(
+                    system1.nodeIndex(system1.nodeIds().get(i)),
+                    system2.nodeIndex(system2.nodeIds().get(i))
+            );
+        }
+    }
+
 }
