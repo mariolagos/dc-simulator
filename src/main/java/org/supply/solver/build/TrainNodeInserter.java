@@ -23,8 +23,7 @@ public final class TrainNodeInserter {
             CalculationNode from = findNode(nodes, branch.fromNodeId());
             CalculationNode to = findNode(nodes, branch.toNodeId());
 
-            List<CalculationTrainPosition> trainsOnBranch =
-                    trainsOnBranch(from, to, trains, placedTrainIds);
+            List<CalculationTrainPosition> trainsOnBranch = trainsOnBranch(from, to, trains, placedTrainIds);
 
             if (trainsOnBranch.isEmpty()) {
                 outBranches.add(branch);
@@ -107,7 +106,19 @@ public final class TrainNodeInserter {
                 continue;
             }
 
+            System.out.println(
+                    "CHECK train=" + train.trainId()
+                            + " train=" + train.sectionId() + "/" + train.trackId() + "@" + train.positionM()
+                            + " from=" + from.id() + " " + from.sectionId() + "/" + from.trackId() + "@" + from.positionM()
+                            + " to=" + to.id() + " " + to.sectionId() + "/" + to.trackId() + "@" + to.positionM()
+            );
+
             if (!sameTrack(from, train) || !sameTrack(to, train)) {
+                continue;
+            }
+
+            if (isAtNode(from, train) || isAtNode(to, train)) {
+                placedTrainIds.add(train.trainId());
                 continue;
             }
 
@@ -117,6 +128,11 @@ public final class TrainNodeInserter {
         }
 
         return out;
+    }
+
+    private static boolean isAtNode(CalculationNode node, CalculationTrainPosition train) {
+        return sameTrack(node, train)
+                && Math.abs(node.positionM() - train.positionM()) < 1e-9;
     }
 
     private static void addSplitBranches(
@@ -160,7 +176,17 @@ public final class TrainNodeInserter {
 
     private static boolean sameTrack(CalculationNode node, CalculationTrainPosition train) {
         return Objects.equals(node.sectionId(), train.sectionId())
-                && Objects.equals(node.trackId(), train.trackId());
+                && compatibleTrack(node.trackId(), train.trackId());
+    }
+
+    private static boolean compatibleTrack(String nodeTrackId, String trainTrackId) {
+        if (nodeTrackId == null || nodeTrackId.isBlank()) {
+            return true;
+        }
+        if (trainTrackId == null || trainTrackId.isBlank()) {
+            return true;
+        }
+        return Objects.equals(nodeTrackId, trainTrackId);
     }
 
     private static CalculationNode findNode(List<CalculationNode> nodes, String id) {
