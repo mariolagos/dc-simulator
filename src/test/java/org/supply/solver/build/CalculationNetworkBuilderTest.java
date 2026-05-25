@@ -6,10 +6,14 @@ import org.supply.domain.Node;
 import org.supply.math.Real;
 import org.supply.model.GridModel;
 import org.supply.solver.model.CalculationNetwork;
+import org.supply.solver.model.CalculationNode;
 import org.supply.solver.model.CalculationNodeType;
 import org.supply.track.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
@@ -80,6 +84,106 @@ public class CalculationNetworkBuilderTest {
         @Override
         public double distanceOnRoute(String routeId, RwyCoordinate from, RwyCoordinate to) {
             throw new UnsupportedOperationException();
+        }
+    }
+
+    @Test
+    public void acceptsSubstationWithExistingFeedingAndReturnNodes() {
+
+        CalculationNetwork network =
+                networkWithNodes("feed-1", "return-1");
+
+        validateSubstationTerminals(
+                network,
+                "feed-1",
+                "return-1"
+        );
+    }
+
+    @Test
+    public void rejectsSubstationWithMissingFeedingNode() {
+
+        CalculationNetwork network =
+                networkWithNodes("return-1");
+
+        try {
+
+            validateSubstationTerminals(
+                    network,
+                    "missing-feed",
+                    "return-1"
+            );
+
+            fail("Expected IllegalArgumentException");
+
+        } catch (IllegalArgumentException ex) {
+
+            assertTrue(
+                    ex.getMessage().contains("missing-feed")
+            );
+        }
+    }
+
+    @Test
+    public void rejectsSubstationWithMissingReturnNode() {
+
+        CalculationNetwork network =
+                networkWithNodes("feed-1");
+
+        try {
+
+            validateSubstationTerminals(
+                    network,
+                    "feed-1",
+                    "missing-return"
+            );
+
+            fail("Expected IllegalArgumentException");
+
+        } catch (IllegalArgumentException ex) {
+
+            assertTrue(
+                    ex.getMessage().contains("missing-return")
+            );
+        }
+    }
+
+    private static CalculationNetwork networkWithNodes(String... nodeIds) {
+        List<CalculationNode> nodes = new ArrayList<>();
+
+        for (String nodeId : nodeIds) {
+            nodes.add(new CalculationNode(
+                    nodeId,
+                    null,
+                    "section-1",
+                    "track-1",
+                    0.0,
+                    CalculationNodeType.GRID_NODE
+            ));
+        }
+
+        return new CalculationNetwork(nodes, List.of());
+    }
+
+    private static void validateSubstationTerminals(
+            CalculationNetwork network,
+            String feedingNodeId,
+            String returnNodeId
+    ) {
+        Set<String> nodeIds = network.nodes().stream()
+                .map(CalculationNode::id)
+                .collect(Collectors.toSet());
+
+        if (!nodeIds.contains(feedingNodeId)) {
+            throw new IllegalArgumentException(
+                    "Substation feeding terminal node not found: " + feedingNodeId
+            );
+        }
+
+        if (!nodeIds.contains(returnNodeId)) {
+            throw new IllegalArgumentException(
+                    "Substation return terminal node not found: " + returnNodeId
+            );
         }
     }
 }
