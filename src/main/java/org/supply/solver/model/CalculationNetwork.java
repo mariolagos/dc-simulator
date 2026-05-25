@@ -4,6 +4,7 @@ import java.util.List;
 
 public record CalculationNetwork(
         List<CalculationNode> nodes,
-        List<CalculationBranch> branches
+        List<CalculationBranch> branches,
+        List<CalculationTrainLoad> trainLoads
 ) {
 }
