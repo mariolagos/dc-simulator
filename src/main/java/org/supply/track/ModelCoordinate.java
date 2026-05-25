@@ -8,10 +8,12 @@ import java.util.Objects;
 public final class ModelCoordinate {
 
     private final String sectionId;
+    private final String trackId;
     private final int positionM;
 
-    public ModelCoordinate(String sectionId, int positionM) {
+    public ModelCoordinate(String sectionId, String trackId, int positionM) {
         this.sectionId = Objects.requireNonNull(sectionId, "sectionId");
+        this.trackId = trackId;
         this.positionM = positionM;
     }
 
@@ -25,6 +27,15 @@ public final class ModelCoordinate {
 
     @Override
     public String toString() {
-        return "(" + sectionId + ", " + positionM + ")";
+        return "ModelCoordinate{" +
+                "sectionId='" + sectionId + '\'' +
+                ", trackId='" + trackId + '\'' +
+                ", positionM=" + positionM +
+                '}';
     }
+
+    public String getTrackId() {
+        return trackId;
+    }
+
 }

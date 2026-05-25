@@ -22,7 +22,11 @@ public final class TrackSectionMapper {
             if (isWithinSegment(segment, railwayCoordinate)) {
                 int offsetInSegment = Math.abs(railwayCoordinate.getPositionM() - segment.getStartRwy().getPositionM());
                 int modelPositionM = segment.getStartModelM() + offsetInSegment;
-                return new ModelCoordinate(section.getSectionId(), modelPositionM);
+                return new ModelCoordinate(
+                        section.getSectionId(),
+                        railwayCoordinate.getTrackId(),
+                        modelPositionM
+                );
             }
         }
 
