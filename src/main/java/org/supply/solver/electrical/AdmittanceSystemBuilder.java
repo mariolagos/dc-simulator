@@ -4,8 +4,6 @@ import org.supply.math.Real;
 import org.supply.solver.model.CalculationBranch;
 import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationNode;
-import org.supply.solver.model.ElectricalElement;
-import org.supply.solver.model.ResistiveBranchElement;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -50,13 +48,9 @@ public final class AdmittanceSystemBuilder {
                 new AdmittanceStamp(matrix, vector, nodeIndexById);
 
         for (CalculationBranch branch : network.branches()) {
-            new ResistiveBranchElement(
-                    branch.id(),
-                    branch.fromNodeId(),
-                    branch.toNodeId(),
-                    branch.resistanceOhm()
-            ).stamp(stamp);
+            branch.stamp(stamp);
         }
+
         stampCurrentInjections(currentInjections, nodeIndexById, vector);
 
         return new AdmittanceSystem(
