@@ -4,6 +4,8 @@ import org.supply.math.Real;
 import org.supply.solver.model.CalculationBranch;
 import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationNode;
+import org.supply.solver.model.ElectricalElement;
+import org.supply.solver.model.ResistiveBranchElement;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -44,8 +46,17 @@ public final class AdmittanceSystemBuilder {
         Real[][] matrix = zeroMatrix(size);
         Real[] vector = zeroVector(size);
 
-        stampPassiveBranches(network, nodeIndexById, matrix);
+        AdmittanceStamp stamp =
+                new AdmittanceStamp(matrix, vector, nodeIndexById);
 
+        for (CalculationBranch branch : network.branches()) {
+            new ResistiveBranchElement(
+                    branch.id(),
+                    branch.fromNodeId(),
+                    branch.toNodeId(),
+                    branch.resistanceOhm()
+            ).stamp(stamp);
+        }
         stampCurrentInjections(currentInjections, nodeIndexById, vector);
 
         return new AdmittanceSystem(
@@ -84,35 +95,6 @@ public final class AdmittanceSystemBuilder {
         }
 
         return vector;
-    }
-
-    private static void stampPassiveBranches(
-            CalculationNetwork network,
-            Map<String, Integer> nodeIndexById,
-            Real[][] matrix
-    ) {
-        for (CalculationBranch branch : network.branches()) {
-
-            int from = nodeIndexById.get(branch.fromNodeId());
-            int to = nodeIndexById.get(branch.toNodeId());
-
-            double resistanceOhm = branch.resistanceOhm().asDouble();
-
-            if (resistanceOhm <= 0.0) {
-                throw new IllegalArgumentException(
-                        "Branch resistance must be positive: "
-                                + branch.id()
-                );
-            }
-
-            double conductance = 1.0 / resistanceOhm;
-
-            add(matrix, from, from, conductance);
-            add(matrix, to, to, conductance);
-
-            add(matrix, from, to, -conductance);
-            add(matrix, to, from, -conductance);
-        }
     }
 
     private static void add(
