@@ -30,11 +30,6 @@ public class Node {
         return nodeId;
     }
 
-    // Behåll tillfälligt för bakåtkompatibilitet om annan kod redan använder detta namn.
-    public String getNode_id() {
-        return nodeId;
-    }
-
     public String getPositionRwy() {
         return positionRwy;
     }
