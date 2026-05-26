@@ -8,10 +8,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class RunSampleLoader {
 
-    public List<RunSample> load(Path file) throws IOException {
+    public List<RunSample> load(
+            Path file,
+            Map<String, String> trackIdByTrainId
+    ) throws IOException {
+
         List<RunSample> out = new ArrayList<>();
 
         try (BufferedReader reader = Files.newBufferedReader(file)) {
@@ -37,10 +42,20 @@ public final class RunSampleLoader {
                     );
                 }
 
+                String trainId = p[1].trim();
+                String trackId = trackIdByTrainId.get(trainId);
+
+                if (trackId == null) {
+                    throw new IllegalArgumentException(
+                            "Missing trackId for train_id: " + trainId
+                    );
+                }
+
                 out.add(new RunSample(
                         Double.parseDouble(p[0].trim()),
-                        p[1].trim(),
-                        p[2].trim(),
+                        trainId,
+                        p[2].trim(),       // sectionId eller track/section från run.csv
+                        trackId,           // UP/DOWN från map
                         Double.parseDouble(p[3].trim()),
                         Double.parseDouble(p[4].trim())
                 ));

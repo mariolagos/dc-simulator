@@ -7,7 +7,7 @@ import java.util.*;
 
 public final class TrainNodeInserter {
 
-    private static final double EPS = 1e-3;
+    private static final double EPS = 1e-9;
 
     public CalculationNetwork insertTrainNodes(
             CalculationNetwork baseNetwork,
@@ -15,15 +15,24 @@ public final class TrainNodeInserter {
     ) {
         List<CalculationNode> nodes = new ArrayList<>(baseNetwork.nodes());
         List<CalculationBranch> outBranches = new ArrayList<>();
+        List<CalculationTrainLoad> trainLoads = new ArrayList<>();
         Set<String> placedTrainIds = new HashSet<>();
-
-        markTrainsAtExistingNodes(baseNetwork.nodes(), trains, placedTrainIds);
 
         for (CalculationBranch branch : baseNetwork.branches()) {
             CalculationNode from = findNode(nodes, branch.fromNodeId());
             CalculationNode to = findNode(nodes, branch.toNodeId());
 
-            List<CalculationTrainPosition> trainsOnBranch = trainsOnBranch(from, to, trains, placedTrainIds);
+            placeTrainsAtExistingNodes(
+                    nodes,
+                    trains,
+                    placedTrainIds,
+                    trainLoads,
+                    from,
+                    to
+            );
+
+            List<CalculationTrainPosition> trainsOnBranch =
+                    trainsInsideBranch(from, to, trains, placedTrainIds);
 
             if (trainsOnBranch.isEmpty()) {
                 outBranches.add(branch);
@@ -51,11 +60,20 @@ public final class TrainNodeInserter {
 
                 nodes.add(trainNode);
                 chain.add(trainNode);
+
+                CalculationNode returnNode = findReturnNode(nodes, train);
+
+                trainLoads.add(new CalculationTrainLoad(
+                        train.trainId(),
+                        trainNode.id(),
+                        returnNode.id(),
+                        train.pReqW()
+                ));
+
                 placedTrainIds.add(train.trainId());
             }
 
             chain.add(to);
-
             addSplitBranches(outBranches, branch, chain);
         }
 
@@ -70,32 +88,44 @@ public final class TrainNodeInserter {
             }
         }
 
-        return new CalculationNetwork(nodes, outBranches);
+        return new CalculationNetwork(nodes, outBranches, trainLoads);
     }
 
-    private static void markTrainsAtExistingNodes(
+    private static void placeTrainsAtExistingNodes(
             List<CalculationNode> nodes,
             List<CalculationTrainPosition> trains,
-            Set<String> placedTrainIds
+            Set<String> placedTrainIds,
+            List<CalculationTrainLoad> trainLoads,
+            CalculationNode from,
+            CalculationNode to
     ) {
         for (CalculationTrainPosition train : trains) {
-            for (CalculationNode node : nodes) {
-                if (sameTrack(node, train)
-                        && Math.abs(node.positionM() - train.positionM()) <= EPS) {
-                    placedTrainIds.add(train.trainId());
-                    break;
-                }
+            if (placedTrainIds.contains(train.trainId())) {
+                continue;
+            }
+
+            if (!sameTrack(from, train) || !sameTrack(to, train)) {
+                continue;
+            }
+
+            if (isAtNode(from, train) || isAtNode(to, train)) {
+                addTrainLoadAtExistingPosition(
+                        trainLoads,
+                        nodes,
+                        train,
+                        train.positionM()
+                );
+                placedTrainIds.add(train.trainId());
             }
         }
     }
 
-    private static List<CalculationTrainPosition> trainsOnBranch(
+    private static List<CalculationTrainPosition> trainsInsideBranch(
             CalculationNode from,
             CalculationNode to,
             List<CalculationTrainPosition> trains,
             Set<String> placedTrainIds
     ) {
-
         List<CalculationTrainPosition> out = new ArrayList<>();
 
         double min = Math.min(from.positionM(), to.positionM());
@@ -106,23 +136,11 @@ public final class TrainNodeInserter {
                 continue;
             }
 
-            System.out.println(
-                    "CHECK train=" + train.trainId()
-                            + " train=" + train.sectionId() + "/" + train.trackId() + "@" + train.positionM()
-                            + " from=" + from.id() + " " + from.sectionId() + "/" + from.trackId() + "@" + from.positionM()
-                            + " to=" + to.id() + " " + to.sectionId() + "/" + to.trackId() + "@" + to.positionM()
-            );
-
             if (!sameTrack(from, train) || !sameTrack(to, train)) {
                 continue;
             }
 
-            if (isAtNode(from, train) || isAtNode(to, train)) {
-                placedTrainIds.add(train.trainId());
-                continue;
-            }
-
-            if (train.positionM() > min && train.positionM() < max) {
+            if (train.positionM() > min + EPS && train.positionM() < max - EPS) {
                 out.add(train);
             }
         }
@@ -132,7 +150,7 @@ public final class TrainNodeInserter {
 
     private static boolean isAtNode(CalculationNode node, CalculationTrainPosition train) {
         return sameTrack(node, train)
-                && Math.abs(node.positionM() - train.positionM()) < 1e-9;
+                && Math.abs(node.positionM() - train.positionM()) <= EPS;
     }
 
     private static void addSplitBranches(
@@ -146,7 +164,7 @@ public final class TrainNodeInserter {
         double totalLength = Math.abs(last.positionM() - first.positionM());
         double totalR = original.resistanceOhm().asDouble();
 
-        if (totalLength <= 0.0) {
+        if (totalLength <= EPS) {
             throw new IllegalArgumentException("Cannot split zero-length branch: " + original.id());
         }
 
@@ -155,14 +173,15 @@ public final class TrainNodeInserter {
             CalculationNode b = chain.get(i + 1);
 
             double segmentLength = Math.abs(b.positionM() - a.positionM());
-            Real segmentR = Real.fromDouble(totalR * segmentLength / totalLength);
 
-            if (segmentLength <= 0.0) {
+            if (segmentLength <= EPS) {
                 throw new IllegalArgumentException(
                         "Zero-length split branch between "
                                 + a.id() + " and " + b.id()
                 );
             }
+
+            Real segmentR = Real.fromDouble(totalR * segmentLength / totalLength);
 
             out.add(new CalculationBranch(
                     original.id() + "_part_" + (i + 1),
@@ -172,6 +191,75 @@ public final class TrainNodeInserter {
                     segmentR
             ));
         }
+    }
+
+    private static void addTrainLoadAtExistingPosition(
+            List<CalculationTrainLoad> trainLoads,
+            List<CalculationNode> nodes,
+            CalculationTrainPosition train,
+            double positionM
+    ) {
+        CalculationNode feeding = null;
+        CalculationNode returning = null;
+
+        for (CalculationNode node : nodes) {
+            if (!Objects.equals(node.sectionId(), train.sectionId())) {
+                continue;
+            }
+
+            if (Math.abs(node.positionM() - positionM) > EPS) {
+                continue;
+            }
+
+            if (node.id().startsWith("F")) {
+                feeding = node;
+            } else if (node.id().startsWith("R")) {
+                returning = node;
+            }
+        }
+
+        if (feeding == null || returning == null) {
+            throw new IllegalArgumentException(
+                    "Cannot attach train " + train.trainId()
+                            + " at " + train.sectionId()
+                            + "/" + train.trackId()
+                            + " position " + positionM
+                            + ": feeding/return node pair not found"
+            );
+        }
+
+        trainLoads.add(new CalculationTrainLoad(
+                train.trainId(),
+                feeding.id(),
+                returning.id(),
+                train.pReqW()
+        ));
+    }
+
+    private static CalculationNode findReturnNode(
+            List<CalculationNode> nodes,
+            CalculationTrainPosition train
+    ) {
+        for (CalculationNode node : nodes) {
+            if (!Objects.equals(node.sectionId(), train.sectionId())) {
+                continue;
+            }
+
+            if (Math.abs(node.positionM() - train.positionM()) > EPS) {
+                continue;
+            }
+
+            if (node.id().startsWith("R")) {
+                return node;
+            }
+        }
+
+        throw new IllegalArgumentException(
+                "Return node not found for train "
+                        + train.trainId()
+                        + " at position "
+                        + train.positionM()
+        );
     }
 
     private static boolean sameTrack(CalculationNode node, CalculationTrainPosition train) {
