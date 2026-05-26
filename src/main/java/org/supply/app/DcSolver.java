@@ -12,8 +12,13 @@ import org.supply.loader.SystemParametersFactory;
 import org.supply.math.Real;
 import org.supply.model.GridModel;
 import org.supply.solver.build.CalculationNetworkBuilder;
+import org.supply.solver.build.TopologyPrinter;
 import org.supply.solver.build.TrainNodeInserter;
 import org.supply.solver.build.TrainPositionFactory;
+import org.supply.solver.electrical.AdmittanceSystem;
+import org.supply.solver.electrical.AdmittanceSystemBuilder;
+import org.supply.solver.electrical.LinearSystemSolver;
+import org.supply.solver.electrical.MatrixPrinter;
 import org.supply.solver.model.CalculationBranch;
 import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationNode;
@@ -54,6 +59,38 @@ public final class DcSolver {
         List<CalculationTrainPosition> trainPositions = new TrainPositionFactory().fromRunSamples(samples);
 
         CalculationNetwork timestepNetwork = new TrainNodeInserter().insertTrainNodes(baseNetwork, trainPositions);
+
+        TopologyPrinter.print(timestepNetwork);
+
+        AdmittanceSystem system =
+                new AdmittanceSystemBuilder().build(
+                        timestepNetwork,
+                        "R1"
+                );
+
+        System.out.println("=== Node index ===");
+        for (Map.Entry<String, Integer> e : system.nodeIndexById().entrySet()) {
+            System.out.println(e.getValue() + " -> " + e.getKey());
+        }
+
+        MatrixPrinter.printSystem(
+                "C1",
+                system,
+                20,
+                20,
+                6
+        );
+
+        Map<String, Real> voltages =
+                new LinearSystemSolver().solveVoltages(system);
+
+        System.out.println("=== Voltages ===");
+
+        for (Map.Entry<String, Real> e : voltages.entrySet()) {
+            System.out.println(
+                    e.getKey() + " = " + e.getValue().asDouble() + " V"
+            );
+        }
 
         System.out.println("DcSolver startup OK");
         System.out.println("base nodes=" + baseNetwork.nodes().size());

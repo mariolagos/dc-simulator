@@ -6,8 +6,10 @@ import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationNode;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class AdmittanceSystemBuilder {
@@ -23,9 +25,7 @@ public final class AdmittanceSystemBuilder {
             );
         }
 
-        List<String> nodeIds = network.nodes().stream()
-                .map(CalculationNode::id)
-                .collect(Collectors.toList());
+        List<String> nodeIds = activeNodeIds(network, referenceNodeId, currentInjections);
 
         Map<String, Integer> nodeIndexById = new LinkedHashMap<>();
 
@@ -150,4 +150,27 @@ public final class AdmittanceSystemBuilder {
         }
     }
 
+    private static List<String> activeNodeIds(
+            CalculationNetwork network,
+            String referenceNodeId,
+            List<CurrentInjection> currentInjections
+    ) {
+        Set<String> ids = new LinkedHashSet<>();
+
+        ids.add(referenceNodeId);
+
+        for (CalculationBranch b : network.branches()) {
+            ids.add(b.fromNodeId());
+            ids.add(b.toNodeId());
+        }
+
+        for (CurrentInjection i : currentInjections) {
+            ids.add(i.nodeId());
+        }
+
+        return network.nodes().stream()
+                .map(CalculationNode::id)
+                .filter(ids::contains)
+                .collect(Collectors.toList());
+    }
 }

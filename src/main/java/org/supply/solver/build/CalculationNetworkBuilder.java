@@ -1,7 +1,10 @@
 package org.supply.solver.build;
 
+import org.supply.domain.ConnectionType;
+import org.supply.domain.InstallationConnection;
 import org.supply.domain.Line;
 import org.supply.domain.Node;
+import org.supply.domain.PowerInstallation;
 import org.supply.math.Real;
 import org.supply.model.GridModel;
 import org.supply.solver.model.CalculationBranch;
@@ -76,6 +79,99 @@ public final class CalculationNetworkBuilder {
             ));
         }
 
-        return new CalculationNetwork(nodes, branches);
+        addSubstationBranches(gridModel, branches);
+
+        return new CalculationNetwork(nodes, branches, List.of());
     }
+
+    private static List<InstallationConnection> connectionsFor(
+            GridModel grid,
+            PowerInstallation installation
+    ) {
+        List<InstallationConnection> out = new ArrayList<>();
+
+        for (InstallationConnection c : grid.getInstallationConnections()) {
+            if (Objects.equals(c.getInstallationId(), installation.getInstallationId())) {
+                out.add(c);
+            }
+        }
+
+        return out;
+    }
+
+    private static void addSubstationBranches(
+            GridModel gridModel,
+            List<CalculationBranch> branches
+    ) {
+        for (PowerInstallation inst : gridModel.getInstallations()) {
+            if (!inst.isSubstation()) {
+                continue;
+            }
+
+            InstallationConnection feeding = singleConnection(
+                    gridModel,
+                    inst,
+                    ConnectionType.FEEDING
+            );
+
+            InstallationConnection returning = singleConnection(
+                    gridModel,
+                    inst,
+                    ConnectionType.RETURN
+            );
+
+            if (feeding.getNodeId().equals(returning.getNodeId())) {
+                throw new IllegalArgumentException(
+                        "Substation " + inst.getInstallationId()
+                                + " has same feeding and return node: "
+                                + feeding.getNodeId()
+                );
+            }
+
+            branches.add(new CalculationBranch(
+                    "substation_" + inst.getInstallationId(),
+                    inst.getInstallationId(),
+                    feeding.getNodeId(),
+                    returning.getNodeId(),
+                    inst.getInternalResistanceOhm()
+            ));
+        }
+    }
+
+    private static InstallationConnection singleConnection(
+            GridModel gridModel,
+            PowerInstallation inst,
+            ConnectionType type
+    ) {
+        InstallationConnection found = null;
+
+        for (InstallationConnection conn : gridModel.getInstallationConnections()) {
+            if (!conn.getInstallationId().equals(inst.getInstallationId())) {
+                continue;
+            }
+
+            if (!conn.getConnectionType().equals(type)) {
+                continue;
+            }
+
+            if (found != null) {
+                throw new IllegalArgumentException(
+                        "Substation " + inst.getInstallationId()
+                                + " has multiple " + type + " connections"
+                );
+            }
+
+            found = conn;
+        }
+
+        if (found == null) {
+            throw new IllegalArgumentException(
+                    "Substation " + inst.getInstallationId()
+                            + " missing " + type + " connection"
+            );
+        }
+
+        return found;
+    }
+
 }
