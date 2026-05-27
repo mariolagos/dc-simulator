@@ -162,7 +162,7 @@ public class CalculationNetworkBuilderTest {
             ));
         }
 
-        return new CalculationNetwork(nodes, List.of());
+        return new CalculationNetwork(nodes, List.of(), List.of(), List.of());
     }
 
     private static void validateSubstationTerminals(

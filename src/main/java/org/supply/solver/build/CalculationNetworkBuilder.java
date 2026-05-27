@@ -11,6 +11,8 @@ import org.supply.solver.model.CalculationBranch;
 import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationNode;
 import org.supply.solver.model.CalculationNodeType;
+import org.supply.solver.model.ElectricalElement;
+import org.supply.solver.model.SubstationElement;
 import org.supply.track.ModelCoordinate;
 import org.supply.track.RwyCoordinate;
 import org.supply.track.RwyCoordinateParser;
@@ -79,11 +81,45 @@ public final class CalculationNetworkBuilder {
             ));
         }
 
-        addSubstationBranches(gridModel, branches);
+        List<ElectricalElement> elements = new ArrayList<>();
+        elements.addAll(branches);
 
-        return new CalculationNetwork(nodes, branches, List.of());
+        addSubstationElements(gridModel, elements);
+        return new CalculationNetwork(nodes, branches, List.of(), elements);
     }
 
+    private static void addSubstationElements(
+            GridModel gridModel,
+            List<ElectricalElement> elements
+    ) {
+        for (PowerInstallation inst : gridModel.getInstallations()) {
+            if (!inst.isSubstation()) {
+                continue;
+            }
+
+            InstallationConnection feeding =
+                    singleConnection(gridModel, inst, ConnectionType.FEEDING);
+
+            InstallationConnection returning =
+                    singleConnection(gridModel, inst, ConnectionType.RETURN);
+
+            if (feeding.getNodeId().equals(returning.getNodeId())) {
+                throw new IllegalArgumentException(
+                        "Substation " + inst.getInstallationId()
+                                + " has same feeding and return node: "
+                                + feeding.getNodeId()
+                );
+            }
+
+            elements.add(new SubstationElement(
+                    inst.getInstallationId(),
+                    feeding.getNodeId(),
+                    returning.getNodeId(),
+                    inst.getEmfV(),
+                    inst.getInternalResistanceOhm()
+            ));
+        }
+    }
     private static List<InstallationConnection> connectionsFor(
             GridModel grid,
             PowerInstallation installation

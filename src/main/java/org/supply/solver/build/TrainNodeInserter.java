@@ -88,8 +88,16 @@ public final class TrainNodeInserter {
             }
         }
 
-        return new CalculationNetwork(nodes, outBranches, trainLoads);
-    }
+        List<ElectricalElement> elements = new ArrayList<>();
+        elements.addAll(outBranches);
+
+        for (ElectricalElement e : baseNetwork.elements()) {
+            if (!(e instanceof CalculationBranch)) {
+                elements.add(e);
+            }
+        }
+
+        return new CalculationNetwork(nodes, outBranches, trainLoads, elements);    }
 
     private static void placeTrainsAtExistingNodes(
             List<CalculationNode> nodes,

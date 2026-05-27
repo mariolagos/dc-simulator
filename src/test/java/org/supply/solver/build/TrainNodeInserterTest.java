@@ -12,342 +12,165 @@ public final class TrainNodeInserterTest {
 
     @Test
     public void insertsTwoTrainNodesAndSplitsBranchDeterministically() {
+        CalculationNetwork base = baseNetworkWithReturnNodesAt(300.0, 700.0);
 
-        CalculationNode a = new CalculationNode(
-                "A",
-                null,
-                "section-1",
-                "track-1",
-                0.0,
-                CalculationNodeType.GRID_NODE
-        );
+        CalculationTrainPosition train2 = train("T2", 700.0);
+        CalculationTrainPosition train1 = train("T1", 300.0);
 
-        CalculationNode b = new CalculationNode(
-                "B",
-                null,
-                "section-1",
-                "track-1",
-                1000.0,
-                CalculationNodeType.GRID_NODE
-        );
+        CalculationNetwork result =
+                new TrainNodeInserter().insertTrainNodes(base, List.of(train2, train1));
 
-        CalculationBranch branch = new CalculationBranch(
-                "branch-1",
-                "source-1",
-                "A",
-                "B",
-                Real.fromDouble(1.0)
-        );
-
-        CalculationNetwork base = new CalculationNetwork(
-                List.of(a, b),
-                List.of(branch)
-        );
-
-        // Intentionally reversed input order
-        CalculationTrainPosition train2 = new CalculationTrainPosition(
-                "T2",
-                "section-1",
-                "track-1",
-                700.0
-        );
-
-        CalculationTrainPosition train1 = new CalculationTrainPosition(
-                "T1",
-                "section-1",
-                "track-1",
-                300.0
-        );
-
-        CalculationNetwork result = new TrainNodeInserter()
-                .insertTrainNodes(base, List.of(train2, train1));
-
-        assertEquals(4, result.nodes().size());
+        assertEquals(6, result.nodes().size());
         assertEquals(3, result.branches().size());
+        assertEquals(2, result.trainLoads().size());
 
-        assertTrue(result.nodes().stream()
-                .anyMatch(n -> n.id().equals("train_T1")));
+        assertTrue(result.nodes().stream().anyMatch(n -> n.id().equals("train_T1")));
+        assertTrue(result.nodes().stream().anyMatch(n -> n.id().equals("train_T2")));
 
-        assertTrue(result.nodes().stream()
-                .anyMatch(n -> n.id().equals("train_T2")));
-
-        CalculationBranch b1 = result.branches().get(0);
-        CalculationBranch b2 = result.branches().get(1);
-        CalculationBranch b3 = result.branches().get(2);
-
-        assertEquals("A", b1.fromNodeId());
-        assertEquals("train_T1", b1.toNodeId());
-        assertEquals(0.3, b1.resistanceOhm().asDouble(), 1e-9);
-
-        assertEquals("train_T1", b2.fromNodeId());
-        assertEquals("train_T2", b2.toNodeId());
-        assertEquals(0.4, b2.resistanceOhm().asDouble(), 1e-9);
-
-        assertEquals("train_T2", b3.fromNodeId());
-        assertEquals("B", b3.toNodeId());
-        assertEquals(0.3, b3.resistanceOhm().asDouble(), 1e-9);
+        assertBranch(result.branches().get(0), "F_A", "train_T1", 0.3);
+        assertBranch(result.branches().get(1), "train_T1", "train_T2", 0.4);
+        assertBranch(result.branches().get(2), "train_T2", "F_B", 0.3);
     }
 
     @Test
     public void rejectsTrainThatCannotBePlacedOnAnyBranch() {
-
-        CalculationNode a = new CalculationNode(
-                "A",
-                null,
-                "section-1",
-                "track-1",
-                0.0,
-                CalculationNodeType.GRID_NODE
-        );
-
-        CalculationNode b = new CalculationNode(
-                "B",
-                null,
-                "section-1",
-                "track-1",
-                1000.0,
-                CalculationNodeType.GRID_NODE
-        );
-
-        CalculationBranch branch = new CalculationBranch(
-                "branch-1",
-                "source-1",
-                "A",
-                "B",
-                Real.fromDouble(1.0)
-        );
-
-        CalculationNetwork base = new CalculationNetwork(
-                List.of(a, b),
-                List.of(branch)
-        );
-
-        CalculationTrainPosition train = new CalculationTrainPosition(
-                "T1",
-                "section-1",
-                "track-1",
-                1200.0
-        );
+        CalculationNetwork base = baseNetworkWithReturnNodesAt();
 
         try {
-            new TrainNodeInserter()
-                    .insertTrainNodes(base, List.of(train));
-
+            new TrainNodeInserter().insertTrainNodes(base, List.of(train("T1", 1200.0)));
             fail("Expected IllegalArgumentException");
-
         } catch (IllegalArgumentException ex) {
-
-            assertTrue(
-                    ex.getMessage().contains("Could not place train T1")
-            );
+            assertTrue(ex.getMessage().contains("Could not place train T1"));
         }
     }
 
     @Test
     public void treatsTrainExactlyAtExistingNodeAsPlacedWithoutChangingTopology() {
-        CalculationNode a = new CalculationNode(
-                "A",
-                null,
-                "section-1",
-                "track-1",
-                0.0,
-                CalculationNodeType.GRID_NODE
-        );
+        CalculationNetwork base = baseNetworkWithReturnNodesAt(0.0);
 
-        CalculationNode b = new CalculationNode(
-                "B",
-                null,
-                "section-1",
-                "track-1",
-                1000.0,
-                CalculationNodeType.GRID_NODE
-        );
+        CalculationNetwork result =
+                new TrainNodeInserter().insertTrainNodes(base, List.of(train("T1", 0.0)));
 
-        CalculationBranch branch = new CalculationBranch(
-                "branch-1",
-                "source-1",
-                "A",
-                "B",
-                Real.fromDouble(1.0)
-        );
-
-        CalculationNetwork base = new CalculationNetwork(
-                List.of(a, b),
-                List.of(branch)
-        );
-
-        CalculationTrainPosition train = new CalculationTrainPosition(
-                "T1",
-                "section-1",
-                "track-1",
-                0.0
-        );
-
-        CalculationNetwork result = new TrainNodeInserter()
-                .insertTrainNodes(base, List.of(train));
-
-        assertEquals(2, result.nodes().size());
+        assertEquals(base.nodes().size(), result.nodes().size());
         assertEquals(1, result.branches().size());
+        assertEquals(1, result.trainLoads().size());
 
-        assertEquals("A", result.branches().get(0).fromNodeId());
-        assertEquals("B", result.branches().get(0).toNodeId());
+        assertBranch(result.branches().get(0), "F_A", "F_B", 1.0);
+
+        CalculationTrainLoad load = result.trainLoads().get(0);
+        assertEquals("T1", load.trainId());
+        assertEquals("F_A", load.feedingNodeId());
+        assertEquals("R_0", load.returnNodeId());
     }
 
     @Test
     public void producesIdenticalTopologyForDifferentTrainInputOrder() {
+        CalculationNetwork base = baseNetworkWithReturnNodesAt(300.0, 700.0);
 
-        CalculationNode a = new CalculationNode(
-                "A",
-                null,
-                "section-1",
-                "track-1",
-                0.0,
-                CalculationNodeType.GRID_NODE
-        );
+        CalculationNetwork result1 =
+                new TrainNodeInserter().insertTrainNodes(base, List.of(train("T1", 300.0), train("T2", 700.0)));
 
-        CalculationNode b = new CalculationNode(
-                "B",
-                null,
-                "section-1",
-                "track-1",
-                1000.0,
-                CalculationNodeType.GRID_NODE
-        );
+        CalculationNetwork result2 =
+                new TrainNodeInserter().insertTrainNodes(base, List.of(train("T2", 700.0), train("T1", 300.0)));
 
-        CalculationBranch branch = new CalculationBranch(
-                "branch-1",
-                "source-1",
-                "A",
-                "B",
-                Real.fromDouble(1.0)
-        );
-
-        CalculationNetwork base = new CalculationNetwork(
-                List.of(a, b),
-                List.of(branch)
-        );
-
-        CalculationTrainPosition train1 = new CalculationTrainPosition(
-                "T1",
-                "section-1",
-                "track-1",
-                300.0
-        );
-
-        CalculationTrainPosition train2 = new CalculationTrainPosition(
-                "T2",
-                "section-1",
-                "track-1",
-                700.0
-        );
-
-        CalculationNetwork result1 = new TrainNodeInserter()
-                .insertTrainNodes(base, List.of(train1, train2));
-
-        CalculationNetwork result2 = new TrainNodeInserter()
-                .insertTrainNodes(base, List.of(train2, train1));
-
-        assertEquals(result1.nodes().size(), result2.nodes().size());
-        assertEquals(result1.branches().size(), result2.branches().size());
-
-        for (int i = 0; i < result1.nodes().size(); i++) {
-
-            CalculationNode n1 = result1.nodes().get(i);
-            CalculationNode n2 = result2.nodes().get(i);
-
-            assertEquals(n1.id(), n2.id());
-            assertEquals(n1.positionM(), n2.positionM(), 1e-9);
-        }
-
-        for (int i = 0; i < result1.branches().size(); i++) {
-
-            CalculationBranch b1 = result1.branches().get(i);
-            CalculationBranch b2 = result2.branches().get(i);
-
-            assertEquals(b1.id(), b2.id());
-            assertEquals(b1.fromNodeId(), b2.fromNodeId());
-            assertEquals(b1.toNodeId(), b2.toNodeId());
-
-            assertEquals(
-                    b1.resistanceOhm().asDouble(),
-                    b2.resistanceOhm().asDouble(),
-                    1e-9
-            );
-        }
+        assertSameTopology(result1, result2);
     }
 
     @Test
     public void producesIdenticalTopologyAcrossRepeatedRuns() {
+        CalculationNetwork base = baseNetworkWithReturnNodesAt(300.0, 700.0);
 
-        CalculationNode a = new CalculationNode(
-                "A",
-                null,
-                "section-1",
-                "track-1",
-                0.0,
-                CalculationNodeType.GRID_NODE
-        );
+        CalculationNetwork result1 =
+                new TrainNodeInserter().insertTrainNodes(base, List.of(train("T1", 300.0), train("T2", 700.0)));
 
-        CalculationNode b = new CalculationNode(
-                "B",
-                null,
-                "section-1",
-                "track-1",
-                1000.0,
-                CalculationNodeType.GRID_NODE
-        );
+        CalculationNetwork result2 =
+                new TrainNodeInserter().insertTrainNodes(base, List.of(train("T1", 300.0), train("T2", 700.0)));
+
+        assertSameTopology(result1, result2);
+    }
+
+    private static CalculationNetwork baseNetworkWithReturnNodesAt(double... returnPositions) {
+        CalculationNode fA = node("F_A", 0.0);
+        CalculationNode fB = node("F_B", 1000.0);
 
         CalculationBranch branch = new CalculationBranch(
                 "branch-1",
                 "source-1",
-                "A",
-                "B",
+                "F_A",
+                "F_B",
                 Real.fromDouble(1.0)
         );
 
-        CalculationNetwork base = new CalculationNetwork(
-                List.of(a, b),
-                List.of(branch)
-        );
+        java.util.ArrayList<CalculationNode> nodes = new java.util.ArrayList<>();
+        nodes.add(fA);
+        nodes.add(fB);
 
-        CalculationTrainPosition train1 = new CalculationTrainPosition(
-                "T1",
-                "section-1",
-                "track-1",
-                300.0
-        );
-
-        CalculationTrainPosition train2 = new CalculationTrainPosition(
-                "T2",
-                "section-1",
-                "track-1",
-                700.0
-        );
-
-        CalculationNetwork result1 = new TrainNodeInserter()
-                .insertTrainNodes(base, List.of(train1, train2));
-
-        CalculationNetwork result2 = new TrainNodeInserter()
-                .insertTrainNodes(base, List.of(train1, train2));
-
-        assertEquals(result1.nodes().size(), result2.nodes().size());
-        assertEquals(result1.branches().size(), result2.branches().size());
-
-        for (int i = 0; i < result1.nodes().size(); i++) {
-
-            assertEquals(
-                    result1.nodes().get(i).id(),
-                    result2.nodes().get(i).id()
-            );
+        for (double position : returnPositions) {
+            nodes.add(node("R_" + Math.round(position), position));
         }
 
-        for (int i = 0; i < result1.branches().size(); i++) {
+        return new CalculationNetwork(
+                nodes,
+                List.of(branch),
+                List.of(),
+                List.of(branch)
+        );
+    }
 
+    private static CalculationTrainPosition train(String id, double positionM) {
+        return new CalculationTrainPosition(
+                id,
+                "section-1",
+                "track-1",
+                positionM,
+                Real.fromDouble(0.0)
+        );
+    }
+
+    private static CalculationNode node(String id, double positionM) {
+        return new CalculationNode(
+                id,
+                null,
+                "section-1",
+                "track-1",
+                positionM,
+                CalculationNodeType.GRID_NODE
+        );
+    }
+
+    private static void assertBranch(
+            CalculationBranch branch,
+            String from,
+            String to,
+            double resistanceOhm
+    ) {
+        assertEquals(from, branch.fromNodeId());
+        assertEquals(to, branch.toNodeId());
+        assertEquals(resistanceOhm, branch.resistanceOhm().asDouble(), 1e-9);
+    }
+
+    private static void assertSameTopology(
+            CalculationNetwork a,
+            CalculationNetwork b
+    ) {
+        assertEquals(a.nodes().size(), b.nodes().size());
+        assertEquals(a.branches().size(), b.branches().size());
+        assertEquals(a.trainLoads().size(), b.trainLoads().size());
+
+        for (int i = 0; i < a.nodes().size(); i++) {
+            assertEquals(a.nodes().get(i).id(), b.nodes().get(i).id());
+            assertEquals(a.nodes().get(i).positionM(), b.nodes().get(i).positionM(), 1e-9);
+        }
+
+        for (int i = 0; i < a.branches().size(); i++) {
+            assertEquals(a.branches().get(i).id(), b.branches().get(i).id());
+            assertEquals(a.branches().get(i).fromNodeId(), b.branches().get(i).fromNodeId());
+            assertEquals(a.branches().get(i).toNodeId(), b.branches().get(i).toNodeId());
             assertEquals(
-                    result1.branches().get(i).id(),
-                    result2.branches().get(i).id()
+                    a.branches().get(i).resistanceOhm().asDouble(),
+                    b.branches().get(i).resistanceOhm().asDouble(),
+                    1e-9
             );
         }
     }
-
 }

@@ -23,6 +23,7 @@ import org.supply.solver.model.CalculationBranch;
 import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationNode;
 import org.supply.solver.model.CalculationTrainPosition;
+import org.supply.solver.model.ElectricalElement;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
 import org.supply.track.TrackConfigLoader;
@@ -81,6 +82,10 @@ public final class DcSolver {
                 6
         );
 
+        System.out.println("elements=" + timestepNetwork.elements().size());
+        for (ElectricalElement e : timestepNetwork.elements()) {
+            System.out.println("element " + e.getClass().getSimpleName() + " " + e);
+        }
         Map<String, Real> voltages =
                 new LinearSystemSolver().solveVoltages(system);
 
