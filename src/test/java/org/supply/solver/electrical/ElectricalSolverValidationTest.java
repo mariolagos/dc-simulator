@@ -3,8 +3,11 @@ package org.supply.solver.electrical;
 import org.junit.Test;
 import org.supply.math.Real;
 import org.supply.solver.model.CalculationNetwork;
+import org.supply.solver.model.ElectricalElement;
+import org.supply.solver.model.TrainLoadElement;
 import org.supply.solver.testsupport.ElectricalTestCases;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -123,5 +126,55 @@ public final class ElectricalSolverValidationTest {
         return (voltages.get(fromNodeId).asDouble()
                 - voltages.get(toNodeId).asDouble())
                 / resistanceOhm;
+    }
+
+    @Test
+    public void trainLoadElementProducesExpectedVoltageDrop() {
+
+        CalculationNetwork network =
+                ElectricalTestCases.oneSubstationOneTrainLine();
+
+        TrainLoadElement trainLoad =
+                new TrainLoadElement(
+                        "F_TRAIN",
+                        "R_TRAIN",
+                        780_000.0,
+                        780.0
+                );
+
+        List<ElectricalElement> elements =
+                new ArrayList<>(network.elements());
+
+        elements.add(trainLoad);
+
+        CalculationNetwork loadedNetwork =
+                new CalculationNetwork(
+                        network.nodes(),
+                        network.branches(),
+                        network.trainLoads(),
+                        elements
+                );
+
+        AdmittanceSystem system =
+                new AdmittanceSystemBuilder().build(
+                        loadedNetwork,
+                        "R_SUB"
+                );
+
+        Map<String, Real> voltages =
+                new LinearSystemSolver().solveVoltages(system);
+
+        double trainVoltage =
+                voltageBetween(
+                        voltages,
+                        "F_TRAIN",
+                        "R_TRAIN"
+                );
+
+        assertEquals(
+                480.0,
+                trainVoltage,
+                1e-6
+        );
     }
 }
