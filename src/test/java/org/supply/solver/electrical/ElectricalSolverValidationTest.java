@@ -177,4 +177,59 @@ public final class ElectricalSolverValidationTest {
                 1e-6
         );
     }
+
+    @Test
+    public void regenerativeBrakingInjectsCurrentIntoNetwork() {
+
+        CalculationNetwork network =
+                ElectricalTestCases.oneSubstationOneTrainLine();
+
+        TrainLoadElement trainLoad =
+                new TrainLoadElement(
+                        "F_TRAIN",
+                        "R_TRAIN",
+                        -780_000,
+                        780
+                );
+
+        List<ElectricalElement> elements =
+                new ArrayList<>(network.elements());
+
+        elements.add(trainLoad);
+
+        CalculationNetwork loadedNetwork =
+                new CalculationNetwork(
+                        network.nodes(),
+                        network.branches(),
+                        network.trainLoads(),
+                        elements
+                );
+
+        AdmittanceSystem system =
+                new AdmittanceSystemBuilder().build(
+                        loadedNetwork,
+                        "R_SUB"
+                );
+
+        Map<String, Real> voltages =
+                new LinearSystemSolver().solveVoltages(system);
+
+        double trainVoltage =
+                voltageBetween(
+                        voltages,
+                        "F_TRAIN",
+                        "R_TRAIN"
+                );
+
+        assertTrue(
+                "Expected regenerative braking to raise train voltage",
+                trainVoltage > 780.0
+        );
+
+        assertEquals(
+                1080.0,
+                trainVoltage,
+                1e-6
+        );
+    }
 }

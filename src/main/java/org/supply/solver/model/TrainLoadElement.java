@@ -34,6 +34,10 @@ public final class TrainLoadElement implements ElectricalElement {
                 -currentA
         );
 
+        System.out.println("P = " + requestedPowerW);
+        System.out.println("U = " + nominalVoltageV);
+        System.out.println("I = " + currentA);
+
         stamp.addCurrent(
                 returnNodeId,
                 currentA
