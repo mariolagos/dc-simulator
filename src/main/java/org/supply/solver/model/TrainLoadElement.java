@@ -8,25 +8,25 @@ public final class TrainLoadElement implements ElectricalElement {
     private final String returnNodeId;
 
     private final double requestedPowerW;
-    private final double nominalVoltageV;
+    private final double voltageV;
 
     public TrainLoadElement(
             String feedingNodeId,
             String returnNodeId,
             double requestedPowerW,
-            double nominalVoltageV
+            double voltageV
     ) {
         this.feedingNodeId = feedingNodeId;
         this.returnNodeId = returnNodeId;
         this.requestedPowerW = requestedPowerW;
-        this.nominalVoltageV = nominalVoltageV;
+        this.voltageV = voltageV;
     }
 
     @Override
     public void stamp(AdmittanceStamp stamp) {
 
         double p = requestedPowerW;
-        double u = nominalVoltageV;
+        double u = voltageV;
 
         if (p > 0.0) {
             // traction: train consumes power

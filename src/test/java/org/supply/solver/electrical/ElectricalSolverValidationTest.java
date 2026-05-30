@@ -153,4 +153,39 @@ public final class ElectricalSolverValidationTest {
                 - voltages.get(toNodeId).asDouble())
                 / resistanceOhm;
     }
+
+    @Test
+    public void constantPowerIterationConvergesForTractionLoad() {
+        CalculationNetwork network =
+                ElectricalTestCases.oneSubstationOneTrainLine();
+
+        double requestedPowerW = 300_000.0;
+
+        SingleTimestepSolver.Result result =
+                new SingleTimestepSolver()
+                        .solveConstantPowerTrain(
+                                network,
+                                "R_SUB",
+                                "F_TRAIN",
+                                "R_TRAIN",
+                                requestedPowerW,
+                                ElectricalTestCases.U_NOMINAL_V,
+                                50,
+                                1e-6
+                        );
+
+        assertTrue(result.converged());
+        assertTrue(result.iterations() > 1);
+
+        assertTrue(
+                result.trainVoltageV()
+                        < ElectricalTestCases.U_NOMINAL_V
+        );
+
+        assertEquals(
+                ElectricalTestCases.U_MIN_V,
+                result.trainVoltageV(),
+                1e-6
+        );
+    }
 }
