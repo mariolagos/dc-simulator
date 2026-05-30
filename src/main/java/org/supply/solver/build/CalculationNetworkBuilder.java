@@ -12,7 +12,7 @@ import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationNode;
 import org.supply.solver.model.CalculationNodeType;
 import org.supply.solver.model.ElectricalElement;
-import org.supply.solver.model.SubstationElement;
+import org.supply.solver.model.ThyristorSubstationElement;
 import org.supply.track.ModelCoordinate;
 import org.supply.track.RwyCoordinate;
 import org.supply.track.RwyCoordinateParser;
@@ -111,7 +111,7 @@ public final class CalculationNetworkBuilder {
                 );
             }
 
-            elements.add(new SubstationElement(
+            elements.add(new ThyristorSubstationElement(
                     inst.getInstallationId(),
                     feeding.getNodeId(),
                     returning.getNodeId(),

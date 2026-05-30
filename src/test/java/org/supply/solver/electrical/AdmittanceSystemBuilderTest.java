@@ -92,7 +92,7 @@ public final class AdmittanceSystemBuilderTest {
                 node("R1", 0.0)
         );
 
-        SubstationElement substation = new SubstationElement(
+        ThyristorSubstationElement substation = new ThyristorSubstationElement(
                 "SS1",
                 "F1",
                 "R1",

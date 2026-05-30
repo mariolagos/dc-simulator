@@ -3,7 +3,7 @@ package org.supply.solver.model;
 import org.supply.math.Real;
 import org.supply.solver.electrical.AdmittanceStamp;
 
-public record SubstationElement(
+public record ThyristorSubstationElement(
         String id,
         String feedingNodeId,
         String returnNodeId,
@@ -15,15 +15,15 @@ public record SubstationElement(
     public void stamp(AdmittanceStamp stamp) {
         double r = internalResistanceOhm.asDouble();
 
-        if (r <= 0.0) {
+        if (r == 0.0) {
             throw new IllegalArgumentException(
-                    "Substation internal resistance must be positive: " + id
+                    "Thyristor substation internal resistance must be non zero: " + id
             );
         }
 
         double e = emfV.asDouble();
-        double g = 1.0 / r;
-        double i = e / r;
+        double g = Math.max(1.0 / r, 0.);
+        double i = Math.max(e / r, 0.);
 
         // Internal resistance
         stamp.addConductance(feedingNodeId, feedingNodeId, g);

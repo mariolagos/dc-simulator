@@ -3,11 +3,8 @@ package org.supply.solver.electrical;
 import org.junit.Test;
 import org.supply.math.Real;
 import org.supply.solver.model.CalculationNetwork;
-import org.supply.solver.model.ElectricalElement;
-import org.supply.solver.model.TrainLoadElement;
 import org.supply.solver.testsupport.ElectricalTestCases;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -15,58 +12,126 @@ import static org.junit.Assert.*;
 
 public final class ElectricalSolverValidationTest {
 
+
     @Test
     public void openCircuitProducesNominalTrainVoltage() {
-        CalculationNetwork network =
-                ElectricalTestCases.oneSubstationOneTrainLine();
-
-        AdmittanceSystem system =
-                new AdmittanceSystemBuilder().build(network, "R_SUB");
-
         Map<String, Real> voltages =
-                new LinearSystemSolver().solveVoltages(system);
+                solve(ElectricalTestCases.oneSubstationOneTrainLine());
 
-        double trainVoltage =
-                voltageBetween(voltages, "F_TRAIN", "R_TRAIN");
-
-        assertEquals(780.0, trainVoltage, 1e-6);
-    }
+        assertEquals(
+                ElectricalTestCases.U_NOMINAL_V,
+                trainVoltage(voltages),
+                1e-6
+        );    }
 
     @Test
     public void loadedCurrentInjectionProducesVoltageDrop() {
         CalculationNetwork network =
                 ElectricalTestCases.oneSubstationOneTrainLine();
 
-        double trainCurrentA = 1000.0;
+        double trainCurrentA = ElectricalTestCases.TEST_CURRENT_A;
 
+        Map<String, Real> voltages =
+                solve(
+                        network,
+                        List.of(
+                                new CurrentInjection("F_TRAIN", Real.fromDouble(-trainCurrentA)),
+                                new CurrentInjection("R_TRAIN", Real.fromDouble(trainCurrentA))
+                        )
+                );
+
+        assertTrue(
+                trainVoltage(voltages)
+                        < ElectricalTestCases.U_NOMINAL_V
+        );
+
+        assertEquals(
+                ElectricalTestCases.EXPECTED_TRACTION_V,
+                trainVoltage(voltages),
+                1e-6
+        );
+    }
+
+    @Test
+    public void loadedCurrentInjectionProducesExpectedBranchCurrents() {
+        CalculationNetwork network =
+                ElectricalTestCases.oneSubstationOneTrainLine();
+
+        double trainCurrentA =
+                ElectricalTestCases.TEST_CURRENT_A;
+
+        Map<String, Real> voltages =
+                solve(
+                        network,
+                        List.of(
+                                new CurrentInjection("F_TRAIN", Real.fromDouble(-trainCurrentA)),
+                                new CurrentInjection("R_TRAIN", Real.fromDouble(trainCurrentA))
+                        )
+                );
+
+        assertEquals(ElectricalTestCases.TEST_CURRENT_A, branchCurrentA(voltages, "F_SUB", "F_TRAIN", 0.1), 1e-6);
+        assertEquals(ElectricalTestCases.TEST_CURRENT_A, branchCurrentA(voltages, "R_TRAIN", "R_SUB", 0.1), 1e-6);
+    }
+
+    @Test
+    public void trainLoadElementProducesExpectedVoltageDrop() {
+        Map<String, Real> voltages =
+                solve(
+                        ElectricalTestCases
+                                .oneSubstationOneTrainLineWithTrainPower(
+                                        ElectricalTestCases.TEST_POWER_W
+                                )
+                );
+
+        assertEquals(
+                ElectricalTestCases.EXPECTED_TRACTION_V,
+                trainVoltage(voltages),
+                1e-6
+        );
+    }
+
+    @Test
+    public void regenerativeBrakingInjectsCurrentIntoNetwork() {
+        Map<String, Real> voltages =
+                solve(
+                        ElectricalTestCases
+                                .oneSubstationOneTrainLineWithTrainPower(
+                                        -ElectricalTestCases.TEST_POWER_W
+                                )
+                );
+
+        assertTrue(
+                trainVoltage(voltages)
+                        > ElectricalTestCases.U_NOMINAL_V
+        );
+
+        assertEquals(
+                ElectricalTestCases.EXPECTED_REGEN_V,
+                trainVoltage(voltages),
+                1e-6
+        );
+    }
+
+    private static Map<String, Real> solve(CalculationNetwork network) {
+        return solve(network, List.of());
+    }
+
+    private static Map<String, Real> solve(
+            CalculationNetwork network,
+            List<CurrentInjection> currentInjections
+    ) {
         AdmittanceSystem system =
                 new AdmittanceSystemBuilder().build(
                         network,
                         "R_SUB",
-                        List.of(
-                                new CurrentInjection(
-                                        "F_TRAIN",
-                                        Real.fromDouble(-trainCurrentA)
-                                ),
-                                new CurrentInjection(
-                                        "R_TRAIN",
-                                        Real.fromDouble(trainCurrentA)
-                                )
-                        )
+                        currentInjections
                 );
 
-        Map<String, Real> voltages =
-                new LinearSystemSolver().solveVoltages(system);
+        return new LinearSystemSolver().solveVoltages(system);
+    }
 
-        double trainVoltage =
-                voltageBetween(voltages, "F_TRAIN", "R_TRAIN");
-
-        assertTrue(
-                "Expected loaded train voltage below open-circuit voltage",
-                trainVoltage < 780.0
-        );
-
-        assertEquals(480.0, trainVoltage, 1e-6);
+    private static double trainVoltage(Map<String, Real> voltages) {
+        return voltageBetween(voltages, "F_TRAIN", "R_TRAIN");
     }
 
     private static double voltageBetween(
@@ -78,45 +143,6 @@ public final class ElectricalSolverValidationTest {
                 - voltages.get(negativeNodeId).asDouble();
     }
 
-    @Test
-    public void loadedCurrentInjectionProducesExpectedBranchCurrents() {
-        CalculationNetwork network =
-                ElectricalTestCases.oneSubstationOneTrainLine();
-
-        double trainCurrentA = 1000.0;
-
-        AdmittanceSystem system =
-                new AdmittanceSystemBuilder().build(
-                        network,
-                        "R_SUB",
-                        List.of(
-                                new CurrentInjection(
-                                        "F_TRAIN",
-                                        Real.fromDouble(-trainCurrentA)
-                                ),
-                                new CurrentInjection(
-                                        "R_TRAIN",
-                                        Real.fromDouble(trainCurrentA)
-                                )
-                        )
-                );
-
-        Map<String, Real> voltages =
-                new LinearSystemSolver().solveVoltages(system);
-
-        assertEquals(
-                1000.0,
-                branchCurrentA(voltages, "F_SUB", "F_TRAIN", 0.1),
-                1e-6
-        );
-
-        assertEquals(
-                1000.0,
-                branchCurrentA(voltages, "R_TRAIN", "R_SUB", 0.1),
-                1e-6
-        );
-    }
-
     private static double branchCurrentA(
             Map<String, Real> voltages,
             String fromNodeId,
@@ -126,110 +152,5 @@ public final class ElectricalSolverValidationTest {
         return (voltages.get(fromNodeId).asDouble()
                 - voltages.get(toNodeId).asDouble())
                 / resistanceOhm;
-    }
-
-    @Test
-    public void trainLoadElementProducesExpectedVoltageDrop() {
-
-        CalculationNetwork network =
-                ElectricalTestCases.oneSubstationOneTrainLine();
-
-        TrainLoadElement trainLoad =
-                new TrainLoadElement(
-                        "F_TRAIN",
-                        "R_TRAIN",
-                        780_000.0,
-                        780.0
-                );
-
-        List<ElectricalElement> elements =
-                new ArrayList<>(network.elements());
-
-        elements.add(trainLoad);
-
-        CalculationNetwork loadedNetwork =
-                new CalculationNetwork(
-                        network.nodes(),
-                        network.branches(),
-                        network.trainLoads(),
-                        elements
-                );
-
-        AdmittanceSystem system =
-                new AdmittanceSystemBuilder().build(
-                        loadedNetwork,
-                        "R_SUB"
-                );
-
-        Map<String, Real> voltages =
-                new LinearSystemSolver().solveVoltages(system);
-
-        double trainVoltage =
-                voltageBetween(
-                        voltages,
-                        "F_TRAIN",
-                        "R_TRAIN"
-                );
-
-        assertEquals(
-                480.0,
-                trainVoltage,
-                1e-6
-        );
-    }
-
-    @Test
-    public void regenerativeBrakingInjectsCurrentIntoNetwork() {
-
-        CalculationNetwork network =
-                ElectricalTestCases.oneSubstationOneTrainLine();
-
-        TrainLoadElement trainLoad =
-                new TrainLoadElement(
-                        "F_TRAIN",
-                        "R_TRAIN",
-                        -780_000,
-                        780
-                );
-
-        List<ElectricalElement> elements =
-                new ArrayList<>(network.elements());
-
-        elements.add(trainLoad);
-
-        CalculationNetwork loadedNetwork =
-                new CalculationNetwork(
-                        network.nodes(),
-                        network.branches(),
-                        network.trainLoads(),
-                        elements
-                );
-
-        AdmittanceSystem system =
-                new AdmittanceSystemBuilder().build(
-                        loadedNetwork,
-                        "R_SUB"
-                );
-
-        Map<String, Real> voltages =
-                new LinearSystemSolver().solveVoltages(system);
-
-        double trainVoltage =
-                voltageBetween(
-                        voltages,
-                        "F_TRAIN",
-                        "R_TRAIN"
-                );
-
-        assertTrue(
-                "Expected regenerative braking to raise train voltage",
-                trainVoltage > 780.0
-        );
-
-        assertEquals(
-                1080.0,
-                trainVoltage,
-                1e-6
-        );
     }
 }
