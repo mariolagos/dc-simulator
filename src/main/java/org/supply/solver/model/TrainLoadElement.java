@@ -25,26 +25,47 @@ public final class TrainLoadElement implements ElectricalElement {
     @Override
     public void stamp(AdmittanceStamp stamp) {
 
-        double p = requestedPowerW;
-        double u = voltageV;
+        double currentA;
 
-        if (p > 0.0) {
-            // traction: train consumes power
-            double i = p / u;
+        if (requestedPowerW > 0.0) {
 
-            stamp.addCurrent(feedingNodeId, -i);
-            stamp.addCurrent(returnNodeId, i);
+            double requestedCurrentA =
+                    requestedPowerW / voltageV;
 
-        } else if (p < 0.0) {
-            // regenerative braking: train injects power into DC network
-            double i = -p / u;
+            currentA = Math.min(
+                    requestedCurrentA,
+                    tractionCurrentLimitA(voltageV)
+            );
 
-            stamp.addCurrent(feedingNodeId, i);
-            stamp.addCurrent(returnNodeId, -i);
+        } else if (requestedPowerW < 0.0) {
+
+            double requestedCurrentA =
+                    requestedPowerW / voltageV;
+
+            currentA = Math.max(
+                    requestedCurrentA,
+                    regenerativeCurrentLimitA(voltageV)
+            );
 
         } else {
-            // idle
             return;
         }
     }
+
+    private static double tractionCurrentLimitA(double voltageV) {
+        if (voltageV <= U_MIN2_V) {
+            return 0.0;
+        }
+
+        if (voltageV < U_MIN1_V) {
+            return I_TRAIN_MAX_A
+                    * (voltageV - U_MIN2_V)
+                    / (U_MIN1_V - U_MIN2_V);
+        }
+
+        return I_TRAIN_MAX_A;
+    }
+
+
+
 }
