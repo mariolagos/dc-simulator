@@ -1,6 +1,7 @@
 package org.supply.solver.electrical;
 
 import org.junit.Test;
+import org.supply.domain.SystemParameters;
 import org.supply.math.Real;
 import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.testsupport.ElectricalTestCases;
@@ -12,6 +13,8 @@ import static org.junit.Assert.*;
 
 public final class ElectricalSolverValidationTest {
 
+    public static SystemParameters systemParameters;
+    public static LinearSystemSolver linearSystemSolver;
 
     @Test
     public void openCircuitProducesNominalTrainVoltage() {
@@ -162,7 +165,7 @@ public final class ElectricalSolverValidationTest {
         double requestedPowerW = 300_000.0;
 
         SingleTimestepSolver.Result result =
-                new SingleTimestepSolver()
+                new SingleTimestepSolver(systemParameters, linearSystemSolver)
                         .solveConstantPowerTrain(
                                 network,
                                 "R_SUB",

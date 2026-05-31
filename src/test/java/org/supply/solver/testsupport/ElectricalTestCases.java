@@ -1,6 +1,8 @@
 package org.supply.solver.testsupport;
 
+import org.supply.domain.SystemParameters;
 import org.supply.math.Real;
+import org.supply.solver.electrical.LinearSystemSolver;
 import org.supply.solver.model.*;
 
 import java.util.ArrayList;
@@ -31,8 +33,14 @@ public final class ElectricalTestCases {
                     + TEST_CURRENT_A
                     * (R_INTERNAL_OHM + R_FEED_OHM + R_RETURN_OHM);
 
+    public static SystemParameters systemParameters;
+    public static LinearSystemSolver linearSystemSolver;
+
     private ElectricalTestCases() {
+        systemParameters = new SystemParameters(U_NOMINAL_V, U_MIN_V, U_CUTOFF_V, U_MAX_V, I_TRAIN_MAX_A);
+        LinearSystemSolver solver = new LinearSystemSolver();
     }
+
 
     public static CalculationNetwork oneSubstationOneTrainLine() {
         return oneSubstationOneTrainLineWithTrainPower(0.0);
@@ -70,8 +78,8 @@ public final class ElectricalTestCases {
                     "F_TRAIN",
                     "R_TRAIN",
                     pReqW,
-                    U_NOMINAL_V
-            ));
+                    U_NOMINAL_V,
+                    systemParameters));
         }
 
         return new CalculationNetwork(

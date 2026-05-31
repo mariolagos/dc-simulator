@@ -1,5 +1,6 @@
 package org.supply.solver.model;
 
+import org.supply.domain.SystemParameters;
 import org.supply.solver.electrical.AdmittanceStamp;
 
 public final class TrainLoadElement implements ElectricalElement {
@@ -10,62 +11,111 @@ public final class TrainLoadElement implements ElectricalElement {
     private final double requestedPowerW;
     private final double voltageV;
 
+    private final SystemParameters systemParameters;
+
     public TrainLoadElement(
             String feedingNodeId,
             String returnNodeId,
             double requestedPowerW,
-            double voltageV
+            double voltageV,
+            SystemParameters systemParameters
     ) {
         this.feedingNodeId = feedingNodeId;
         this.returnNodeId = returnNodeId;
         this.requestedPowerW = requestedPowerW;
         this.voltageV = voltageV;
+        this.systemParameters = systemParameters;
     }
 
     @Override
     public void stamp(AdmittanceStamp stamp) {
+        double currentA = trainCurrentA();
 
-        double currentA;
-
-        if (requestedPowerW > 0.0) {
-
-            double requestedCurrentA =
-                    requestedPowerW / voltageV;
-
-            currentA = Math.min(
-                    requestedCurrentA,
-                    tractionCurrentLimitA(voltageV)
-            );
-
-        } else if (requestedPowerW < 0.0) {
-
-            double requestedCurrentA =
-                    requestedPowerW / voltageV;
-
-            currentA = Math.max(
-                    requestedCurrentA,
-                    regenerativeCurrentLimitA(voltageV)
-            );
-
-        } else {
+        if (currentA == 0.0) {
             return;
         }
+
+        stamp.addCurrent(feedingNodeId, -currentA);
+        stamp.addCurrent(returnNodeId, currentA);
     }
 
-    private static double tractionCurrentLimitA(double voltageV) {
-        if (voltageV <= U_MIN2_V) {
+    private double trainCurrentA() {
+        if (requestedPowerW > 0.0) {
+            return tractionCurrentA(
+                    requestedPowerW,
+                    voltageV,
+                    systemParameters
+            );
+        }
+
+        if (requestedPowerW < 0.0) {
+            return regenerativeCurrentA(
+                    requestedPowerW,
+                    voltageV,
+                    systemParameters
+            );
+        }
+
+        return 0.0;
+    }
+
+    private static double tractionCurrentA(
+            double requestedPowerW,
+            double voltageV,
+            SystemParameters systemParameters
+    ) {
+        double requestedCurrentA =
+                requestedPowerW / voltageV;
+
+        return Math.min(
+                requestedCurrentA,
+                tractionCurrentLimitA(voltageV, systemParameters)
+        );
+    }
+
+    private static double tractionCurrentLimitA(
+            double voltageV,
+            SystemParameters systemParameters
+    ) {
+        double uMin1V = systemParameters.uMin1V();
+        double uMin2V = systemParameters.uMin2V();
+        double iTrainMaxA = systemParameters.iTrainMaxA();
+
+        if (voltageV <= uMin1V) {
             return 0.0;
         }
 
-        if (voltageV < U_MIN1_V) {
-            return I_TRAIN_MAX_A
-                    * (voltageV - U_MIN2_V)
-                    / (U_MIN1_V - U_MIN2_V);
+        if (voltageV < uMin2V) {
+            return iTrainMaxA
+                    * (voltageV - uMin1V)
+                    / (uMin2V - uMin1V);
         }
 
-        return I_TRAIN_MAX_A;
+        return iTrainMaxA;
     }
 
+    private static double regenerativeCurrentA(
+            double requestedPowerW,
+            double voltageV,
+            SystemParameters systemParameters
+    ) {
+        double requestedCurrentA =
+                requestedPowerW / voltageV;
 
+        return Math.max(
+                requestedCurrentA,
+                regenerativeCurrentLimitA(voltageV, systemParameters)
+        );
+    }
 
+    private static double regenerativeCurrentLimitA(
+            double voltageV,
+            SystemParameters systemParameters
+    ) {
+        if (voltageV >= systemParameters.uMaxV()) {
+            return 0.0;
+        }
+
+        return -systemParameters.iTrainMaxA();
+    }
 }

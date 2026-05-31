@@ -1,13 +1,23 @@
 package org.supply.solver.electrical;
 
+import org.supply.domain.SystemParameters;
 import org.supply.math.Real;
 import org.supply.solver.model.*;
+
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public final class SingleTimestepSolver {
+
+    private  static SystemParameters systemParameters;
+    private static LinearSystemSolver linearSystemSolver;
+
+    public SingleTimestepSolver(SystemParameters systemParameters, LinearSystemSolver linearSystemSolver) {
+        this.systemParameters = systemParameters;
+        this.linearSystemSolver = linearSystemSolver;
+    }
 
     public Result solveConstantPowerTrain(
             CalculationNetwork baseNetwork,
@@ -38,7 +48,7 @@ public final class SingleTimestepSolver {
                     );
 
             voltages =
-                    new LinearSystemSolver().solveVoltages(system);
+                    linearSystemSolver.solveVoltages(system);
 
             double newVoltageV =
                     voltageBetween(
@@ -81,8 +91,8 @@ public final class SingleTimestepSolver {
                 feedingNodeId,
                 returnNodeId,
                 requestedPowerW,
-                voltageV
-        ));
+                voltageV,
+                systemParameters));
 
         return new CalculationNetwork(
                 baseNetwork.nodes(),

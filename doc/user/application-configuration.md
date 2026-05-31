@@ -227,8 +227,8 @@ The following parameters are exported to `systemParameters.csv`:
 
 ```text
 u_nominal_V
-u_min_V
-u_cutoff_V
+u_min1_V
+u_min2_V
 u_max_V
 i_train_max_A
 ```
@@ -236,9 +236,9 @@ i_train_max_A
 Fields:
 
 - `u_nominal_V`: nominal system voltage
-- `u_min_V`: minimum allowed operating voltage
-- `u_cutoff_V`: train cutoff voltage
-- `u_max_V`: maximum allowed voltage
+- `u_min1_V`: lower traction voltage limit. Traction is not permitted below this voltage
+- `u_min2_V`: upper traction derating voltage limit. Full traction is permitted at and above this voltage
+- `u_max_V`: maximum allowed voltage for regenerative braking
 - `i_train_max_A`: maximum train current
 ---
 

@@ -44,8 +44,8 @@ public final class SystemParametersLoader {
 
         return new SystemParameters(
                 required(values, "u_nominal_V"),
-                required(values, "u_min_V"),
-                required(values, "u_cutoff_V"),
+                required(values, "u_min1_V"),
+                required(values, "u_min2_V"),
                 required(values, "u_max_V"),
                 required(values, "i_train_max_A")
         );
