@@ -2,9 +2,11 @@ package org.supply.domain;
 
 public record SystemParameters(
         double uNominalV,
-        double uMin1V,
-        double uMin2V,
+        double uMinV,
+        double uCutoffV,
         double uMaxV,
-        double iTrainMaxA
+        double iMaxA,
+        double pTrainMaxW,
+        double pAllowW
 ) {
 }

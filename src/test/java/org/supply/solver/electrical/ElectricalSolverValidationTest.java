@@ -13,16 +13,13 @@ import static org.junit.Assert.*;
 
 public final class ElectricalSolverValidationTest {
 
-    public static SystemParameters systemParameters;
-    public static LinearSystemSolver linearSystemSolver;
-
     @Test
     public void openCircuitProducesNominalTrainVoltage() {
         Map<String, Real> voltages =
                 solve(ElectricalTestCases.oneSubstationOneTrainLine());
 
         assertEquals(
-                ElectricalTestCases.U_NOMINAL_V,
+                ElectricalTestCases.SYSTEM_PARAMETERS.uNominalV(),
                 trainVoltage(voltages),
                 1e-6
         );    }
@@ -45,7 +42,7 @@ public final class ElectricalSolverValidationTest {
 
         assertTrue(
                 trainVoltage(voltages)
-                        < ElectricalTestCases.U_NOMINAL_V
+                        < ElectricalTestCases.SYSTEM_PARAMETERS.uNominalV()
         );
 
         assertEquals(
@@ -105,7 +102,7 @@ public final class ElectricalSolverValidationTest {
 
         assertTrue(
                 trainVoltage(voltages)
-                        > ElectricalTestCases.U_NOMINAL_V
+                        > ElectricalTestCases.SYSTEM_PARAMETERS.uNominalV()
         );
 
         assertEquals(
@@ -162,31 +159,47 @@ public final class ElectricalSolverValidationTest {
         CalculationNetwork network =
                 ElectricalTestCases.oneSubstationOneTrainLine();
 
-        double requestedPowerW = 300_000.0;
+        double requestedPowerW = 150_000.0;
 
         SingleTimestepSolver.Result result =
-                new SingleTimestepSolver(systemParameters, linearSystemSolver)
+                new SingleTimestepSolver(
+                        ElectricalTestCases.SYSTEM_PARAMETERS,
+                        new LinearSystemSolver()
+                )
                         .solveConstantPowerTrain(
                                 network,
                                 "R_SUB",
                                 "F_TRAIN",
                                 "R_TRAIN",
                                 requestedPowerW,
-                                ElectricalTestCases.U_NOMINAL_V,
+                                ElectricalTestCases.SYSTEM_PARAMETERS.uNominalV(),
                                 50,
                                 1e-6
                         );
 
         assertTrue(result.converged());
         assertTrue(result.iterations() > 1);
+        assertTrue(result.converged());
+        assertTrue(result.iterations() > 1);
 
         assertTrue(
                 result.trainVoltageV()
-                        < ElectricalTestCases.U_NOMINAL_V
+                        < ElectricalTestCases.SYSTEM_PARAMETERS.uNominalV()
         );
 
+        double rTotal =
+                ElectricalTestCases.R_INTERNAL_OHM
+                        + ElectricalTestCases.R_FEED_OHM
+                        + ElectricalTestCases.R_RETURN_OHM;
+
+        double uNom =
+                ElectricalTestCases.SYSTEM_PARAMETERS.uNominalV();
+
+        double expectedVoltageV =
+                (uNom + Math.sqrt(uNom * uNom - 4.0 * rTotal * requestedPowerW)) / 2.0;
+
         assertEquals(
-                ElectricalTestCases.U_MIN_V,
+                expectedVoltageV,
                 result.trainVoltageV(),
                 1e-6
         );

@@ -2,7 +2,6 @@ package org.supply.solver.testsupport;
 
 import org.supply.domain.SystemParameters;
 import org.supply.math.Real;
-import org.supply.solver.electrical.LinearSystemSolver;
 import org.supply.solver.model.*;
 
 import java.util.ArrayList;
@@ -13,34 +12,35 @@ public final class ElectricalTestCases {
     public static final double R_INTERNAL_OHM = 0.1;
     public static final double R_FEED_OHM = 0.1;
     public static final double R_RETURN_OHM = 0.1;
-    public static final double U_NOMINAL_V = 750.0;
-    public static final double U_MIN_V = 600.0;
-    public static final double U_MAX_V = 900.0;
-    public static final double U_CUTOFF_V = 950.0;
-    public static final double I_TRAIN_MAX_A = 7000.0;
 
     public static final double TEST_CURRENT_A = 500.0;
+
+    public static final SystemParameters SYSTEM_PARAMETERS =
+            new SystemParameters(
+                    750.0,
+                    500.0,
+                    600.0,
+                    900.0,
+                    6000.0,
+                    10000000,
+                    3600000
+            );
+
     public static final double TEST_POWER_W =
-            U_NOMINAL_V * TEST_CURRENT_A;
+            ElectricalTestCases.SYSTEM_PARAMETERS.uNominalV() * TEST_CURRENT_A;
 
     public static final double EXPECTED_TRACTION_V =
-            U_NOMINAL_V
+            ElectricalTestCases.SYSTEM_PARAMETERS.uNominalV()
                     - TEST_CURRENT_A
                     * (R_INTERNAL_OHM + R_FEED_OHM + R_RETURN_OHM);
 
     public static final double EXPECTED_REGEN_V =
-            U_NOMINAL_V
+            ElectricalTestCases.SYSTEM_PARAMETERS.uNominalV()
                     + TEST_CURRENT_A
                     * (R_INTERNAL_OHM + R_FEED_OHM + R_RETURN_OHM);
 
-    public static SystemParameters systemParameters;
-    public static LinearSystemSolver linearSystemSolver;
-
     private ElectricalTestCases() {
-        systemParameters = new SystemParameters(U_NOMINAL_V, U_MIN_V, U_CUTOFF_V, U_MAX_V, I_TRAIN_MAX_A);
-        LinearSystemSolver solver = new LinearSystemSolver();
     }
-
 
     public static CalculationNetwork oneSubstationOneTrainLine() {
         return oneSubstationOneTrainLineWithTrainPower(0.0);
@@ -62,7 +62,7 @@ public final class ElectricalTestCases {
                 "SS1",
                 "F_SUB",
                 "R_SUB",
-                Real.fromDouble(U_NOMINAL_V),
+                Real.fromDouble(SYSTEM_PARAMETERS.uNominalV()),
                 Real.fromDouble(R_INTERNAL_OHM)
         );
 
@@ -78,8 +78,9 @@ public final class ElectricalTestCases {
                     "F_TRAIN",
                     "R_TRAIN",
                     pReqW,
-                    U_NOMINAL_V,
-                    systemParameters));
+                    SYSTEM_PARAMETERS.uNominalV(),
+                    SYSTEM_PARAMETERS
+            ));
         }
 
         return new CalculationNetwork(

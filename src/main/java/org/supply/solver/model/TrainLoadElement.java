@@ -29,7 +29,7 @@ public final class TrainLoadElement implements ElectricalElement {
 
     @Override
     public void stamp(AdmittanceStamp stamp) {
-        double currentA = trainCurrentA();
+        double currentA = currentA();
 
         if (currentA == 0.0) {
             return;
@@ -37,6 +37,10 @@ public final class TrainLoadElement implements ElectricalElement {
 
         stamp.addCurrent(feedingNodeId, -currentA);
         stamp.addCurrent(returnNodeId, currentA);
+    }
+
+    public double currentA() {
+        return trainCurrentA();
     }
 
     private double trainCurrentA() {
@@ -77,18 +81,18 @@ public final class TrainLoadElement implements ElectricalElement {
             double voltageV,
             SystemParameters systemParameters
     ) {
-        double uMin1V = systemParameters.uMin1V();
-        double uMin2V = systemParameters.uMin2V();
-        double iTrainMaxA = systemParameters.iTrainMaxA();
+        double uMinV = systemParameters.uMinV();
+        double uCutoffV = systemParameters.uCutoffV();
+        double iTrainMaxA = systemParameters.iMaxA();
 
-        if (voltageV <= uMin1V) {
+        if (voltageV <= uMinV) {
             return 0.0;
         }
 
-        if (voltageV < uMin2V) {
+        if (voltageV < uCutoffV) {
             return iTrainMaxA
-                    * (voltageV - uMin1V)
-                    / (uMin2V - uMin1V);
+                    * (voltageV - uMinV)
+                    / (uCutoffV - uMinV);
         }
 
         return iTrainMaxA;
@@ -116,6 +120,6 @@ public final class TrainLoadElement implements ElectricalElement {
             return 0.0;
         }
 
-        return -systemParameters.iTrainMaxA();
+        return -systemParameters.iMaxA();
     }
 }

@@ -35,6 +35,10 @@ import java.util.Map;
 
 public final class DcSolver {
 
+    private static final boolean DEBUG_TOPOLOGY = false;
+    private static final boolean DEBUG_MATRIX = false;
+    private static final boolean DEBUG_ALL_NODE_VOLTAGES = false;
+
     public static void main(String[] args) throws Exception {
         run(args);
     }
@@ -59,9 +63,11 @@ public final class DcSolver {
         List<RunSample> samples = firstTimestepRunSamples(runInput);
         List<CalculationTrainPosition> trainPositions = new TrainPositionFactory().fromRunSamples(samples);
 
-        CalculationNetwork timestepNetwork = new TrainNodeInserter().insertTrainNodes(baseNetwork, trainPositions);
+        CalculationNetwork timestepNetwork = new TrainNodeInserter(systemParameters).insertTrainNodes(baseNetwork, trainPositions);
 
-        TopologyPrinter.print(timestepNetwork);
+        if (DEBUG_TOPOLOGY) {
+            TopologyPrinter.print(timestepNetwork);
+        }
 
         AdmittanceSystem system =
                 new AdmittanceSystemBuilder().build(
@@ -69,77 +75,90 @@ public final class DcSolver {
                         "R1"
                 );
 
-        System.out.println("=== Node index ===");
-        for (Map.Entry<String, Integer> e : system.nodeIndexById().entrySet()) {
-            System.out.println(e.getValue() + " -> " + e.getKey());
+        if (DEBUG_MATRIX) {
+            MatrixPrinter.printSystem(
+                    "DcSolver",
+                    system,
+                    20,
+                    20,
+                    6
+            );
         }
 
-        MatrixPrinter.printSystem(
-                "C1",
-                system,
-                20,
-                20,
-                6
-        );
-
-        System.out.println("elements=" + timestepNetwork.elements().size());
-        for (ElectricalElement e : timestepNetwork.elements()) {
-            System.out.println("element " + e.getClass().getSimpleName() + " " + e);
-        }
         Map<String, Real> voltages =
                 new LinearSystemSolver().solveVoltages(system);
 
-        System.out.println("=== Voltages ===");
+        printSummary(samples, trainPositions, timestepNetwork, voltages);
+
+        if (DEBUG_ALL_NODE_VOLTAGES) {
+            printAllNodeVoltages(voltages);
+        }
+
+    }
+
+
+    private static void printSummary(
+            List<RunSample> samples,
+            List<CalculationTrainPosition> trainPositions,
+            CalculationNetwork timestepNetwork,
+            Map<String, Real> voltages
+    ) {
+        double timeSec = samples.isEmpty() ? Double.NaN : samples.get(0).timeS();
+
+        System.out.println("=== DcSolver ===");
+        System.out.printf(
+                "t=%.3f s  trains=%d  nodes=%d  branches=%d  trainLoads=%d%n",
+                timeSec,
+                trainPositions.size(),
+                timestepNetwork.nodes().size(),
+                timestepNetwork.branches().size(),
+                timestepNetwork.trainLoads().size()
+        );
+
+        for (CalculationTrainPosition train : trainPositions) {
+            var load = timestepNetwork.trainLoads().stream()
+                    .filter(x -> x.trainId().equals(train.trainId()))
+                    .findFirst()
+                    .orElse(null);
+
+            String feedingNodeId = load == null ? null : load.feedingNodeId();
+            String returnNodeId = load == null ? null : load.returnNodeId();
+
+            double feedingV = voltageOf(voltages, feedingNodeId);
+            double returnV = voltageOf(voltages, returnNodeId);
+            double trainVoltageV = feedingV - returnV;
+
+            System.out.printf(
+                    "%s  pos=%.1f m  P_req=%.0f W  U=%.3f V  terminals=%s/%s%n",
+                    train.trainId(),
+                    train.positionM(),
+                    train.pReqW().asDouble(),
+                    trainVoltageV,
+                    feedingNodeId,
+                    returnNodeId
+            );
+        }
+    }
+
+    private static double voltageOf(Map<String, Real> voltages, String nodeId) {
+        if (nodeId == null) {
+            return Double.NaN;
+        }
+
+        Real voltage = voltages.get(nodeId);
+        return voltage == null ? Double.NaN : voltage.asDouble();
+    }
+
+    private static void printAllNodeVoltages(Map<String, Real> voltages) {
+        System.out.println("=== Node voltages ===");
 
         for (Map.Entry<String, Real> e : voltages.entrySet()) {
-            System.out.println(
-                    e.getKey() + " = " + e.getValue().asDouble() + " V"
+            System.out.printf(
+                    "%s = %.6f V%n",
+                    e.getKey(),
+                    e.getValue().asDouble()
             );
         }
-
-        System.out.println("DcSolver startup OK");
-        System.out.println("base nodes=" + baseNetwork.nodes().size());
-        System.out.println("base branches=" + baseNetwork.branches().size());
-        System.out.println("active trains=" + trainPositions.size());
-        System.out.println("timestep nodes=" + timestepNetwork.nodes().size());
-        System.out.println("timestep branches=" + timestepNetwork.branches().size());
-
-        System.out.println("train loads=" + timestepNetwork.trainLoads().size());
-
-        for (CalculationNode n : timestepNetwork.nodes()) {
-            System.out.println(
-                    "node "
-                            + n.id()
-                            + " section=" + n.sectionId()
-                            + " track=" + n.trackId()
-                            + " pos=" + n.positionM()
-                            + " type=" + n.type()
-            );
-        }
-
-        for (CalculationTrainPosition p : trainPositions) {
-            System.out.println(
-                    "train "
-                            + p.trainId()
-                            + " section=" + p.sectionId()
-                            + " track=" + p.trackId()
-                            + " positionM=" + p.positionM()
-            );
-        }
-
-        for (CalculationBranch b : timestepNetwork.branches()) {
-            System.out.println(
-                    "branch "
-                            + b.id()
-                            + " "
-                            + b.fromNodeId()
-                            + " -> "
-                            + b.toNodeId()
-                            + " R="
-                            + b.resistanceOhm()
-            );
-        }
-
     }
 
     private static List<CalculationTrainPosition> firstTimestepTrainPositions(

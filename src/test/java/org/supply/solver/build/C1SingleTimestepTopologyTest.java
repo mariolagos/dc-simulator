@@ -1,11 +1,13 @@
 package org.supply.solver.build;
 
 import org.junit.Test;
+import org.supply.domain.SystemParameters;
 import org.supply.math.Real;
 import org.supply.solver.electrical.AdmittanceSystem;
 import org.supply.solver.electrical.AdmittanceSystemBuilder;
 import org.supply.solver.electrical.MatrixPrinter;
 import org.supply.solver.model.*;
+import org.supply.solver.testsupport.ElectricalTestCases;
 
 import java.util.List;
 
@@ -44,7 +46,7 @@ public final class C1SingleTimestepTopologyTest {
         );
 
         CalculationNetwork result =
-                new TrainNodeInserter()
+                new TrainNodeInserter(ElectricalTestCases.SYSTEM_PARAMETERS)
                         .insertTrainNodes(base, List.of(train));
 
         AdmittanceSystem system =

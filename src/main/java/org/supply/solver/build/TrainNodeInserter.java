@@ -1,14 +1,24 @@
 package org.supply.solver.build;
 
+import org.supply.domain.SystemParameters;
 import org.supply.math.Real;
 import org.supply.solver.model.*;
 
 import java.util.*;
 
+
 public final class TrainNodeInserter {
 
     private static final double EPS = 1e-9;
 
+    private final SystemParameters systemParameters;
+
+    public TrainNodeInserter(SystemParameters systemParameters) {
+        this.systemParameters = Objects.requireNonNull(
+                systemParameters,
+                "systemParameters"
+        );
+    }
     public CalculationNetwork insertTrainNodes(
             CalculationNetwork baseNetwork,
             List<CalculationTrainPosition> trains
@@ -97,7 +107,17 @@ public final class TrainNodeInserter {
             }
         }
 
-        return new CalculationNetwork(nodes, outBranches, trainLoads, elements);    }
+        for (CalculationTrainLoad load : trainLoads) {
+            elements.add(new TrainLoadElement(
+                    load.feedingNodeId(),
+                    load.returnNodeId(),
+                    load.pReqW().asDouble(),
+                    systemParameters.uNominalV(),
+                    systemParameters
+            ));
+        }
+
+            return new CalculationNetwork(nodes, outBranches, trainLoads, elements);    }
 
     private static void placeTrainsAtExistingNodes(
             List<CalculationNode> nodes,
