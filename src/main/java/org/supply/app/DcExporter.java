@@ -15,36 +15,44 @@ import java.nio.file.Path;
 public final class DcExporter {
 
     public static void main(String[] args) throws Exception {
-        run(args);
+        DcStudyContext context = DcStudyContextLoader.load(args[0]);
+        run(context);
     }
 
-    public static void run(String[] args) throws Exception {
-        System.out.println("WCD = " + Path.of("").toAbsolutePath());
-        ExecutionLayout layout = ExecutionLayoutFactory.fromCliArgs(
-                args[0],
-                args.length >= 2 ? args[1] : null
+    public static void run(DcStudyContext context) throws Exception {
+        Config dcsim = context.dcsim();
+
+        GridModel model =
+                new GridModelLoader().load(dcsim);
+
+        LoadedTrackModel trackModel =
+                new TrackConfigLoader().load(dcsim);
+
+        new NetworkInputCsvWriter().writeAll(
+                dcsim,
+                model,
+                trackModel,
+                context.exportDirectory()
         );
 
-        Path confFile = ExecutionLayoutFactory.resolveConfArg(args[0]);
-
-        Path exportDir = (args.length >= 2)
-                ? ExecutionLayoutFactory.resolvePathArg(args[1])
-                : confFile.getParent().resolve("dc").resolve("exports").normalize();
-
-        Config scenario = DcSimConfigLoader.loadScenarioConfig(confFile);
-        Config dcsim = DcSimConfigLoader.requireDcsim(scenario, confFile);
-
-        GridModel model = new GridModelLoader().load(dcsim);
-
-        LoadedTrackModel trackModel = new TrackConfigLoader().load(dcsim);
-
-        new NetworkInputCsvWriter().writeAll(dcsim, model, trackModel, exportDir);
-
-        new RunCsvWriter().write(dcsim, confFile, exportDir);
+        new RunCsvWriter().write(
+                dcsim,
+                context.confFile(),
+                context.exportDirectory()
+        );
 
         // Temporary sanity output during integration
-        System.out.println("Loaded track sections: " + trackModel.getSectionsById().keySet());
-        System.out.println("Loaded track junctions: " + trackModel.getJunctions().size());
-        System.out.println("Loaded track stations: " + trackModel.getStations().size());
+        System.out.println(
+                "Loaded track sections: "
+                        + trackModel.getSectionsById().keySet()
+        );
+        System.out.println(
+                "Loaded track junctions: "
+                        + trackModel.getJunctions().size()
+        );
+        System.out.println(
+                "Loaded track stations: "
+                        + trackModel.getStations().size()
+        );
     }
 }

@@ -5,7 +5,6 @@ import org.supply.domain.RunCsvInput;
 import org.supply.domain.RunSample;
 import org.supply.domain.SystemParameters;
 import org.supply.io.export.RunCsvFromExcel;
-import org.supply.loader.DcSimConfigLoader;
 import org.supply.loader.GridModelLoader;
 import org.supply.loader.RunCsvInputFactory;
 import org.supply.loader.SystemParametersFactory;
@@ -40,55 +39,38 @@ public final class DcSolver {
     private static final boolean DEBUG_ALL_NODE_VOLTAGES = false;
 
     public static void main(String[] args) throws Exception {
-        run(args);
+        DcStudyContext context = DcStudyContextLoader.load(args[0]);
+        run(context);
     }
 
-    public static void run(String[] args) throws Exception {
-        Path confFile = ExecutionLayoutFactory.resolveConfArg(args[0]);
+    public static void run(DcStudyContext context) throws Exception {
 
-        SolverContext context = loadContext(confFile);
+        SolverContext solverContext =
+                loadContext(context);
 
-        Path resultsDir = Path.of("dc", "results");
-        Files.createDirectories(resultsDir);
+        try (LongTableWriter writer = createLongTableWriter(context)) {
 
-        LongTableWriter writer = new LongTableWriter(
-                resultsDir.resolve("longtable.csv").toString(),
-                true,
-                "dc-simulator",
-                dcsim.getConfig("study").getString("id"),
-                dcsim.getString("hash")
-        );
+            CalculationNetwork baseNetwork =
+                    new CalculationNetworkBuilder(
+                            solverContext.trackTransform()
+                    ).buildBase(
+                            solverContext.grid()
+                    );
 
-        CalculationNetwork baseNetwork =
-                new CalculationNetworkBuilder(context.trackTransform())
-                        .buildBase(context.grid());
-
-        solveRun(
-                context.runInput(),
-                context.systemParameters(),
-                baseNetwork
-        );
-    }
-
-    private static void solveRun(RunCsvInput runInput, SystemParameters systemParameters, CalculationNetwork baseNetwork) throws Exception {
-        List<RunSample> samples = runSamples(runInput);
-
-        TrainPositionFactory trainPositionFactory = new TrainPositionFactory();
-        TrainNodeInserter trainNodeInserter =
-                new TrainNodeInserter(systemParameters);
-
-        for (RunSample sample : samples) {
-
-            solveTimestep(baseNetwork, sample, trainPositionFactory, trainNodeInserter);
+            solveRun(
+                    solverContext.runInput(),
+                    solverContext.systemParameters(),
+                    baseNetwork,
+                    writer
+            );
         }
     }
 
-    private static SolverContext loadContext(Path confFile) throws Exception {
-        Config scenario =
-                DcSimConfigLoader.loadScenarioConfig(confFile);
+    private static SolverContext loadContext(
+            DcStudyContext context
+    ) throws Exception {
 
-        Config dcsim =
-                DcSimConfigLoader.requireDcsim(scenario, confFile);
+        Config dcsim = context.dcsim();
 
         GridModel grid =
                 new GridModelLoader().load(dcsim);
@@ -97,7 +79,10 @@ public final class DcSolver {
                 new TrackConfigLoader().load(dcsim);
 
         RunCsvInput runInput =
-                new RunCsvInputFactory().build(dcsim, confFile);
+                new RunCsvInputFactory().build(
+                        dcsim,
+                        context.confFile()
+                );
 
         SystemParameters systemParameters =
                 new SystemParametersFactory().build(dcsim);
@@ -114,7 +99,25 @@ public final class DcSolver {
         );
     }
 
-    private static void solveTimestep(CalculationNetwork baseNetwork, RunSample sample, TrainPositionFactory trainPositionFactory, TrainNodeInserter trainNodeInserter) {
+    private static void solveRun(
+            RunCsvInput runInput,
+            SystemParameters systemParameters,
+            CalculationNetwork baseNetwork,
+            LongTableWriter writer
+    ) throws Exception {
+        List<RunSample> samples = runSamples(runInput);
+
+        TrainPositionFactory trainPositionFactory = new TrainPositionFactory();
+        TrainNodeInserter trainNodeInserter =
+                new TrainNodeInserter(systemParameters);
+
+        for (RunSample sample : samples) {
+
+            solveTimestep(baseNetwork, sample, trainPositionFactory, trainNodeInserter, writer);
+        }
+    }
+
+    private static void solveTimestep(CalculationNetwork baseNetwork, RunSample sample, TrainPositionFactory trainPositionFactory, TrainNodeInserter trainNodeInserter, LongTableWriter writerwriter) {
         List<RunSample> timestepSamples = List.of(sample);
 
         List<CalculationTrainPosition> trainPositions =
@@ -274,6 +277,23 @@ public final class DcSolver {
                 Double.parseDouble(first.get("position_m")),
                 Double.parseDouble(first.get("p_req_W"))
         ));
+    }
+
+    private static LongTableWriter createLongTableWriter(
+            DcStudyContext context
+    ) throws Exception {
+
+        Files.createDirectories(context.resultDirectory());
+
+        return new LongTableWriter(
+                context.resultDirectory()
+                        .resolve("longtable.csv")
+                        .toString(),
+                true,
+                "dc-simulator",
+                context.studyId(),
+                context.dcsim().getString("hash")
+        );
     }
 
     private record SolverContext(
