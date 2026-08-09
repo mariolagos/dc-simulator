@@ -6,6 +6,8 @@ import java.util.List;
 public record RunCsvInput(
         List<Path> runExcels,
         List<String> trainIds,
+        List<String> sectionIds,
+        List<String> trackIds,
         List<Integer> departureTimes,
         double exportResolutionS
 ) {

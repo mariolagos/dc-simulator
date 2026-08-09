@@ -16,6 +16,8 @@ public final class RunCsvInputFactory {
 
         List<Path> runExcels = new ArrayList<>();
         List<String> trainIds = new ArrayList<>();
+        List<String> trackIds = new ArrayList<>();
+        List<String> sectionIds = new ArrayList<>();
         List<Integer> departureTimes = new ArrayList<>();
 
         if (!dcsim.hasPath("traffic.timetable.trains")) {
@@ -27,6 +29,8 @@ public final class RunCsvInputFactory {
 
         for (Config train : timetable.getConfigList("trains")) {
             String trainId = train.getString("id");
+            String sectionId = train.getString("sectionId");
+            String trackId = train.getString("trackId");
             String templateId = getString(train, "template_id", "templateId");
             int departureSec = TimeUtils.parseHmsToSeconds(train.getString("departure"));
 
@@ -62,6 +66,8 @@ public final class RunCsvInputFactory {
             }
 
             trainIds.add(trainId);
+            sectionIds.add(sectionId);
+            trackIds.add(trackId);
             departureTimes.add(departureSec);
             runExcels.add(runExcel);
         }
@@ -73,6 +79,8 @@ public final class RunCsvInputFactory {
         return new RunCsvInput(
                 runExcels,
                 trainIds,
+                sectionIds,
+                trackIds,
                 departureTimes,
                 exportResolutionS
         );

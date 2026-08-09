@@ -21,10 +21,11 @@ public final class RunCsvWriter {
         RunCsvFromExcel.writeRunCsv(
                 input.runExcels(),
                 input.trainIds(),
+                input.sectionIds(),
+                input.trackIds(),
                 runCsvFile,
                 input.departureTimes(),
                 input.exportResolutionS()
-        );
-    }
+        );    }
 
 }

@@ -32,7 +32,8 @@ public final class RunCsvFromExcel {
     // Required output keys for RunCsvWriter schema (headers):
     private static final String K_TIME = "time_s";
     private static final String K_TRAIN = "train_id";
-    private static final String K_TRACK = "track";
+    private static final String K_SECTION = "section_id";
+    private static final String K_TRACK = "track_id";
     private static final String K_POS = "position_m";
     private static final String K_P = "p_req_W";
 
@@ -160,14 +161,20 @@ public final class RunCsvFromExcel {
         return src.get(src.size() - 1).pReqW();
     }
 
-    private static List<Map<String, String>> fromRunPoints(List<RunPoint> pts, String trainId) {
+    private static List<Map<String, String>> fromRunPoints(
+            List<RunPoint> pts,
+            String trainId,
+            String sectionId,
+            String trackId
+    ) {
         List<Map<String, String>> out = new ArrayList<>(pts.size());
 
         for (RunPoint p : pts) {
             Map<String, String> row = new LinkedHashMap<>();
             row.put(K_TIME, fmt(p.timeS()));
             row.put(K_TRAIN, trainId);
-            row.put(K_TRACK, "1");
+            row.put(K_SECTION, sectionId);
+            row.put(K_TRACK, trackId);
             row.put(K_POS, fmt(p.positionM()));
             row.put(K_P, fmt(p.pReqW()));
             out.add(row);
@@ -184,6 +191,8 @@ public final class RunCsvFromExcel {
             Sheet shRun,
             List<TrackInterpolationPoint> trackPoints,
             String trainId,
+            String sectionId,
+            String trackId,
             int departureTime
     ) {
         Iterator<Row> it = shRun.rowIterator();
@@ -220,7 +229,8 @@ public final class RunCsvFromExcel {
             Map<String, String> row = new LinkedHashMap<>();
             row.put(K_TIME, fmt(timeS));
             row.put(K_TRAIN, trainId);
-            row.put(K_TRACK, "1");
+            row.put(K_SECTION, sectionId);
+            row.put(K_TRACK, trackId);
             row.put(K_POS, fmt(posM));
             row.put(K_P, fmt(pReqW));
             out.add(row);
@@ -256,7 +266,13 @@ public final class RunCsvFromExcel {
         return Double.parseDouble(s.replace(',', '.'));
     }
 
-    public static List<Map<String, String>> readFullRunRows(Path excelXlsx, String trainId, int departureTime) throws Exception {
+    public static List<Map<String, String>> readFullRunRows(
+            Path excelXlsx,
+            String trainId,
+            String sectionId,
+            String trackId,
+            int departureTime
+    ) throws Exception {
         try (InputStream in = Files.newInputStream(excelXlsx);
              Workbook wb = new XSSFWorkbook(in)) {
 
@@ -267,13 +283,22 @@ public final class RunCsvFromExcel {
             }
 
             List<TrackInterpolationPoint> trackPoints = ScenarioHelpers.buildTrackInterpolationPoints(shTrack);
-            return readRunSheet(shRun, trackPoints, trainId, departureTime);
+            return readRunSheet(
+                    shRun,
+                    trackPoints,
+                    trainId,
+                    sectionId,
+                    trackId,
+                    departureTime
+            );
         }
     }
 
     public static void writeRunCsv(
             List<Path> excelXlsxs,
             List<String> trainIds,
+            List<String> sectionIds,
+            List<String> trackIds,
             Path outRunCsv,
             List<Integer> departureTimes,
             double exportResolutionS
@@ -306,14 +331,27 @@ public final class RunCsvFromExcel {
         for (int i = 0; i < excelXlsxs.size(); i++) {
             Path runExcel = excelXlsxs.get(i);
             String trainId = trainIds.get(i);
+            String sectionId = sectionIds.get(i);
+            String trackId = trackIds.get(i);
 
-            List<Map<String, String>> rows = readFullRunRows(runExcel, trainId, departureTimes.get(i));
+            List<Map<String, String>> rows =
+                    readFullRunRows(
+                            runExcel,
+                            trainId,
+                            sectionId,
+                            trackId,
+                            departureTimes.get(i)
+                    );
 
             if (exportResolutionS > 0.0) {
                 List<RunPoint> pts = toRunPoints(rows);
                 pts = resampleRunPoints(pts, exportResolutionS);
-                rows = fromRunPoints(pts, trainId);
-            }
+                rows = fromRunPoints(
+                        pts,
+                        trainId,
+                        sectionId,
+                        trackId
+                );            }
 
             allRows.addAll(rows);
         }

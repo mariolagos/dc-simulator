@@ -4,9 +4,9 @@ import com.typesafe.config.Config;
 import org.supply.domain.RunCsvInput;
 import org.supply.domain.RunSample;
 import org.supply.domain.SystemParameters;
-import org.supply.io.export.RunCsvFromExcel;
 import org.supply.loader.GridModelLoader;
 import org.supply.loader.RunCsvInputFactory;
+import org.supply.loader.RunSampleLoader;
 import org.supply.loader.SystemParametersFactory;
 import org.supply.math.Real;
 import org.supply.model.GridModel;
@@ -58,7 +58,6 @@ public final class DcSolver {
                     );
 
             solveRun(
-                    solverContext.runInput(),
                     solverContext.systemParameters(),
                     baseNetwork,
                     writer
@@ -78,12 +77,6 @@ public final class DcSolver {
         LoadedTrackModel trackModel =
                 new TrackConfigLoader().load(dcsim);
 
-        RunCsvInput runInput =
-                new RunCsvInputFactory().build(
-                        dcsim,
-                        context.confFile()
-                );
-
         SystemParameters systemParameters =
                 new SystemParametersFactory().build(dcsim);
 
@@ -93,31 +86,40 @@ public final class DcSolver {
         return new SolverContext(
                 dcsim,
                 grid,
-                runInput,
                 systemParameters,
                 trackTransform
         );
     }
 
     private static void solveRun(
-            RunCsvInput runInput,
             SystemParameters systemParameters,
             CalculationNetwork baseNetwork,
             LongTableWriter writer
     ) throws Exception {
-        List<RunSample> samples = runSamples(runInput);
 
-        TrainPositionFactory trainPositionFactory = new TrainPositionFactory();
+        Path runCsv = Path.of("dc", "exports", "run.csv");
+
+        List<RunSample> samples =
+                new RunSampleLoader().load(runCsv);
+
+        TrainPositionFactory trainPositionFactory =
+                new TrainPositionFactory();
+
         TrainNodeInserter trainNodeInserter =
                 new TrainNodeInserter(systemParameters);
 
         for (RunSample sample : samples) {
-
-            solveTimestep(baseNetwork, sample, trainPositionFactory, trainNodeInserter, writer);
+            solveTimestep(
+                    baseNetwork,
+                    sample,
+                    trainPositionFactory,
+                    trainNodeInserter,
+                    writer
+            );
         }
     }
-
-    private static void solveTimestep(CalculationNetwork baseNetwork, RunSample sample, TrainPositionFactory trainPositionFactory, TrainNodeInserter trainNodeInserter, LongTableWriter writerwriter) {
+    private static void solveTimestep(CalculationNetwork baseNetwork, RunSample sample, TrainPositionFactory trainPositionFactory, TrainNodeInserter trainNodeInserter,
+                                      LongTableWriter writer) {
         List<RunSample> timestepSamples = List.of(sample);
 
         List<CalculationTrainPosition> trainPositions =
@@ -229,56 +231,6 @@ public final class DcSolver {
         }
     }
 
-    private static List<RunSample> runSamples(
-            RunCsvInput runInput
-    ) throws Exception {
-
-        Path runExcel = runInput.runExcels().get(0);
-        String trainId = runInput.trainIds().get(0);
-        int departureTime = runInput.departureTimes().get(0);
-
-        List<Map<String, String>> rows =
-                RunCsvFromExcel.readFullRunRows(
-                        runExcel,
-                        trainId,
-                        departureTime
-                );
-
-        List<RunSample> samples = new ArrayList<>();
-
-        for (Map<String, String> row : rows) {
-            samples.add(new RunSample(
-                    Double.parseDouble(row.get("time_s")),
-                    row.get("train_id"),
-                    row.get("track"),
-                    "SINGLE",
-                    Double.parseDouble(row.get("position_m")),
-                    Double.parseDouble(row.get("p_req_W"))
-            ));
-        }
-
-        return samples;
-    }
-    private static List<RunSample> firstTimestepRunSamples(RunCsvInput runInput) throws Exception {
-        Path runExcel = runInput.runExcels().get(0);
-        String trainId = runInput.trainIds().get(0);
-        int departureTime = runInput.departureTimes().get(0);
-
-        List<Map<String, String>> rows =
-                RunCsvFromExcel.readFullRunRows(runExcel, trainId, departureTime);
-
-        Map<String, String> first = rows.get(0);
-
-        return List.of(new RunSample(
-                Double.parseDouble(first.get("time_s")),
-                first.get("train_id"),
-                first.get("track"),      // sectionId tills vidare om run.csv säger track
-                "SINGLE",                // trackId temporärt
-                Double.parseDouble(first.get("position_m")),
-                Double.parseDouble(first.get("p_req_W"))
-        ));
-    }
-
     private static LongTableWriter createLongTableWriter(
             DcStudyContext context
     ) throws Exception {
@@ -299,8 +251,8 @@ public final class DcSolver {
     private record SolverContext(
             Config dcsim,
             GridModel grid,
-            RunCsvInput runInput,
             SystemParameters systemParameters,
             TrackTransformService trackTransform
     ) {}
+
 }
