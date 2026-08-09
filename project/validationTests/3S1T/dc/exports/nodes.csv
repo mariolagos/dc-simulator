@@ -1,6 +1,9 @@
-name,section,track,position_m
-N0,1,1,100
-N1,1,1,0
-N2,1,1,1500
-N3,1,1,3000
-N99,1,1,3100
+node_id,track_id,position_m
+GND,1,100
+F1,1,0
+F2,1,1500
+F3,1,3000
+R1,1,0
+R2,1,1500
+R3,1,3000
+ANCHOR,1,3000

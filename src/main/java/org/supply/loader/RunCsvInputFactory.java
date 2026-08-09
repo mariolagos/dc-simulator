@@ -32,8 +32,28 @@ public final class RunCsvInputFactory {
 
             Config template = traffic.getConfig("templates").getConfig(templateId);
 
-            String runExcelText = getString(template, "run_excel", "runExcel");
-            Path runExcel = resolveRunExcel(confFile, runExcelText);
+            Config powerProfiles = dcsim.getConfig("powerProfiles");
+
+            Config templateConfig = powerProfiles
+                    .getConfigList("templates")
+                    .stream()
+                    .filter(t -> t.getString("id").equals(templateId))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Power profile template not found: " + templateId
+                    ));
+
+            String folderText = templateConfig.getString("folder");
+            Path templateFolder = resolveTemplateFolder(confFile, folderText);
+
+            Path runExcel = templateFolder.resolve("A-B.xlsx").normalize();
+
+            System.out.println(
+                    "train=" + trainId
+                            + " template=" + templateId
+                            + " folder=" + templateFolder
+                            + " runExcel=" + runExcel
+            );
 
             if (!Files.exists(runExcel)) {
                 throw new IllegalArgumentException(
@@ -56,6 +76,27 @@ public final class RunCsvInputFactory {
                 departureTimes,
                 exportResolutionS
         );
+    }
+
+    private static Path resolveTemplateFolder(
+            Path confFile,
+            String folderText
+    ) {
+        Path folder = Path.of(folderText);
+
+        if (folder.isAbsolute()) {
+            return folder.normalize();
+        }
+
+        Path confDir = confFile.toAbsolutePath().getParent();
+
+        if (confDir == null) {
+            throw new IllegalArgumentException(
+                    "Cannot resolve relative template folder: " + folderText
+            );
+        }
+
+        return confDir.resolve(folder).normalize();
     }
 
     private static Path resolveRunExcel(Path confFile, String runExcelText) {

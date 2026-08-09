@@ -19,17 +19,17 @@ import org.supply.solver.electrical.AdmittanceSystem;
 import org.supply.solver.electrical.AdmittanceSystemBuilder;
 import org.supply.solver.electrical.LinearSystemSolver;
 import org.supply.solver.electrical.MatrixPrinter;
-import org.supply.solver.model.CalculationBranch;
+import org.supply.solver.io.LongTableWriter;
 import org.supply.solver.model.CalculationNetwork;
-import org.supply.solver.model.CalculationNode;
 import org.supply.solver.model.CalculationTrainPosition;
-import org.supply.solver.model.ElectricalElement;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
 import org.supply.track.TrackConfigLoader;
 import org.supply.track.TrackTransformService;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -44,26 +44,87 @@ public final class DcSolver {
     }
 
     public static void run(String[] args) throws Exception {
-
         Path confFile = ExecutionLayoutFactory.resolveConfArg(args[0]);
 
-        Config scenario = DcSimConfigLoader.loadScenarioConfig(confFile);
-        Config dcsim = DcSimConfigLoader.requireDcsim(scenario, confFile);
+        SolverContext context = loadContext(confFile);
 
-        GridModel grid = new GridModelLoader().load(dcsim);
-        LoadedTrackModel trackModel = new TrackConfigLoader().load(dcsim);
+        Path resultsDir = Path.of("dc", "results");
+        Files.createDirectories(resultsDir);
 
-        RunCsvInput runInput = new RunCsvInputFactory().build(dcsim, confFile);
-        SystemParameters systemParameters = new SystemParametersFactory().build(dcsim);
+        LongTableWriter writer = new LongTableWriter(
+                resultsDir.resolve("longtable.csv").toString(),
+                true,
+                "dc-simulator",
+                dcsim.getConfig("study").getString("id"),
+                dcsim.getString("hash")
+        );
 
-        TrackTransformService trackTransform = new DefaultTrackTransformService(trackModel);
+        CalculationNetwork baseNetwork =
+                new CalculationNetworkBuilder(context.trackTransform())
+                        .buildBase(context.grid());
 
-        CalculationNetwork baseNetwork = new CalculationNetworkBuilder(trackTransform).buildBase(grid);
+        solveRun(
+                context.runInput(),
+                context.systemParameters(),
+                baseNetwork
+        );
+    }
 
-        List<RunSample> samples = firstTimestepRunSamples(runInput);
-        List<CalculationTrainPosition> trainPositions = new TrainPositionFactory().fromRunSamples(samples);
+    private static void solveRun(RunCsvInput runInput, SystemParameters systemParameters, CalculationNetwork baseNetwork) throws Exception {
+        List<RunSample> samples = runSamples(runInput);
 
-        CalculationNetwork timestepNetwork = new TrainNodeInserter(systemParameters).insertTrainNodes(baseNetwork, trainPositions);
+        TrainPositionFactory trainPositionFactory = new TrainPositionFactory();
+        TrainNodeInserter trainNodeInserter =
+                new TrainNodeInserter(systemParameters);
+
+        for (RunSample sample : samples) {
+
+            solveTimestep(baseNetwork, sample, trainPositionFactory, trainNodeInserter);
+        }
+    }
+
+    private static SolverContext loadContext(Path confFile) throws Exception {
+        Config scenario =
+                DcSimConfigLoader.loadScenarioConfig(confFile);
+
+        Config dcsim =
+                DcSimConfigLoader.requireDcsim(scenario, confFile);
+
+        GridModel grid =
+                new GridModelLoader().load(dcsim);
+
+        LoadedTrackModel trackModel =
+                new TrackConfigLoader().load(dcsim);
+
+        RunCsvInput runInput =
+                new RunCsvInputFactory().build(dcsim, confFile);
+
+        SystemParameters systemParameters =
+                new SystemParametersFactory().build(dcsim);
+
+        TrackTransformService trackTransform =
+                new DefaultTrackTransformService(trackModel);
+
+        return new SolverContext(
+                dcsim,
+                grid,
+                runInput,
+                systemParameters,
+                trackTransform
+        );
+    }
+
+    private static void solveTimestep(CalculationNetwork baseNetwork, RunSample sample, TrainPositionFactory trainPositionFactory, TrainNodeInserter trainNodeInserter) {
+        List<RunSample> timestepSamples = List.of(sample);
+
+        List<CalculationTrainPosition> trainPositions =
+                trainPositionFactory.fromRunSamples(timestepSamples);
+
+        CalculationNetwork timestepNetwork =
+                trainNodeInserter.insertTrainNodes(
+                        baseNetwork,
+                        trainPositions
+                );
 
         if (DEBUG_TOPOLOGY) {
             TopologyPrinter.print(timestepNetwork);
@@ -88,12 +149,16 @@ public final class DcSolver {
         Map<String, Real> voltages =
                 new LinearSystemSolver().solveVoltages(system);
 
-        printSummary(samples, trainPositions, timestepNetwork, voltages);
+        printSummary(
+                timestepSamples,
+                trainPositions,
+                timestepNetwork,
+                voltages
+        );
 
         if (DEBUG_ALL_NODE_VOLTAGES) {
             printAllNodeVoltages(voltages);
         }
-
     }
 
 
@@ -161,31 +226,36 @@ public final class DcSolver {
         }
     }
 
-    private static List<CalculationTrainPosition> firstTimestepTrainPositions(
-            RunCsvInput runInput,
-            TrackTransformService trackTransform
+    private static List<RunSample> runSamples(
+            RunCsvInput runInput
     ) throws Exception {
+
         Path runExcel = runInput.runExcels().get(0);
         String trainId = runInput.trainIds().get(0);
         int departureTime = runInput.departureTimes().get(0);
 
         List<Map<String, String>> rows =
-                RunCsvFromExcel.readFullRunRows(runExcel, trainId, departureTime);
+                RunCsvFromExcel.readFullRunRows(
+                        runExcel,
+                        trainId,
+                        departureTime
+                );
 
-        Map<String, String> first = rows.get(0);
+        List<RunSample> samples = new ArrayList<>();
 
-        double positionM = Double.parseDouble(first.get("position_m"));
-        Real pReqW  = Real.fromDouble(Double.parseDouble(first.get("p_Req_W")));
+        for (Map<String, String> row : rows) {
+            samples.add(new RunSample(
+                    Double.parseDouble(row.get("time_s")),
+                    row.get("train_id"),
+                    row.get("track"),
+                    "SINGLE",
+                    Double.parseDouble(row.get("position_m")),
+                    Double.parseDouble(row.get("p_req_W"))
+            ));
+        }
 
-        return List.of(new CalculationTrainPosition(
-                trainId,
-                "1",
-                "SINGLE",
-                positionM,
-                pReqW
-        ));
+        return samples;
     }
-
     private static List<RunSample> firstTimestepRunSamples(RunCsvInput runInput) throws Exception {
         Path runExcel = runInput.runExcels().get(0);
         String trainId = runInput.trainIds().get(0);
@@ -205,4 +275,12 @@ public final class DcSolver {
                 Double.parseDouble(first.get("p_req_W"))
         ));
     }
+
+    private record SolverContext(
+            Config dcsim,
+            GridModel grid,
+            RunCsvInput runInput,
+            SystemParameters systemParameters,
+            TrackTransformService trackTransform
+    ) {}
 }

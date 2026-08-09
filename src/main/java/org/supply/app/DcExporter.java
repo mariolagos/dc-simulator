@@ -19,6 +19,7 @@ public final class DcExporter {
     }
 
     public static void run(String[] args) throws Exception {
+        System.out.println("WCD = " + Path.of("").toAbsolutePath());
         ExecutionLayout layout = ExecutionLayoutFactory.fromCliArgs(
                 args[0],
                 args.length >= 2 ? args[1] : null
