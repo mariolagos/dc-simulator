@@ -2,8 +2,13 @@ package org.supply.solver.model;
 
 
 import org.supply.solver.electrical.AdmittanceStamp;
+import org.supply.solver.io.LongTableWriter;
 
 public interface ElectricalElement {
 
    public void stamp(AdmittanceStamp stamp);
+
+   default void saveStaticResult(LongTableWriter writer) {
+      // Nothing to save by default.
+   }
 }

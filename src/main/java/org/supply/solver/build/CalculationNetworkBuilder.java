@@ -13,6 +13,7 @@ import org.supply.solver.model.CalculationNode;
 import org.supply.solver.model.CalculationNodeType;
 import org.supply.solver.model.ElectricalElement;
 import org.supply.solver.model.ThyristorSubstationElement;
+import org.supply.solver.model.DiodeSubstationElement;
 import org.supply.track.ModelCoordinate;
 import org.supply.track.RwyCoordinate;
 import org.supply.track.RwyCoordinateParser;
@@ -111,15 +112,37 @@ public final class CalculationNetworkBuilder {
                 );
             }
 
-            elements.add(new ThyristorSubstationElement(
-                    inst.getInstallationId(),
-                    feeding.getNodeId(),
-                    returning.getNodeId(),
-                    inst.getEmfV(),
-                    inst.getInternalResistanceOhm()
-            ));
+            switch (inst.getRectifierType()) {
+                case DIODE:
+                    elements.add(new DiodeSubstationElement(
+                            inst.getInstallationId(),
+                            feeding.getNodeId(),
+                            returning.getNodeId(),
+                            inst.getEmfV(),
+                            inst.getInternalResistanceOhm()
+                    ));
+                    break;
+
+                case THYRISTOR:
+                    elements.add(new ThyristorSubstationElement(
+                            inst.getInstallationId(),
+                            feeding.getNodeId(),
+                            returning.getNodeId(),
+                            inst.getEmfV(),
+                            inst.getInternalResistanceOhm()
+                    ));
+                    break;
+
+                default:
+                    throw new IllegalArgumentException(
+                            "Unsupported rectifier type for substation "
+                                    + inst.getInstallationId()
+                                    + ": " + inst.getRectifierType()
+                    );
+            }
         }
     }
+
     private static List<InstallationConnection> connectionsFor(
             GridModel grid,
             PowerInstallation installation

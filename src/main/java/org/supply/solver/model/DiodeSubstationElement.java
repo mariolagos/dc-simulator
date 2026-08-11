@@ -2,6 +2,7 @@ package org.supply.solver.model;
 
 import org.supply.math.Real;
 import org.supply.solver.electrical.AdmittanceStamp;
+import org.supply.solver.io.LongTableWriter;
 
 public record DiodeSubstationElement(
         String id,
@@ -34,5 +35,32 @@ public record DiodeSubstationElement(
         // Norton equivalent current source
         stamp.addCurrent(feedingNodeId, i);
         stamp.addCurrent(returnNodeId, -i);
+    }
+
+    @Override
+    public void saveStaticResult(LongTableWriter writer) {
+        writer.signalRow(
+                null,
+                "DIODE_SUBSTATION",
+                id,
+                "emf_V",
+                emfV.asDouble(),
+                "V",
+                "STATIC",
+                null,
+                null
+        );
+
+        writer.signalRow(
+                null,
+                "DIODE_SUBSTATION",
+                id,
+                "internal_resistance_ohm",
+                internalResistanceOhm.asDouble(),
+                "ohm",
+                "STATIC",
+                null,
+                null
+        );
     }
 }

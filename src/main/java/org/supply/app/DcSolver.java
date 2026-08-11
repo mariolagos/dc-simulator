@@ -1,11 +1,9 @@
 package org.supply.app;
 
 import com.typesafe.config.Config;
-import org.supply.domain.RunCsvInput;
 import org.supply.domain.RunSample;
 import org.supply.domain.SystemParameters;
 import org.supply.loader.GridModelLoader;
-import org.supply.loader.RunCsvInputFactory;
 import org.supply.loader.RunSampleLoader;
 import org.supply.loader.SystemParametersFactory;
 import org.supply.math.Real;
@@ -21,6 +19,7 @@ import org.supply.solver.electrical.MatrixPrinter;
 import org.supply.solver.io.LongTableWriter;
 import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationTrainPosition;
+import org.supply.solver.model.ElectricalElement;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
 import org.supply.track.TrackConfigLoader;
@@ -28,7 +27,6 @@ import org.supply.track.TrackTransformService;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -57,11 +55,23 @@ public final class DcSolver {
                             solverContext.grid()
                     );
 
+            saveStaticResults(
+                    solverContext.systemParameters,
+                    baseNetwork,
+                    writer);
+
             solveRun(
                     solverContext.systemParameters(),
                     baseNetwork,
                     writer
             );
+        }
+    }
+
+    private static void saveStaticResults(SystemParameters systemParameters, CalculationNetwork baseNetwork, LongTableWriter writer) {
+        systemParameters.saveStaticData(writer);
+        for (ElectricalElement element: baseNetwork.elements() ) {
+            element.saveStaticResult(writer);
         }
     }
 
@@ -131,10 +141,6 @@ public final class DcSolver {
                         trainPositions
                 );
 
-        if (DEBUG_TOPOLOGY) {
-            TopologyPrinter.print(timestepNetwork);
-        }
-
         AdmittanceSystem system =
                 new AdmittanceSystemBuilder().build(
                         timestepNetwork,
@@ -151,6 +157,12 @@ public final class DcSolver {
             );
         }
 
+        double timeSec = timestepSamples.get(0).timeS();
+
+        if (DEBUG_TOPOLOGY) {
+            TopologyPrinter.print(timestepNetwork);
+        }
+
         Map<String, Real> voltages =
                 new LinearSystemSolver().solveVoltages(system);
 
@@ -161,8 +173,69 @@ public final class DcSolver {
                 voltages
         );
 
+        saveResults(
+                timestepSamples,
+                trainPositions,
+                timestepNetwork,
+                voltages,
+                writer
+        );
         if (DEBUG_ALL_NODE_VOLTAGES) {
             printAllNodeVoltages(voltages);
+        }
+    }
+
+    private static void saveResults(List<RunSample> timestepSamples, List<CalculationTrainPosition> trainPositions, CalculationNetwork timestepNetwork, Map<String, Real> voltages, LongTableWriter writer) {
+        double timeSec = timestepSamples.get(0).timeS();
+
+        for (CalculationTrainPosition train : trainPositions) {
+            var load = timestepNetwork.trainLoads().stream()
+                    .filter(x -> x.trainId().equals(train.trainId()))
+                    .findFirst()
+                    .orElse(null);
+
+            String feedingNodeId = load == null ? null : load.feedingNodeId();
+            String returnNodeId = load == null ? null : load.returnNodeId();
+
+            double feedingV = voltageOf(voltages, feedingNodeId);
+            double returnV = voltageOf(voltages, returnNodeId);
+            double trainVoltageV = feedingV - returnV;
+
+            writer.signalRow(
+                    timeSec,
+                    "TRAIN",
+                    train.trainId(),
+                    "position_m",
+                    train.positionM(),
+                    "m",
+                    "INPUT",
+                    null,
+                    null
+            );
+
+            writer.signalRow(
+                    timeSec,
+                    "TRAIN",
+                    train.trainId(),
+                    "p_req_W",
+                    train.pReqW().asDouble(),
+                    "W",
+                    "INPUT",
+                    null,
+                    null
+            );
+
+            writer.signalRow(
+                    timeSec,
+                    "TRAIN",
+                    train.trainId(),
+                    "u_V",
+                    trainVoltageV,
+                    "V",
+                    "RESULT",
+                    null,
+                    null
+            );
         }
     }
 
