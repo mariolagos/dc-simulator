@@ -16,19 +16,24 @@ import org.supply.solver.electrical.AdmittanceSystem;
 import org.supply.solver.electrical.AdmittanceSystemBuilder;
 import org.supply.solver.electrical.LinearSystemSolver;
 import org.supply.solver.electrical.MatrixPrinter;
+import org.supply.solver.electrical.SingleTimestepSolver;
 import org.supply.solver.io.LongTableWriter;
 import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationTrainPosition;
 import org.supply.solver.model.ElectricalElement;
+import org.supply.solver.optimization.PowerAllocationOptimizer;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
 import org.supply.track.TrackConfigLoader;
 import org.supply.track.TrackTransformService;
+import org.supply.solver.model.CalculationTrainLoad;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public final class DcSolver {
 
@@ -70,7 +75,7 @@ public final class DcSolver {
 
     private static void saveStaticResults(SystemParameters systemParameters, CalculationNetwork baseNetwork, LongTableWriter writer) {
         systemParameters.saveStaticData(writer);
-        for (ElectricalElement element: baseNetwork.elements() ) {
+        for (ElectricalElement element : baseNetwork.elements()) {
             element.saveStaticResult(writer);
         }
     }
@@ -120,6 +125,7 @@ public final class DcSolver {
 
         for (RunSample sample : samples) {
             solveTimestep(
+                    systemParameters,
                     baseNetwork,
                     sample,
                     trainPositionFactory,
@@ -128,8 +134,15 @@ public final class DcSolver {
             );
         }
     }
-    private static void solveTimestep(CalculationNetwork baseNetwork, RunSample sample, TrainPositionFactory trainPositionFactory, TrainNodeInserter trainNodeInserter,
-                                      LongTableWriter writer) {
+
+    private static void solveTimestep(
+            SystemParameters systemParameters,
+            CalculationNetwork baseNetwork,
+            RunSample sample,
+            TrainPositionFactory trainPositionFactory,
+            TrainNodeInserter trainNodeInserter,
+            LongTableWriter writer
+    ) {
         List<RunSample> timestepSamples = List.of(sample);
 
         List<CalculationTrainPosition> trainPositions =
@@ -141,30 +154,56 @@ public final class DcSolver {
                         trainPositions
                 );
 
-        AdmittanceSystem system =
-                new AdmittanceSystemBuilder().build(
-                        timestepNetwork,
-                        "R1"
+        Map<String, Double> requestedPowersW =
+                timestepNetwork.trainLoads().stream()
+                        .collect(Collectors.toMap(
+                                CalculationTrainLoad::trainId,
+                                load -> load.pReqW().asDouble()
+                        ));
+
+        SingleTimestepSolver timestepSolver =
+                new SingleTimestepSolver(
+                        systemParameters,
+                        new LinearSystemSolver()
                 );
 
-        if (DEBUG_MATRIX) {
-            MatrixPrinter.printSystem(
-                    "DcSolver",
-                    system,
-                    20,
-                    20,
-                    6
-            );
-        }
+        SingleTimestepSolver.NetworkResult solveResult =
+                timestepSolver.solve(
+                        timestepNetwork,
+                        "R1",
+                        requestedPowersW,
+                        200,
+                        1e-3
+                );
 
-        double timeSec = timestepSamples.get(0).timeS();
+        if (!solveResult.converged()) {
+
+            PowerAllocationOptimizer optimizer =
+                    new PowerAllocationOptimizer();
+
+            double[] requested =
+                    timestepNetwork.trainLoads().stream()
+                            .mapToDouble(load -> load.pReqW().asDouble())
+                            .toArray();
+
+            double[] lowerBounds =
+                    Arrays.stream(requested)
+                            .map(p -> p < 0.0 ? p : 0.0)
+                            .toArray();
+
+            double[] upperBounds =
+                    Arrays.stream(requested)
+                            .map(p -> p < 0.0 ? 0.0 : p)
+                            .toArray();
+
+            // ... = här kommer evaluator + optimize-anrop + ny solve
+        }
+        Map<String, Real> voltages =
+                solveResult.voltages();
 
         if (DEBUG_TOPOLOGY) {
             TopologyPrinter.print(timestepNetwork);
         }
-
-        Map<String, Real> voltages =
-                new LinearSystemSolver().solveVoltages(system);
 
         printSummary(
                 timestepSamples,
@@ -180,6 +219,7 @@ public final class DcSolver {
                 voltages,
                 writer
         );
+
         if (DEBUG_ALL_NODE_VOLTAGES) {
             printAllNodeVoltages(voltages);
         }
@@ -326,6 +366,7 @@ public final class DcSolver {
             GridModel grid,
             SystemParameters systemParameters,
             TrackTransformService trackTransform
-    ) {}
+    ) {
+    }
 
 }
