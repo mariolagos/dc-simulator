@@ -19,6 +19,7 @@ repositories {
 dependencies {
     // ===== Core =====
     implementation("com.typesafe:config:1.4.3")
+    implementation("org.apache.commons:commons-math3:3.6.1")
 
     // ===== Excel (POI) =====
     implementation("org.apache.poi:poi-ooxml:5.2.5")
