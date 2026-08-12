@@ -14,6 +14,38 @@ public record DiodeSubstationElement(
 
     @Override
     public void stamp(AdmittanceStamp stamp) {
+        Real feedingVoltage =
+                stamp.previousVoltageOf(feedingNodeId);
+
+        Real returnVoltage =
+                stamp.previousVoltageOf(returnNodeId);
+
+        if (feedingVoltage != null && returnVoltage != null) {
+            double uTerminalV =
+                    feedingVoltage.asDouble()
+                            - returnVoltage.asDouble();
+
+            boolean blocked =
+                    uTerminalV > emfV.asDouble();
+
+            System.out.printf(
+                    "DSE %s uTerminal=%.6f emf=%.6f state=%s%n",
+                    id,
+                    uTerminalV,
+                    emfV.asDouble(),
+                    blocked ? "BLOCKING" : "CONDUCTING"
+            );
+
+            if (blocked) {
+                return;
+            }
+        } else {
+            System.out.printf(
+                    "DSE %s no previous voltage -> CONDUCTING%n",
+                    id
+            );
+        }
+
         double r = internalResistanceOhm.asDouble();
 
         if (r <= 0.0) {
@@ -26,13 +58,11 @@ public record DiodeSubstationElement(
         double g = 1.0 / r;
         double i = e / r;
 
-        // Internal resistance
         stamp.addConductance(feedingNodeId, feedingNodeId, g);
         stamp.addConductance(returnNodeId, returnNodeId, g);
         stamp.addConductance(feedingNodeId, returnNodeId, -g);
         stamp.addConductance(returnNodeId, feedingNodeId, -g);
 
-        // Norton equivalent current source
         stamp.addCurrent(feedingNodeId, i);
         stamp.addCurrent(returnNodeId, -i);
     }

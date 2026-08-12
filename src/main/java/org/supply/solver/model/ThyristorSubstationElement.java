@@ -3,6 +3,8 @@ package org.supply.solver.model;
 import org.supply.math.Real;
 import org.supply.solver.electrical.AdmittanceStamp;
 
+import java.sql.SQLOutput;
+
 public record ThyristorSubstationElement(
         String id,
         String feedingNodeId,

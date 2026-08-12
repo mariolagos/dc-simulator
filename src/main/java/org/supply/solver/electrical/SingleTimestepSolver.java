@@ -11,8 +11,9 @@ import java.util.Map;
 
 public final class SingleTimestepSolver {
 
-    private  static SystemParameters systemParameters;
-    private static LinearSystemSolver linearSystemSolver;
+    private static final double RELAXATION = 0.1;
+    private final SystemParameters systemParameters;
+    private final LinearSystemSolver linearSystemSolver;
 
     public SingleTimestepSolver(SystemParameters systemParameters, LinearSystemSolver linearSystemSolver) {
         this.systemParameters = systemParameters;
@@ -77,7 +78,7 @@ public final class SingleTimestepSolver {
         );
     }
 
-    private static CalculationNetwork withTrainLoad(
+    private CalculationNetwork withTrainLoad(
             CalculationNetwork baseNetwork,
             String feedingNodeId,
             String returnNodeId,
@@ -117,5 +118,182 @@ public final class SingleTimestepSolver {
             int iterations,
             boolean converged
     ) {
+    }
+
+    public record NetworkResult(
+            Map<String, Real> voltages,
+            int iterations,
+            boolean converged
+    ) {
+    }
+
+    public NetworkResult solve(
+            CalculationNetwork baseNetwork,
+            String referenceNodeId,
+            Map<String, Double> requestedPowersW,
+            int maxIterations,
+            double toleranceV
+    ) {
+        Map<String, Double> voltageGuessByTrain =
+                initialVoltageGuesses(baseNetwork);
+
+        Map<String, Real> previousVoltages = Map.of();
+        Map<String, Real> voltages = null;
+
+        for (int iteration = 1; iteration <= maxIterations; iteration++) {
+
+            CalculationNetwork network =
+                    withTrainLoads(
+                            baseNetwork,
+                            requestedPowersW,
+                            voltageGuessByTrain
+                    );
+
+            AdmittanceSystem system =
+                    new AdmittanceSystemBuilder().build(
+                            network,
+                            referenceNodeId,
+                            List.of(),
+                            previousVoltages
+                    );
+
+            try {
+                voltages =
+                        linearSystemSolver.solveVoltages(system);
+            } catch (IllegalArgumentException e) {
+
+                if (!e.getMessage().startsWith("Singular admittance matrix")) {
+                    throw e;
+                }
+
+                return new NetworkResult(
+                        previousVoltages,
+                        iteration,
+                        false
+                );
+            }
+
+            double maxVoltageChangeV = 0.0;
+
+            Map<String, Double> newVoltageGuessByTrain =
+                    new java.util.LinkedHashMap<>();
+
+            for (CalculationTrainLoad load : baseNetwork.trainLoads()) {
+
+                double newVoltageV =
+                        voltageBetween(
+                                voltages,
+                                load.feedingNodeId(),
+                                load.returnNodeId()
+                        );
+
+                double oldVoltageV =
+                        voltageGuessByTrain.get(load.trainId());
+
+                maxVoltageChangeV =
+                        Math.max(
+                                maxVoltageChangeV,
+                                Math.abs(newVoltageV - oldVoltageV)
+                        );
+
+                double relaxedVoltageV =
+                        oldVoltageV
+                                + RELAXATION
+                                * (newVoltageV - oldVoltageV);
+
+                newVoltageGuessByTrain.put(
+                        load.trainId(),
+                        relaxedVoltageV
+                );
+                System.out.printf(
+                        "iteration=%d train=%s oldU=%.6f solvedU=%.6f relaxedU=%.6f%n",
+                        iteration,
+                        load.trainId(),
+                        oldVoltageV,
+                        newVoltageV,
+                        relaxedVoltageV
+                );            }
+
+            System.out.printf(
+                    "iteration=%d, maxVoltageChangeV=%.9f%n",
+                    iteration,
+                    maxVoltageChangeV
+            );
+
+            if (maxVoltageChangeV <= toleranceV) {
+                return new NetworkResult(
+                        voltages,
+                        iteration,
+                        true
+                );
+            }
+
+            voltageGuessByTrain = newVoltageGuessByTrain;
+            previousVoltages = voltages;
+        }
+
+        return new NetworkResult(
+                voltages,
+                maxIterations,
+                false
+        );
+    }
+
+    private Map<String, Double> initialVoltageGuesses(
+            CalculationNetwork network
+    ) {
+        Map<String, Double> guesses =
+                new java.util.LinkedHashMap<>();
+
+        for (CalculationTrainLoad load : network.trainLoads()) {
+            guesses.put(
+                    load.trainId(),
+                    systemParameters.uNominalV()
+            );
+        }
+
+        return guesses;
+    }
+
+    private CalculationNetwork withTrainLoads(
+            CalculationNetwork baseNetwork,
+            Map<String, Double> requestedPowersW,
+            Map<String, Double> voltageGuessByTrain
+    ) {
+        List<ElectricalElement> elements =
+                new ArrayList<>();
+
+        for (ElectricalElement element : baseNetwork.elements()) {
+            if (!(element instanceof TrainLoadElement)) {
+                elements.add(element);
+            }
+        }
+
+        for (CalculationTrainLoad load : baseNetwork.trainLoads()) {
+
+            double requestedPowerW =
+                    requestedPowersW.getOrDefault(
+                            load.trainId(),
+                            load.pReqW().asDouble()
+                    );
+
+            double voltageV =
+                    voltageGuessByTrain.get(load.trainId());
+
+            elements.add(new TrainLoadElement(
+                    load.feedingNodeId(),
+                    load.returnNodeId(),
+                    requestedPowerW,
+                    voltageV,
+                    systemParameters
+            ));
+        }
+
+        return new CalculationNetwork(
+                baseNetwork.nodes(),
+                baseNetwork.branches(),
+                baseNetwork.trainLoads(),
+                elements
+        );
     }
 }

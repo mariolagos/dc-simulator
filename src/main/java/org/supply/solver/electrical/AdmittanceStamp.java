@@ -9,15 +9,21 @@ public final class AdmittanceStamp {
     private final Real[][] g;
     private final Real[] j;
     private final Map<String, Integer> nodeIndexById;
+    private final Map<String, Real> previousVoltages;
 
     public AdmittanceStamp(
             Real[][] g,
             Real[] j,
-            Map<String, Integer> nodeIndexById
+            Map<String, Integer> nodeIndexById, Map<String, Real> previousVoltages
     ) {
         this.g = g;
         this.j = j;
         this.nodeIndexById = nodeIndexById;
+        this.previousVoltages = previousVoltages;
+    }
+
+    public Real previousVoltageOf(String nodeId) {
+        return previousVoltages.get(nodeId);
     }
 
     public void addConductance(String rowNodeId, String colNodeId, double value) {

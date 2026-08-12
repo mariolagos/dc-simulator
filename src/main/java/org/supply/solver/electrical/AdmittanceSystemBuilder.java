@@ -18,7 +18,8 @@ public final class AdmittanceSystemBuilder {
     public AdmittanceSystem build(
             CalculationNetwork network,
             String referenceNodeId,
-            List<CurrentInjection> currentInjections
+            List<CurrentInjection> currentInjections,
+            Map<String, Real> previousVoltages
     ) {
         if (referenceNodeId == null || referenceNodeId.isBlank()) {
             throw new IllegalArgumentException(
@@ -46,7 +47,7 @@ public final class AdmittanceSystemBuilder {
         Real[] vector = zeroVector(size);
 
         AdmittanceStamp stamp =
-                new AdmittanceStamp(matrix, vector, nodeIndexById);
+                new AdmittanceStamp(matrix, vector, nodeIndexById, previousVoltages);
 
         for (ElectricalElement element : network.elements()) {
             element.stamp(stamp);
@@ -67,7 +68,20 @@ public final class AdmittanceSystemBuilder {
             CalculationNetwork network,
             String referenceNodeId
     ) {
-        return build(network, referenceNodeId, List.of());
+        return build(network, referenceNodeId, List.of(), Map.of());
+    }
+
+    public AdmittanceSystem build(
+            CalculationNetwork network,
+            String referenceNodeId,
+            List<CurrentInjection> currentInjections
+    ) {
+        return build(
+                network,
+                referenceNodeId,
+                currentInjections,
+                Map.of()
+        );
     }
 
     private static Real[][] zeroMatrix(int size) {
