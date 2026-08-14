@@ -134,25 +134,33 @@ public final class DcSolver {
                                 Collectors.toList()
                         ));
 
+        Map<String, Real> previousVoltages = Map.of();
+
         for (List<RunSample> timestepSamples : samplesByTime.values()) {
-            solveTimestep(
-                    systemParameters,
-                    baseNetwork,
-                    timestepSamples,
-                    trainPositionFactory,
-                    trainNodeInserter,
-                    writer
-            );
+
+            SingleTimestepSolver.NetworkResult result =
+                    solveTimestep(
+                            systemParameters,
+                            baseNetwork,
+                            timestepSamples,
+                            trainPositionFactory,
+                            trainNodeInserter,
+                            writer,
+                            previousVoltages
+                    );
+
+            previousVoltages = result.voltages();
         }
     }
 
-    private static void solveTimestep(
+    private static SingleTimestepSolver.NetworkResult solveTimestep(
             SystemParameters systemParameters,
             CalculationNetwork baseNetwork,
             List<RunSample> timestepSamples,
             TrainPositionFactory trainPositionFactory,
             TrainNodeInserter trainNodeInserter,
-            LongTableWriter writer
+            LongTableWriter writer,
+            Map<String, Real> previousVoltages
     ) {
 
         List<CalculationTrainPosition> trainPositions =
@@ -172,26 +180,21 @@ public final class DcSolver {
                         ));
 
 
+        if (DEBUG_TOPOLOGY || timestepSamples.get(0).timeS() == 96) {
+            TopologyPrinter.print(timestepNetwork);
+        }
+
+
         SingleTimestepSolver.NetworkResult solveResult =
                 solveWithFallback(
                         systemParameters,
                         timestepNetwork,
-                        requestedPowersW
+                        requestedPowersW,
+                        previousVoltages
                 );
 
         Map<String, Real> voltages =
                 solveResult.voltages();
-
-        if (DEBUG_TOPOLOGY) {
-            TopologyPrinter.print(timestepNetwork);
-        }
-
-        printSummary(
-                timestepSamples,
-                trainPositions,
-                timestepNetwork,
-                voltages
-        );
 
         saveResults(
                 timestepSamples,
@@ -201,9 +204,11 @@ public final class DcSolver {
                 writer
         );
 
-        if (DEBUG_ALL_NODE_VOLTAGES) {
+        if (DEBUG_ALL_NODE_VOLTAGES || timestepSamples.get(0).timeS() >= 95) {
             printAllNodeVoltages(voltages);
         }
+
+        return solveResult;
     }
 
     private static void saveResults(
@@ -422,50 +427,6 @@ public final class DcSolver {
         }
     }
 
-
-    private static void printSummary(
-            List<RunSample> samples,
-            List<CalculationTrainPosition> trainPositions,
-            CalculationNetwork timestepNetwork,
-            Map<String, Real> voltages
-    ) {
-        double timeSec = samples.isEmpty() ? Double.NaN : samples.get(0).timeS();
-
-        System.out.println("=== DcSolver ===");
-        System.out.printf(
-                "t=%.3f s  trains=%d  nodes=%d  branches=%d  trainLoads=%d%n",
-                timeSec,
-                trainPositions.size(),
-                timestepNetwork.nodes().size(),
-                timestepNetwork.branches().size(),
-                timestepNetwork.trainLoads().size()
-        );
-
-        for (CalculationTrainPosition train : trainPositions) {
-            var load = timestepNetwork.trainLoads().stream()
-                    .filter(x -> x.trainId().equals(train.trainId()))
-                    .findFirst()
-                    .orElse(null);
-
-            String feedingNodeId = load == null ? null : load.feedingNodeId();
-            String returnNodeId = load == null ? null : load.returnNodeId();
-
-            double feedingV = voltageOf(voltages, feedingNodeId);
-            double returnV = voltageOf(voltages, returnNodeId);
-            double trainVoltageV = feedingV - returnV;
-
-            System.out.printf(
-                    "%s  pos=%.1f m  P_req=%.0f W  U=%.3f V  terminals=%s/%s%n",
-                    train.trainId(),
-                    train.positionM(),
-                    train.pReqW().asDouble(),
-                    trainVoltageV,
-                    feedingNodeId,
-                    returnNodeId
-            );
-        }
-    }
-
     private static double voltageOf(Map<String, Real> voltages, String nodeId) {
         if (nodeId == null) {
             return Double.NaN;
@@ -515,7 +476,8 @@ public final class DcSolver {
     private static SingleTimestepSolver.NetworkResult solveWithFallback(
             SystemParameters systemParameters,
             CalculationNetwork timestepNetwork,
-            Map<String, Double> requestedPowersW
+            Map<String, Double> requestedPowersW,
+            Map<String, Real> previousVoltages
     ) {
         SingleTimestepSolver timestepSolver =
                 new SingleTimestepSolver(
@@ -529,7 +491,8 @@ public final class DcSolver {
                         "R1",
                         requestedPowersW,
                         200,
-                        1e-3
+                        1e-3,
+                        previousVoltages
                 );
 
         if (result.converged()) {
@@ -545,7 +508,8 @@ public final class DcSolver {
                         "R1",
                         scaledPowers(requestedPowersW, 0.0),
                         200,
-                        1e-3
+                        1e-3,
+                        previousVoltages
                 );
 
         if (!feasibleResult.converged()) {
@@ -570,7 +534,8 @@ public final class DcSolver {
                             "R1",
                             candidatePowersW,
                             200,
-                            1e-3
+                            1e-3,
+                            previousVoltages
                     );
 
             if (candidateResult.converged()) {

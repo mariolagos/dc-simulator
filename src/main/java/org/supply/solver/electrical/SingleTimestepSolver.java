@@ -138,10 +138,32 @@ public final class SingleTimestepSolver {
             int maxIterations,
             double toleranceV
     ) {
+        return solve(
+                baseNetwork,
+                referenceNodeId,
+                requestedPowersW,
+                maxIterations,
+                toleranceV,
+                Map.of()
+        );
+    }
+
+    public NetworkResult solve(
+            CalculationNetwork baseNetwork,
+            String referenceNodeId,
+            Map<String, Double> requestedPowersW,
+            int maxIterations,
+            double toleranceV,
+            Map<String, Real> initialVoltages
+    ) {
         Map<String, Double> voltageGuessByTrain =
                 initialVoltageGuesses(baseNetwork);
 
-        Map<String, Real> previousVoltages = Map.of();
+        Map<String, Real> previousVoltages =
+                initialVoltages == null
+                        ? Map.of()
+                        : initialVoltages;
+
         Map<String, Real> voltages = null;
 
         for (int iteration = 1; iteration <= maxIterations; iteration++) {
@@ -210,14 +232,14 @@ public final class SingleTimestepSolver {
                         relaxedVoltageV
                 );
 
-                System.out.printf(
-                        "iteration=%d train=%s oldU=%.6f solvedU=%.6f relaxedU=%.6f%n",
-                        iteration,
-                        load.trainId(),
-                        oldVoltageV,
-                        newVoltageV,
-                        relaxedVoltageV
-                );
+//                System.out.printf(
+//                        "iteration=%d train=%s oldU=%.6f solvedU=%.6f relaxedU=%.6f%n",
+//                        iteration,
+//                        load.trainId(),
+//                        oldVoltageV,
+//                        newVoltageV,
+//                        relaxedVoltageV
+//                );
             }
 
             System.out.printf(

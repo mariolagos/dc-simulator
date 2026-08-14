@@ -21,54 +21,66 @@ public final class RunCsvInputFactory {
         List<Integer> departureTimes = new ArrayList<>();
 
         if (!dcsim.hasPath("traffic.timetable.trains")) {
-            throw new IllegalArgumentException("Missing required config: traffic.timetable.trains");
+            throw new IllegalArgumentException(
+                    "Missing required config: traffic.timetable.trains"
+            );
         }
 
-        Config traffic = dcsim.getConfig("traffic");
-        Config timetable = traffic.getConfig("timetable");
+        Config traffic =
+                dcsim.getConfig("traffic");
+
+        Config timetable =
+                traffic.getConfig("timetable");
+
+        Config templates =
+                traffic.getConfig("templates");
 
         for (Config train : timetable.getConfigList("trains")) {
-            String trainId = train.getString("id");
-            String sectionId = train.getString("sectionId");
-            String trackId = train.getString("trackId");
-            String templateId = getString(train, "template_id", "templateId");
-            int departureSec = TimeUtils.parseHmsToSeconds(train.getString("departure"));
 
-            Config template = traffic.getConfig("templates").getConfig(templateId);
+            String trainId =
+                    train.getString("id");
 
-            Config powerProfiles = dcsim.getConfig("powerProfiles");
+            String sectionId =
+                    train.getString("sectionId");
 
-            Config templateConfig = powerProfiles
-                    .getConfigList("templates")
-                    .stream()
-                    .filter(t -> t.getString("id").equals(templateId))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Power profile template not found: " + templateId
-                    ));
+            String trackId =
+                    train.getString("trackId");
 
-            String folderText = templateConfig.getString("folder");
-            Path templateFolder = resolveTemplateFolder(confFile, folderText);
+            String templateId =
+                    getString(
+                            train,
+                            "template_id",
+                            "templateId"
+                    );
 
-            Config legConfig =
-                    templateConfig.getConfigList("legs").get(0);
+            int departureSec =
+                    TimeUtils.parseHmsToSeconds(
+                            train.getString("departure")
+                    );
 
-            String fileName =
-                    legConfig.getString("file");
+            Config templateConfig =
+                    templates.getConfig(templateId);
+
+            String runExcelText =
+                    templateConfig.getString("run_excel");
 
             Path runExcel =
-                    templateFolder.resolve(fileName).normalize();
+                    confFile.getParent()
+                            .resolve(runExcelText)
+                            .normalize();
 
             System.out.println(
                     "train=" + trainId
                             + " template=" + templateId
-                            + " folder=" + templateFolder
                             + " runExcel=" + runExcel
             );
 
             if (!Files.exists(runExcel)) {
                 throw new IllegalArgumentException(
-                        "Run Excel not found for train " + trainId + ": " + runExcel
+                        "Run Excel not found for train "
+                                + trainId
+                                + ": "
+                                + runExcel
                 );
             }
 
@@ -79,9 +91,10 @@ public final class RunCsvInputFactory {
             runExcels.add(runExcel);
         }
 
-        double exportResolutionS = dcsim.hasPath("export.exportResolution_s")
-                ? dcsim.getDouble("export.exportResolution_s")
-                : 0.0;
+        double exportResolutionS =
+                dcsim.hasPath("export.exportResolution_s")
+                        ? dcsim.getDouble("export.exportResolution_s")
+                        : 0.0;
 
         return new RunCsvInput(
                 runExcels,

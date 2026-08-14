@@ -12,6 +12,8 @@ public record DiodeSubstationElement(
         Real internalResistanceOhm
 ) implements ElectricalElement {
 
+    private static final double VOLTAGE_TOLERANCE_V = 1e-3;
+
     @Override
     public void stamp(AdmittanceStamp stamp) {
         Real feedingVoltage =
@@ -26,24 +28,15 @@ public record DiodeSubstationElement(
                             - returnVoltage.asDouble();
 
             boolean blocked =
-                    uTerminalV > emfV.asDouble();
-
-            System.out.printf(
-                    "DSE %s uTerminal=%.6f emf=%.6f state=%s%n",
-                    id,
-                    uTerminalV,
-                    emfV.asDouble(),
-                    blocked ? "BLOCKING" : "CONDUCTING"
-            );
-
+                    uTerminalV > emfV.asDouble() + VOLTAGE_TOLERANCE_V;
             if (blocked) {
                 return;
             }
         } else {
-            System.out.printf(
-                    "DSE %s no previous voltage -> CONDUCTING%n",
-                    id
-            );
+//            System.out.printf(
+//                    "DSE %s no previous voltage -> CONDUCTING%n",
+//                    id
+//            );
         }
 
         double r = internalResistanceOhm.asDouble();
@@ -85,7 +78,7 @@ public record DiodeSubstationElement(
                 null,
                 "DIODE_SUBSTATION",
                 id,
-                "feeding_node_id",
+                "return_node_id",
                 returnNodeId,
                 "",
                 "STATIC",

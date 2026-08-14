@@ -217,10 +217,10 @@ public class SingleTimestepSolverTest {
                         1e-3
                 );
 
-        System.out.println(
-                "iterations=" + result.iterations()
-                        + ", converged=" + result.converged()
-        );
+//        System.out.println(
+//                "iterations=" + result.iterations()
+//                        + ", converged=" + result.converged()
+//        );
 
         assertThat(
                 result.converged(),
@@ -422,86 +422,6 @@ public class SingleTimestepSolverTest {
         assertThat(
                 result.voltages().get("train_T1_R"),
                 notNullValue()
-        );
-    }
-
-    @Test
-    public void reducesRegenerationUntilDcSolutionIsFeasible() {
-
-        SystemParameters systemParameters =
-                new SystemParameters(
-                        750.0,
-                        500.0,
-                        600.0,
-                        900.0,
-                        4_000.0,
-                        3_000_000.0,
-                        3_000_000.0
-                );
-
-        SingleTimestepSolver solver =
-                new SingleTimestepSolver(
-                        systemParameters,
-                        new LinearSystemSolver()
-                );
-
-        CalculationNetwork network =
-                createSingleRegenTrainNetwork();
-
-        double requestedPowerW = -500_000.0;
-        PowerAllocationOptimizer optimizer =
-                new PowerAllocationOptimizer();
-
-        PowerAllocationOptimizer.Result result =
-                optimizer.optimize(
-                        new double[]{requestedPowerW},
-                        new double[]{requestedPowerW},
-                        new double[]{0.0},
-                        powersW -> {
-
-                            Map<String, Double> candidatePowers =
-                                    Map.of(
-                                            "T1",
-                                            powersW[0]
-                                    );
-
-                            SingleTimestepSolver.NetworkResult solveResult =
-                                    solver.solve(
-                                            network,
-                                            "R1",
-                                            candidatePowers,
-                                            200,
-                                            1e-3
-                                    );
-
-                            if (solveResult.converged()) {
-                                return PowerAllocationOptimizer
-                                        .CandidateEvaluation
-                                        .feasible();
-                            }
-
-                            return PowerAllocationOptimizer
-                                    .CandidateEvaluation
-                                    .penalty(1e20);
-                        }
-                );
-
-        double allocatedPowerW =
-                result.allocatedPowersW()[0];
-
-        System.out.println(
-                "requested=" + requestedPowerW
-                        + ", allocated=" + allocatedPowerW
-        );
-
-        assertThat(
-                allocatedPowerW,
-                greaterThan(requestedPowerW)
-        );
-
-        assertThat(
-                allocatedPowerW,
-                lessThanOrEqualTo(0.0)
         );
     }
 

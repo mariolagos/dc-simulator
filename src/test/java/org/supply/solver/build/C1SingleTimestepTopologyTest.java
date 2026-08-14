@@ -18,23 +18,32 @@ public final class C1SingleTimestepTopologyTest {
     @Test
     public void buildsC1SingleTimestepTopologyWithOneTrainInsertedIntoLineSegment() {
 
-        CalculationNode a = node("F1", 0.0);
-        CalculationNode b = node("F2", 1000.0);
-        CalculationNode rTrain = node("R_TRAIN", 400.0);
+        CalculationNode f1 = node("F1", 0.0);
+        CalculationNode f2 = node("F2", 1000.0);
+        CalculationNode r1 = node("R1", 0.0);
+        CalculationNode r2 = node("R2", 1000.0);
 
-        CalculationBranch line = new CalculationBranch(
-                "line_0",
+        CalculationBranch feedingLine = new CalculationBranch(
+                "feeding_0",
                 "F1-F2",
                 "F1",
                 "F2",
                 Real.fromDouble(1.0)
         );
 
+        CalculationBranch returnLine = new CalculationBranch(
+                "return_0",
+                "R1-R2",
+                "R1",
+                "R2",
+                Real.fromDouble(1.0)
+        );
+
         CalculationNetwork base = new CalculationNetwork(
-                List.of(a, b, rTrain),
-                List.of(line),
+                List.of(f1, f2, r1, r2),
+                List.of(feedingLine, returnLine),
                 List.of(),
-                List.of(line)
+                List.of(feedingLine, returnLine)
         );
 
         CalculationTrainPosition train = new CalculationTrainPosition(
@@ -42,7 +51,7 @@ public final class C1SingleTimestepTopologyTest {
                 "section-C1",
                 "track-1",
                 400.0,
-                Real.fromDouble(0.)
+                Real.fromDouble(0.0)
         );
 
         CalculationNetwork result =
@@ -52,7 +61,7 @@ public final class C1SingleTimestepTopologyTest {
         AdmittanceSystem system =
                 new AdmittanceSystemBuilder().build(
                         result,
-                        "F1"
+                        "R1"
                 );
 
         MatrixPrinter.printSystem(
@@ -63,17 +72,25 @@ public final class C1SingleTimestepTopologyTest {
                 3
         );
 
-        assertEquals("F1", result.nodes().get(0).id());
-        assertEquals("F2", result.nodes().get(1).id());
-        assertEquals("R_TRAIN", result.nodes().get(2).id());
-        assertEquals("train_train_1", result.nodes().get(3).id());
-
-        assertEquals(4, result.nodes().size());
-        assertEquals(2, result.branches().size());
+        assertEquals(6, result.nodes().size());
+        assertEquals(4, result.branches().size());
         assertEquals(1, result.trainLoads().size());
 
-        assertEquals("train_train_1", result.trainLoads().get(0).feedingNodeId());
-        assertEquals("R_TRAIN", result.trainLoads().get(0).returnNodeId());
+        assertTrue(result.nodes().stream()
+                .anyMatch(n -> n.id().equals("train_train_1_F")));
+
+        assertTrue(result.nodes().stream()
+                .anyMatch(n -> n.id().equals("train_train_1_R")));
+
+        assertEquals(
+                "train_train_1_F",
+                result.trainLoads().get(0).feedingNodeId()
+        );
+
+        assertEquals(
+                "train_train_1_R",
+                result.trainLoads().get(0).returnNodeId()
+        );
     }
 
     private static CalculationNode node(String id, double positionM) {

@@ -75,7 +75,8 @@ public final class ElectricalTestCases {
 
         if (pReqW != 0.0) {
             elements.add(new TrainLoadElement(
-                    "F_TRAIN",
+                    "T1"
+,                    "F_TRAIN",
                     "R_TRAIN",
                     pReqW,
                     SYSTEM_PARAMETERS.uNominalV(),

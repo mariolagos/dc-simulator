@@ -169,6 +169,7 @@ public final class ElectricalSolverValidationTest {
                         .solveConstantPowerTrain(
                                 network,
                                 "R_SUB",
+                                "T1",
                                 "F_TRAIN",
                                 "R_TRAIN",
                                 requestedPowerW,

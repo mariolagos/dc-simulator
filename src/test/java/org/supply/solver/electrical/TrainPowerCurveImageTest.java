@@ -251,6 +251,7 @@ public final class TrainPowerCurveImageTest {
             SystemParameters p
     ) {
         return new TrainLoadElement(
+                "T1",
                 "F_TRAIN",
                 "R_TRAIN",
                 requestedPowerW,
