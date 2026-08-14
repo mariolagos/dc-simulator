@@ -34,27 +34,71 @@ public final class LongTableWriter implements Closeable, Flushable {
         }
     }
 
-    public synchronized void signalRow(Double time_s, String objectType, String objectId,
-                                       String signal, Double value, String unit,
-                                       String stage, Integer iter, String note) {
+    public synchronized void signalRow(
+            Double time_s,
+            String objectType,
+            String objectId,
+            String signal,
+            Object value,
+            String unit,
+            String stage,
+            Integer iter,
+            String note
+    ) {
         try {
-            bw.write(String.format(Locale.ROOT, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
-                    nz(time_s), project, scenario, baseHash,
-                    nz(objectType), nz(objectId), nz(signal), nz(value),
-                    nz(unit), nz(stage), nz(iter), nz(note)
+            bw.write(String.format(
+                    Locale.ROOT,
+                    "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
+                    nz(time_s),
+                    project,
+                    scenario,
+                    baseHash,
+                    nz(objectType),
+                    nz(objectId),
+                    nz(signal),
+                    nz(value),
+                    nz(unit),
+                    nz(stage),
+                    nz(iter),
+                    nz(note)
             ));
             bw.newLine();
 
-            System.out.printf("[LongCSV] t=%.3f %s/%s %s=%s %s stage=%s%n",
-                    time_s, objectType, objectId, signal,
-                    value == null ? "" : String.format(Locale.ROOT,"%.3f", value),
+            System.out.printf(
+                    "[LongCSV] t=%s %s/%s %s=%s %s stage=%s%n",
+                    time_s == null
+                            ? ""
+                            : String.format(Locale.ROOT, "%.3f", time_s),
+                    objectType,
+                    objectId,
+                    signal,
+                    formatValue(value),
                     unit == null ? "" : unit,
                     stage
             );
+
             bw.flush();
         } catch (IOException e) {
-            System.err.println("[LongCSV] write failed: " + e.getMessage());
+            System.err.println(
+                    "[LongCSV] write failed: " + e.getMessage()
+            );
         }
+    }
+
+    private static String formatValue(Object value) {
+        if (value == null) {
+            return "";
+        }
+
+        if (value instanceof Number number) {
+            return String.format(
+                    Locale.ROOT,
+                    "%.3f",
+                    number.doubleValue()
+            );
+        }
+
+        return value.toString();
     }
 
     @Override public synchronized void flush() throws IOException { bw.flush(); }

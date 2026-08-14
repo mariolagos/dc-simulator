@@ -137,6 +137,7 @@ public final class TrainNodeInserter {
 
         for (CalculationTrainLoad load : trainLoads) {
             elements.add(new TrainLoadElement(
+                    load.trainId(),
                     load.feedingNodeId(),
                     load.returnNodeId(),
                     load.pReqW().asDouble(),

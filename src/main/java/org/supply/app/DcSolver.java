@@ -20,7 +20,9 @@ import org.supply.solver.electrical.SingleTimestepSolver;
 import org.supply.solver.io.LongTableWriter;
 import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationTrainPosition;
+import org.supply.solver.model.DiodeSubstationElement;
 import org.supply.solver.model.ElectricalElement;
+import org.supply.solver.model.TrainLoadElement;
 import org.supply.solver.optimization.PowerAllocationOptimizer;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
@@ -31,6 +33,7 @@ import org.supply.solver.model.CalculationTrainLoad;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -123,11 +126,19 @@ public final class DcSolver {
         TrainNodeInserter trainNodeInserter =
                 new TrainNodeInserter(systemParameters);
 
-        for (RunSample sample : samples) {
+        Map<Double, List<RunSample>> samplesByTime =
+                samples.stream()
+                        .collect(Collectors.groupingBy(
+                                RunSample::timeS,
+                                LinkedHashMap::new,
+                                Collectors.toList()
+                        ));
+
+        for (List<RunSample> timestepSamples : samplesByTime.values()) {
             solveTimestep(
                     systemParameters,
                     baseNetwork,
-                    sample,
+                    timestepSamples,
                     trainPositionFactory,
                     trainNodeInserter,
                     writer
@@ -138,12 +149,11 @@ public final class DcSolver {
     private static void solveTimestep(
             SystemParameters systemParameters,
             CalculationNetwork baseNetwork,
-            RunSample sample,
+            List<RunSample> timestepSamples,
             TrainPositionFactory trainPositionFactory,
             TrainNodeInserter trainNodeInserter,
             LongTableWriter writer
     ) {
-        List<RunSample> timestepSamples = List.of(sample);
 
         List<CalculationTrainPosition> trainPositions =
                 trainPositionFactory.fromRunSamples(timestepSamples);
@@ -161,43 +171,14 @@ public final class DcSolver {
                                 load -> load.pReqW().asDouble()
                         ));
 
-        SingleTimestepSolver timestepSolver =
-                new SingleTimestepSolver(
-                        systemParameters,
-                        new LinearSystemSolver()
-                );
 
         SingleTimestepSolver.NetworkResult solveResult =
-                timestepSolver.solve(
+                solveWithFallback(
+                        systemParameters,
                         timestepNetwork,
-                        "R1",
-                        requestedPowersW,
-                        200,
-                        1e-3
+                        requestedPowersW
                 );
 
-        if (!solveResult.converged()) {
-
-            PowerAllocationOptimizer optimizer =
-                    new PowerAllocationOptimizer();
-
-            double[] requested =
-                    timestepNetwork.trainLoads().stream()
-                            .mapToDouble(load -> load.pReqW().asDouble())
-                            .toArray();
-
-            double[] lowerBounds =
-                    Arrays.stream(requested)
-                            .map(p -> p < 0.0 ? p : 0.0)
-                            .toArray();
-
-            double[] upperBounds =
-                    Arrays.stream(requested)
-                            .map(p -> p < 0.0 ? 0.0 : p)
-                            .toArray();
-
-            // ... = här kommer evaluator + optimize-anrop + ny solve
-        }
         Map<String, Real> voltages =
                 solveResult.voltages();
 
@@ -225,9 +206,170 @@ public final class DcSolver {
         }
     }
 
-    private static void saveResults(List<RunSample> timestepSamples, List<CalculationTrainPosition> trainPositions, CalculationNetwork timestepNetwork, Map<String, Real> voltages, LongTableWriter writer) {
+    private static void saveResults(
+            List<RunSample> timestepSamples,
+            List<CalculationTrainPosition> trainPositions,
+            CalculationNetwork timestepNetwork,
+            Map<String, Real> voltages,
+            LongTableWriter writer
+    ) {
         double timeSec = timestepSamples.get(0).timeS();
 
+        saveTrainPositions(
+                trainPositions,
+                timestepNetwork,
+                voltages,
+                writer,
+                timeSec
+        );
+
+        saveNetworkResults(
+                timestepNetwork,
+                voltages,
+                writer,
+                timeSec
+        );
+    }
+    private static void saveNetworkResults(
+            CalculationNetwork timestepNetwork,
+            Map<String, Real> voltages,
+            LongTableWriter writer,
+            double timeSec
+    ) {
+        for (ElectricalElement element : timestepNetwork.elements()) {
+
+            if (element instanceof DiodeSubstationElement dse) {
+                saveSubstationResults(
+                        voltages,
+                        writer,
+                        timeSec,
+                        dse
+                );
+            }
+
+            if (element instanceof TrainLoadElement trainLoad) {
+                saveTrainResult(
+                        trainLoad,
+                        voltages,
+                        writer,
+                        timeSec
+                );
+            }
+        }
+    }
+
+    private static void saveTrainResult(TrainLoadElement trainLoad, Map<String, Real> voltages, LongTableWriter writer, double timeSec) {
+        double feedingVoltageV =
+                voltages.get(trainLoad.feedingNodeId()).asDouble();
+
+        double returnVoltageV =
+                voltages.get(trainLoad.returnNodeId()).asDouble();
+
+        double terminalVoltageV =
+                feedingVoltageV - returnVoltageV;
+
+        double currentA =
+                trainLoad.currentA();
+
+        double powerW =
+                terminalVoltageV * currentA;
+
+        writer.signalRow(
+                timeSec,
+                "TRAIN",
+                trainLoad.trainId(),
+                "i_A",
+                currentA,
+                "A",
+                "RESULT",
+                null,
+                "");
+
+        writer.signalRow(
+                timeSec,
+                "TRAIN",
+                trainLoad.trainId(),
+                "p_W",
+                powerW,
+                "W",
+                "RESULT",
+                null,
+                ""
+        );
+    }
+
+    private static void saveSubstationResults(Map<String, Real> voltages, LongTableWriter writer, double timeSec, DiodeSubstationElement dse) {
+        double feedingVoltageV =
+                voltages.get(dse.feedingNodeId()).asDouble();
+
+        double returnVoltageV =
+                voltages.get(dse.returnNodeId()).asDouble();
+
+        double terminalVoltageV =
+                feedingVoltageV - returnVoltageV;
+
+        boolean conducting =
+                terminalVoltageV <= dse.emfV().asDouble();
+
+        double currentA =
+                conducting
+                        ? (dse.emfV().asDouble() - terminalVoltageV)
+                        / dse.internalResistanceOhm().asDouble()
+                        : 0.0;
+
+        double powerW =
+                terminalVoltageV * currentA;
+
+        writer.signalRow(
+                timeSec,
+                "DIODE_SUBSTATION",
+                dse.id(),
+                "u_V",
+                terminalVoltageV,
+                "V",
+                "RESULT",
+                null,
+                ""
+        );
+
+        writer.signalRow(
+                timeSec,
+                "DIODE_SUBSTATION",
+                dse.id(),
+                "i_A",
+                currentA,
+                "A",
+                "RESULT",
+                null,
+                ""
+        );
+
+        writer.signalRow(
+                timeSec,
+                "DIODE_SUBSTATION",
+                dse.id(),
+                "p_W",
+                powerW,
+                "W",
+                "RESULT",
+                null,
+                ""
+        );
+
+        writer.signalRow(
+                timeSec,
+                "DIODE_SUBSTATION",
+                dse.id(),
+                "state",
+                conducting ? "CONDUCTING" : "BLOCKING",
+                "",
+                "RESULT",
+                null,
+                ""
+        );
+    }
+
+    private static void saveTrainPositions(List<CalculationTrainPosition> trainPositions, CalculationNetwork timestepNetwork, Map<String, Real> voltages, LongTableWriter writer, double timeSec) {
         for (CalculationTrainPosition train : trainPositions) {
             var load = timestepNetwork.trainLoads().stream()
                     .filter(x -> x.trainId().equals(train.trainId()))
@@ -276,6 +418,7 @@ public final class DcSolver {
                     null,
                     null
             );
+
         }
     }
 
@@ -369,4 +512,99 @@ public final class DcSolver {
     ) {
     }
 
+    private static SingleTimestepSolver.NetworkResult solveWithFallback(
+            SystemParameters systemParameters,
+            CalculationNetwork timestepNetwork,
+            Map<String, Double> requestedPowersW
+    ) {
+        SingleTimestepSolver timestepSolver =
+                new SingleTimestepSolver(
+                        systemParameters,
+                        new LinearSystemSolver()
+                );
+
+        SingleTimestepSolver.NetworkResult result =
+                timestepSolver.solve(
+                        timestepNetwork,
+                        "R1",
+                        requestedPowersW,
+                        200,
+                        1e-3
+                );
+
+        if (result.converged()) {
+            return result;
+        }
+
+        double feasibleAlpha = 0.0;
+        double infeasibleAlpha = 1.0;
+
+        SingleTimestepSolver.NetworkResult feasibleResult =
+                timestepSolver.solve(
+                        timestepNetwork,
+                        "R1",
+                        scaledPowers(requestedPowersW, 0.0),
+                        200,
+                        1e-3
+                );
+
+        if (!feasibleResult.converged()) {
+            throw new IllegalStateException(
+                    "DC network is not solvable even with zero train power"
+            );
+        }
+
+        for (int i = 0; i < 30; i++) {
+            double alpha =
+                    0.5 * (feasibleAlpha + infeasibleAlpha);
+
+            Map<String, Double> candidatePowersW =
+                    scaledPowers(
+                            requestedPowersW,
+                            alpha
+                    );
+
+            SingleTimestepSolver.NetworkResult candidateResult =
+                    timestepSolver.solve(
+                            timestepNetwork,
+                            "R1",
+                            candidatePowersW,
+                            200,
+                            1e-3
+                    );
+
+            if (candidateResult.converged()) {
+                feasibleAlpha = alpha;
+                feasibleResult = candidateResult;
+            } else {
+                infeasibleAlpha = alpha;
+            }
+        }
+
+        System.out.printf(
+                "Power fallback: alpha=%.9f%n",
+                feasibleAlpha
+        );
+
+        return feasibleResult;
+    }
+
+    private static Map<String, Double> scaledPowers(
+            Map<String, Double> requestedPowersW,
+            double alpha
+    ) {
+        Map<String, Double> result =
+                new LinkedHashMap<>();
+
+        for (Map.Entry<String, Double> entry :
+                requestedPowersW.entrySet()) {
+
+            result.put(
+                    entry.getKey(),
+                    alpha * entry.getValue()
+            );
+        }
+
+        return result;
+    }
 }

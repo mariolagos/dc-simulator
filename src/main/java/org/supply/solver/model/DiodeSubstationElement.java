@@ -73,6 +73,30 @@ public record DiodeSubstationElement(
                 null,
                 "DIODE_SUBSTATION",
                 id,
+                "feeding_node_id",
+                feedingNodeId,
+                "",
+                "STATIC",
+                null,
+                null
+        );
+
+        writer.signalRow(
+                null,
+                "DIODE_SUBSTATION",
+                id,
+                "feeding_node_id",
+                returnNodeId,
+                "",
+                "STATIC",
+                null,
+                null
+        );
+
+        writer.signalRow(
+                null,
+                "DIODE_SUBSTATION",
+                id,
                 "emf_V",
                 emfV.asDouble(),
                 "V",
@@ -92,5 +116,6 @@ public record DiodeSubstationElement(
                 null,
                 null
         );
+
     }
 }

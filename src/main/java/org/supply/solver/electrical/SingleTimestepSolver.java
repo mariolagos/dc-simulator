@@ -23,6 +23,7 @@ public final class SingleTimestepSolver {
     public Result solveConstantPowerTrain(
             CalculationNetwork baseNetwork,
             String referenceNodeId,
+            String trainId,
             String feedingNodeId,
             String returnNodeId,
             double requestedPowerW,
@@ -35,6 +36,7 @@ public final class SingleTimestepSolver {
 
         for (int iteration = 1; iteration <= maxIterations; iteration++) {
             CalculationNetwork network = withTrainLoad(
+                    trainId,
                     baseNetwork,
                     feedingNodeId,
                     returnNodeId,
@@ -79,6 +81,7 @@ public final class SingleTimestepSolver {
     }
 
     private CalculationNetwork withTrainLoad(
+            String trainId,
             CalculationNetwork baseNetwork,
             String feedingNodeId,
             String returnNodeId,
@@ -89,6 +92,7 @@ public final class SingleTimestepSolver {
                 new ArrayList<>(baseNetwork.elements());
 
         elements.add(new TrainLoadElement(
+                trainId,
                 feedingNodeId,
                 returnNodeId,
                 requestedPowerW,
@@ -283,6 +287,7 @@ public final class SingleTimestepSolver {
                     voltageGuessByTrain.get(load.trainId());
 
             elements.add(new TrainLoadElement(
+                    load.trainId(),
                     load.feedingNodeId(),
                     load.returnNodeId(),
                     requestedPowerW,

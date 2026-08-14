@@ -5,6 +5,8 @@ import org.supply.solver.electrical.AdmittanceStamp;
 
 public final class TrainLoadElement implements ElectricalElement {
 
+    private final String trainId;
+
     private final String feedingNodeId;
     private final String returnNodeId;
 
@@ -14,12 +16,14 @@ public final class TrainLoadElement implements ElectricalElement {
     private final SystemParameters systemParameters;
 
     public TrainLoadElement(
+            String trainId,
             String feedingNodeId,
             String returnNodeId,
             double requestedPowerW,
             double voltageV,
             SystemParameters systemParameters
     ) {
+        this.trainId = trainId;
         this.feedingNodeId = feedingNodeId;
         this.returnNodeId = returnNodeId;
         this.requestedPowerW = requestedPowerW;
@@ -121,5 +125,21 @@ public final class TrainLoadElement implements ElectricalElement {
         }
 
         return -systemParameters.iMaxA();
+    }
+
+    public String feedingNodeId() {
+        return feedingNodeId;
+    }
+
+    public String returnNodeId() {
+        return returnNodeId;
+    }
+
+    public double requestedPowerW() {
+        return requestedPowerW;
+    }
+
+    public String trainId() {
+        return trainId;
     }
 }

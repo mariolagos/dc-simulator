@@ -50,7 +50,14 @@ public final class RunCsvInputFactory {
             String folderText = templateConfig.getString("folder");
             Path templateFolder = resolveTemplateFolder(confFile, folderText);
 
-            Path runExcel = templateFolder.resolve("A-B.xlsx").normalize();
+            Config legConfig =
+                    templateConfig.getConfigList("legs").get(0);
+
+            String fileName =
+                    legConfig.getString("file");
+
+            Path runExcel =
+                    templateFolder.resolve(fileName).normalize();
 
             System.out.println(
                     "train=" + trainId
