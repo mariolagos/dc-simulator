@@ -15,22 +15,86 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.Assert.assertTrue;
 
 public class SingleTimestepSolverTest {
+
+    @Test
+    public void findsFeasibleRegenerationLevelForNonReceptiveNetwork() {
+
+        SystemParameters systemParameters =
+                systemParameters();
+
+        SingleTimestepSolver solver =
+                new SingleTimestepSolver(
+                        systemParameters,
+                        new LinearSystemSolver()
+                );
+
+        CalculationNetwork network =
+                createSingleRegenTrainNetwork();
+
+        double requestedPowerW =
+                -1_400_000.0;
+
+        double feasibleAlpha = 0.0;
+        double infeasibleAlpha = 1.0;
+
+        SingleTimestepSolver.NetworkResult feasibleResult =
+                solver.solve(
+                        network,
+                        "R1",
+                        Map.of("T1", 0.0),
+                        200,
+                        1e-3
+                );
+
+        assertTrue(feasibleResult.converged());
+
+        for (int i = 0; i < 30; i++) {
+
+            double alpha =
+                    0.5 * (feasibleAlpha + infeasibleAlpha);
+
+            double candidatePowerW =
+                    alpha * requestedPowerW;
+
+            SingleTimestepSolver.NetworkResult candidateResult =
+                    solver.solve(
+                            network,
+                            "R1",
+                            Map.of("T1", candidatePowerW),
+                            200,
+                            1e-3
+                    );
+
+            if (candidateResult.converged()) {
+                feasibleAlpha = alpha;
+                feasibleResult = candidateResult;
+            } else {
+                infeasibleAlpha = alpha;
+            }
+        }
+
+        double feasiblePowerW =
+                feasibleAlpha * requestedPowerW;
+
+        System.out.printf(
+                "requested=%.3f W  alpha=%.9f  feasible=%.3f W%n",
+                requestedPowerW,
+                feasibleAlpha,
+                feasiblePowerW
+        );
+
+        assertTrue(feasibleAlpha >= 0.0);
+        assertTrue(feasibleAlpha < 1.0);
+    }
 
     @Test
     public void solvesTwoTrainLoadsInSameTimestep() {
 
         SystemParameters systemParameters =
-                new SystemParameters(
-                        750.0,     // uNominalV
-                        500.0,     // uMinV
-                        600.0,     // uCutoffV
-                        900.0,     // uMaxV
-                        4_000.0,   // iMaxA
-                        3_000_000.0,
-                        3_000_000.0
-                );
+                systemParameters();
 
         LinearSystemSolver linearSystemSolver =
                 new LinearSystemSolver();
@@ -278,15 +342,7 @@ public class SingleTimestepSolverTest {
     public void solvesRegeneratingTrainWithDiodeSubstation() {
 
         SystemParameters systemParameters =
-                new SystemParameters(
-                        750.0,     // uNominalV
-                        500.0,     // uMinV
-                        600.0,     // uCutoffV
-                        900.0,     // uMaxV
-                        4_000.0,   // iMaxA
-                        3_000_000.0,
-                        3_000_000.0
-                );
+                systemParameters();
 
         SingleTimestepSolver solver =
                 new SingleTimestepSolver(
@@ -523,6 +579,18 @@ public class SingleTimestepSolverTest {
                 branches,
                 trainLoads,
                 elements
+        );
+    }
+
+    private static SystemParameters systemParameters() {
+        return new SystemParameters(
+                750.0,       // uNominalV
+                500.0,       // uMinV
+                600.0,       // uCutoffV
+                900.0,       // uMaxV
+                4_000.0,     // iMaxA
+                3_000_000.0,
+                3_000_000.0
         );
     }
 }

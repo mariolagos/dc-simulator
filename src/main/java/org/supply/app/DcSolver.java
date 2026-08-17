@@ -44,6 +44,12 @@ public final class DcSolver {
     private static final boolean DEBUG_MATRIX = false;
     private static final boolean DEBUG_ALL_NODE_VOLTAGES = false;
 
+    private record SolveResult(
+            SingleTimestepSolver.NetworkResult networkResult,
+            Map<String, Double> allocatedPowersW
+    ) {
+    }
+
     public static void main(String[] args) throws Exception {
         DcStudyContext context = DcStudyContextLoader.load(args[0]);
         run(context);
@@ -185,7 +191,7 @@ public final class DcSolver {
         }
 
 
-        SingleTimestepSolver.NetworkResult solveResult =
+        SolveResult solveResult =
                 solveWithFallback(
                         systemParameters,
                         timestepNetwork,
@@ -194,13 +200,15 @@ public final class DcSolver {
                 );
 
         Map<String, Real> voltages =
-                solveResult.voltages();
+                solveResult.networkResult().voltages();
 
         saveResults(
+                systemParameters,
                 timestepSamples,
                 trainPositions,
                 timestepNetwork,
                 voltages,
+                solveResult.allocatedPowersW(),
                 writer
         );
 
@@ -208,14 +216,16 @@ public final class DcSolver {
             printAllNodeVoltages(voltages);
         }
 
-        return solveResult;
+        return solveResult.networkResult();
     }
 
     private static void saveResults(
+            SystemParameters systemParameters,
             List<RunSample> timestepSamples,
             List<CalculationTrainPosition> trainPositions,
             CalculationNetwork timestepNetwork,
             Map<String, Real> voltages,
+            Map<String, Double> allocatedPowersW,
             LongTableWriter writer
     ) {
         double timeSec = timestepSamples.get(0).timeS();
@@ -229,15 +239,19 @@ public final class DcSolver {
         );
 
         saveNetworkResults(
+                systemParameters,
                 timestepNetwork,
                 voltages,
+                allocatedPowersW,
                 writer,
                 timeSec
         );
     }
     private static void saveNetworkResults(
+            SystemParameters systemParameters,
             CalculationNetwork timestepNetwork,
             Map<String, Real> voltages,
+            Map<String, Double> allocatedPowersW,
             LongTableWriter writer,
             double timeSec
     ) {
@@ -254,8 +268,10 @@ public final class DcSolver {
 
             if (element instanceof TrainLoadElement trainLoad) {
                 saveTrainResult(
+                        systemParameters,
                         trainLoad,
                         voltages,
+                        allocatedPowersW,
                         writer,
                         timeSec
                 );
@@ -263,7 +279,14 @@ public final class DcSolver {
         }
     }
 
-    private static void saveTrainResult(TrainLoadElement trainLoad, Map<String, Real> voltages, LongTableWriter writer, double timeSec) {
+    private static void saveTrainResult(
+            SystemParameters systemParameters,
+            TrainLoadElement trainLoad,
+            Map<String, Real> voltages,
+            Map<String, Double> allocatedPowersW,
+            LongTableWriter writer,
+            double timeSec
+    ) {
         double feedingVoltageV =
                 voltages.get(trainLoad.feedingNodeId()).asDouble();
 
@@ -273,8 +296,24 @@ public final class DcSolver {
         double terminalVoltageV =
                 feedingVoltageV - returnVoltageV;
 
+        double allocatedPowerW =
+                allocatedPowersW.getOrDefault(
+                        trainLoad.trainId(),
+                        0.0
+                );
+
+        TrainLoadElement solvedLoad =
+                new TrainLoadElement(
+                        trainLoad.trainId(),
+                        trainLoad.feedingNodeId(),
+                        trainLoad.returnNodeId(),
+                        allocatedPowerW,
+                        terminalVoltageV,
+                        systemParameters
+                );
+
         double currentA =
-                trainLoad.currentA();
+                solvedLoad.currentA();
 
         double powerW =
                 terminalVoltageV * currentA;
@@ -288,7 +327,8 @@ public final class DcSolver {
                 "A",
                 "RESULT",
                 null,
-                "");
+                ""
+        );
 
         writer.signalRow(
                 timeSec,
@@ -473,7 +513,7 @@ public final class DcSolver {
     ) {
     }
 
-    private static SingleTimestepSolver.NetworkResult solveWithFallback(
+    private static SolveResult solveWithFallback(
             SystemParameters systemParameters,
             CalculationNetwork timestepNetwork,
             Map<String, Double> requestedPowersW,
@@ -496,9 +536,11 @@ public final class DcSolver {
                 );
 
         if (result.converged()) {
-            return result;
+            return new SolveResult(
+                    result,
+                    requestedPowersW
+            );
         }
-
         double feasibleAlpha = 0.0;
         double infeasibleAlpha = 1.0;
 
@@ -551,7 +593,16 @@ public final class DcSolver {
                 feasibleAlpha
         );
 
-        return feasibleResult;
+        Map<String, Double> feasiblePowersW =
+                scaledPowers(
+                        requestedPowersW,
+                        feasibleAlpha
+                );
+
+        return new SolveResult(
+                feasibleResult,
+                feasiblePowersW
+        );
     }
 
     private static Map<String, Double> scaledPowers(
