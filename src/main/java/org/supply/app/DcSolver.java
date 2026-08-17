@@ -186,7 +186,7 @@ public final class DcSolver {
                         ));
 
 
-        if (DEBUG_TOPOLOGY || timestepSamples.get(0).timeS() == 96) {
+        if (DEBUG_TOPOLOGY) {
             TopologyPrinter.print(timestepNetwork);
         }
 
@@ -212,7 +212,7 @@ public final class DcSolver {
                 writer
         );
 
-        if (DEBUG_ALL_NODE_VOLTAGES || timestepSamples.get(0).timeS() >= 95) {
+        if (DEBUG_ALL_NODE_VOLTAGES) {
             printAllNodeVoltages(voltages);
         }
 
@@ -501,7 +501,7 @@ public final class DcSolver {
                 true,
                 "dc-simulator",
                 context.studyId(),
-                context.dcsim().getString("hash")
+                GitInfo.currentCommitHash()
         );
     }
 
@@ -587,11 +587,6 @@ public final class DcSolver {
                 infeasibleAlpha = alpha;
             }
         }
-
-        System.out.printf(
-                "Power fallback: alpha=%.9f%n",
-                feasibleAlpha
-        );
 
         Map<String, Double> feasiblePowersW =
                 scaledPowers(

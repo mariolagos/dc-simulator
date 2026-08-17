@@ -33,10 +33,6 @@ public record DiodeSubstationElement(
                 return;
             }
         } else {
-//            System.out.printf(
-//                    "DSE %s no previous voltage -> CONDUCTING%n",
-//                    id
-//            );
         }
 
         double r = internalResistanceOhm.asDouble();

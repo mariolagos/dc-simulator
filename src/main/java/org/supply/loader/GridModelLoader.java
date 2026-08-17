@@ -76,38 +76,5 @@ public class GridModelLoader {
 
         GridModelLoader loader = new GridModelLoader();
         GridModel model = loader.load(config);
-
-        System.out.println("Loaded nodes: " + model.getNodes().size());
-        System.out.println("Loaded lines: " + model.getLines().size());
-        System.out.println("Loaded installations: " + model.getInstallations().size());
-        System.out.println("Loaded power connections: " + model.getInstallationConnections().size());
-
-        model.getLines().forEach(line ->
-                System.out.println(
-                        line.getFromNode().getNodeId()
-                                + " -> "
-                                + line.getToNode().getNodeId()
-                                + " R=" + line.getResistanceOhmPerM().asDouble()
-                )
-        );
-
-        model.getInstallations().forEach(inst ->
-                System.out.println(
-                        inst.getInstallationId()
-                                + " type=" + inst.getInstallationType()
-                                + " emf=" + inst.getEmfV().asDouble()
-                                + " Rint=" + inst.getInternalResistanceOhm().asDouble()
-                                + " rectifier=" + inst.getRectifierType()
-                )
-        );
-
-        model.getInstallationConnections().forEach(conn ->
-                System.out.println(
-                        conn.getInstallationId()
-                                + " -> "
-                                + conn.getNodeId()
-                                + " (" + conn.getConnectionType() + ")"
-                )
-        );
     }
 }

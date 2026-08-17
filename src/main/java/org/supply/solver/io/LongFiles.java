@@ -68,9 +68,6 @@ public final class LongFiles {
             String csvPath = finalPath.toString();
             WRITER = LongFileWriter.forDcsim(csvPath, overwrite, project, scenario, hash, 0.0, "NET");
 
-            System.out.println("[LongFiles] LongFileWriter ready at " + finalPath.toAbsolutePath()
-                    + " project=" + project + " scenario=" + scenario + " hash=" + hash
-                    + " overwrite=" + overwrite);
         }
     }
 

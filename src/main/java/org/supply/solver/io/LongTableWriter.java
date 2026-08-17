@@ -8,6 +8,7 @@ import java.io.Flushable;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Locale;
 
 //TODO(v0.9): Introduce BaseSig/NiceSig split and per-signal verbosity flag in signalRow,
@@ -30,7 +31,10 @@ public final class LongTableWriter implements Closeable, Flushable {
         this.project = nz(project); this.scenario = nz(scenario); this.baseHash = nz(baseHash);
         if (overwrite || f.length() == 0) {
             bw.write("time_s,project,scenario,base_hash,object_type,object_id,signal,value,unit,stage,iter,note");
-            bw.newLine(); bw.flush();
+            bw.newLine();
+            writeMetadataRow(project, scenario, baseHash);
+            bw.flush();
+
         }
     }
 
@@ -64,19 +68,6 @@ public final class LongTableWriter implements Closeable, Flushable {
             ));
             bw.newLine();
 
-            System.out.printf(
-                    "[LongCSV] t=%s %s/%s %s=%s %s stage=%s%n",
-                    time_s == null
-                            ? ""
-                            : String.format(Locale.ROOT, "%.3f", time_s),
-                    objectType,
-                    objectId,
-                    signal,
-                    formatValue(value),
-                    unit == null ? "" : unit,
-                    stage
-            );
-
             bw.flush();
         } catch (IOException e) {
             System.err.println(
@@ -100,6 +91,19 @@ public final class LongTableWriter implements Closeable, Flushable {
 
         return value.toString();
     }
+
+    private void writeMetadataRow(String project, String scenario, String baseHash) throws IOException {
+        bw.write(String.format(
+                Locale.ROOT,
+                ",%s,%s,%s,metadata,,,,,,,%s",
+                this.project,
+                this.scenario,
+                this.baseHash,
+                "generated_at=" + Instant.now()
+        ));
+        bw.newLine();
+    }
+
 
     @Override public synchronized void flush() throws IOException { bw.flush(); }
     @Override public synchronized void close() throws IOException { bw.flush(); bw.close(); }

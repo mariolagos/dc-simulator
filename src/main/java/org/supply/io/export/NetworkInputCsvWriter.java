@@ -208,16 +208,9 @@ public final class NetworkInputCsvWriter {
             writer.write("from_section,from_rwy,to_section,to_rwy");
             writer.newLine();
 
-            System.out.println("junctions.size: " + trackModel.getJunctions().size());
             for (TrackJunction junction : trackModel.getJunctions()) {
                 RwyCoordinate from = junction.getFrom();
                 RwyCoordinate to = junction.getTo();
-
-                System.out.println("writing junction row: "
-                        + from.getSectionId() + ","
-                        + from.toDisplayString() + ","
-                        + to.getSectionId() + ","
-                        + to.toDisplayString());
 
                 writer.write(
                         from.getSectionId() + "," +

@@ -4,6 +4,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.supply.solver.io.ResultMetadata;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -39,8 +40,12 @@ public final class DcReporter {
         List<LongTableRow> rows =
                 readLongTable(longTablePath);
 
+        ResultMetadata metadata =
+                extractMetadata(rows);
+
         writeInstallationWorkbook(
                 rows,
+                metadata,
                 outputPath
         );
 
@@ -50,17 +55,14 @@ public final class DcReporter {
 
         writeTrainWorkbook(
                 rows,
+                metadata,
                 resultsTrain
-        );
-
-        System.out.println(
-                "Created " + outputPath
         );
     }
 
     private static void writeTrainWorkbook(
             List<LongTableRow> rows,
-            Path outputPath
+            ResultMetadata metadata, Path outputPath
     ) throws IOException {
 
         Map<String, Map<Double, TrainResult>> results =
@@ -210,7 +212,7 @@ public final class DcReporter {
     }
     private static void writeInstallationWorkbook(
             List<LongTableRow> rows,
-            Path outputPath
+            ResultMetadata metadata, Path outputPath
     ) throws IOException {
 
         Map<String, Double> resistanceByInstallation =
@@ -221,6 +223,8 @@ public final class DcReporter {
 
         try (Workbook workbook = new XSSFWorkbook()) {
 
+            writeMetadataSheet(workbook, metadata);
+            
             for (Map.Entry<String, Map<Double, InstallationResult>> installationEntry
                     : results.entrySet()) {
 
@@ -250,6 +254,37 @@ public final class DcReporter {
         }
     }
 
+    private static void writeMetadataSheet(
+            Workbook workbook,
+            ResultMetadata metadata
+    ) {
+        Sheet sheet =
+                workbook.createSheet("Metadata");
+
+        writeMetadataRow(sheet, 0, "project", metadata.project());
+        writeMetadataRow(sheet, 1, "scenario", metadata.scenario());
+        writeMetadataRow(sheet, 2, "base_hash", metadata.baseHash());
+        writeMetadataRow(sheet, 3, "generated_at", metadata.generatedAt());
+
+        sheet.autoSizeColumn(0);
+        sheet.autoSizeColumn(1);
+    }
+
+    private static void writeMetadataRow(
+            Sheet sheet,
+            int rowIndex,
+            String name,
+            String value
+    ) {
+        Row row =
+                sheet.createRow(rowIndex);
+
+        row.createCell(0)
+                .setCellValue(name);
+
+        row.createCell(1)
+                .setCellValue(value);
+    }
     private static void writeInstallationSheet(
             Sheet sheet,
             String installationId,
@@ -460,18 +495,91 @@ public final class DcReporter {
                 result.add(
                         new LongTableRow(
                                 parseNullableDouble(fields[0]),
+                                fields[1],
+                                fields[2],
+                                fields[3],
                                 fields[4],
                                 fields[5],
                                 fields[6],
                                 fields[7],
                                 fields[8],
-                                fields[9]
+                                fields[9],
+                                fields[11]
                         )
                 );
             }
         }
 
         return result;
+    }
+
+    private static ResultMetadata extractMetadata(
+            List<LongTableRow> rows
+    ) {
+        String project = null;
+        String scenario = null;
+        String baseHash = null;
+        String generatedAt = null;
+
+        for (LongTableRow row : rows) {
+
+            if (!row.project.isBlank()) {
+                if (project != null && !project.equals(row.project)) {
+                    throw new IllegalArgumentException(
+                            "Multiple projects in longtable.csv"
+                    );
+                }
+                project = row.project;
+            }
+
+            if (!row.scenario.isBlank()) {
+                if (scenario != null && !scenario.equals(row.scenario)) {
+                    throw new IllegalArgumentException(
+                            "Multiple scenarios in longtable.csv"
+                    );
+                }
+                scenario = row.scenario;
+            }
+
+            if (!row.baseHash.isBlank()) {
+                if (baseHash != null && !baseHash.equals(row.baseHash)) {
+                    throw new IllegalArgumentException(
+                            "Multiple base hashes in longtable.csv"
+                    );
+                }
+                baseHash = row.baseHash;
+            }
+
+            if (row.note.startsWith("generated_at=")) {
+                String value =
+                        row.note.substring("generated_at=".length());
+
+                if (generatedAt != null && !generatedAt.equals(value)) {
+                    throw new IllegalArgumentException(
+                            "Multiple generation timestamps in longtable.csv"
+                    );
+                }
+
+                generatedAt = value;
+            }
+        }
+
+        if (project == null
+                || scenario == null
+                || baseHash == null
+                || generatedAt == null) {
+
+            throw new IllegalArgumentException(
+                    "Missing provenance metadata in longtable.csv"
+            );
+        }
+
+        return new ResultMetadata(
+                project,
+                scenario,
+                baseHash,
+                generatedAt
+        );
     }
 
     private static void setNumericCell(
@@ -519,12 +627,16 @@ public final class DcReporter {
 
     private record LongTableRow(
             Double timeS,
+            String project,
+            String scenario,
+            String baseHash,
             String objectType,
             String objectId,
             String signal,
             String value,
             String unit,
-            String stage
+            String stage,
+            String note
     ) {
     }
 

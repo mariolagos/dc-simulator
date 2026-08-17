@@ -231,22 +231,7 @@ public final class SingleTimestepSolver {
                         load.trainId(),
                         relaxedVoltageV
                 );
-
-//                System.out.printf(
-//                        "iteration=%d train=%s oldU=%.6f solvedU=%.6f relaxedU=%.6f%n",
-//                        iteration,
-//                        load.trainId(),
-//                        oldVoltageV,
-//                        newVoltageV,
-//                        relaxedVoltageV
-//                );
             }
-
-            System.out.printf(
-                    "iteration=%d, maxVoltageChangeV=%.9f%n",
-                    iteration,
-                    maxVoltageChangeV
-            );
 
             if (maxVoltageChangeV <= toleranceV) {
                 return new NetworkResult(

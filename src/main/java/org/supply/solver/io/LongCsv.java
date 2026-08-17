@@ -80,8 +80,6 @@ public final class LongCsv {
                     String resolved = resolveLongPathDeterministically(longPath);
                     longPath = resolved;
                     WRITER = new LongTableWriter(longPath, overwrite, projectName, scenarioName, baseHash);
-                    System.out.println("[LongCsv] LongTableWriter initialized: " + longPath
-                            + "  project=" + projectName + " scenario=" + scenarioName + " hash=" + baseHash);
                 } catch (Exception e) {
                     throw new RuntimeException("Failed to init LongTableWriter at " + longPath, e);
                 }
@@ -109,7 +107,6 @@ public final class LongCsv {
             w.signalRow(t, "RUN", "meta", "scenario",  0.0, "", "NET", null, scenarioName);
             w.signalRow(t, "RUN", "meta", "hash_tag",  0.0, "", "NET", null, baseHash);
             META_WRITTEN = true;
-            System.out.println("[LongCsv] RUN meta written once.");
         }
     }
 

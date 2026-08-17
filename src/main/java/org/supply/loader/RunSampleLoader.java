@@ -48,7 +48,6 @@ public final class RunSampleLoader {
                         Double.parseDouble(p[4].trim()),
                         Double.parseDouble(p[5].trim())
                 ));
-                System.out.println(Double.parseDouble(p[0].trim()));
             }
         }
 
