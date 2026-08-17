@@ -70,6 +70,8 @@ public final class DcReporter {
 
         try (Workbook workbook = new XSSFWorkbook()) {
 
+            writeMetadataSheet(workbook, metadata);
+
             for (Map.Entry<String, Map<Double, TrainResult>> trainEntry
                     : results.entrySet()) {
 
