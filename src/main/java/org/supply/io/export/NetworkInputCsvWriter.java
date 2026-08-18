@@ -54,6 +54,7 @@ public final class NetworkInputCsvWriter {
         writer.write(name + "," + value);
         writer.newLine();
     }
+
     public void writeNodes(Config dcsim, Path file) throws IOException {
         createParent(file);
 
@@ -98,13 +99,17 @@ public final class NetworkInputCsvWriter {
         Config grid = dcsim.getConfig("grid");
 
         try (BufferedWriter writer = Files.newBufferedWriter(file)) {
-            writer.write("installation_id,installation_type,emf_V,internal_resistance_ohm,rectifier_type");
+            writer.write("installation_id,installation_type,enabled,emf_V,internal_resistance_ohm,rectifier_type");
             writer.newLine();
 
             for (Config installation : grid.getConfigList("power_installations")) {
+                boolean enabled = installation.hasPath("enabled")
+                        ? installation.getBoolean("enabled")
+                        : true;
                 writer.write(
                         installation.getString("installation_id") + "," +
                                 installation.getString("installation_type") + "," +
+                                enabled+ "," +
                                 installation.getDouble("emf_V") + "," +
                                 installation.getDouble("internal_resistance_ohm") + "," +
                                 installation.getString("rectifier_type")

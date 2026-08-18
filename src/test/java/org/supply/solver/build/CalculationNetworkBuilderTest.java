@@ -1,13 +1,19 @@
 package org.supply.solver.build;
 
 import org.junit.Test;
+import org.supply.domain.ConnectionType;
+import org.supply.domain.InstallationConnection;
+import org.supply.domain.InstallationType;
 import org.supply.domain.Line;
 import org.supply.domain.Node;
+import org.supply.domain.PowerInstallation;
+import org.supply.domain.RectifierType;
 import org.supply.math.Real;
 import org.supply.model.GridModel;
 import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationNode;
 import org.supply.solver.model.CalculationNodeType;
+import org.supply.solver.model.DiodeSubstationElement;
 import org.supply.track.*;
 
 import java.util.ArrayList;
@@ -146,6 +152,67 @@ public class CalculationNetworkBuilderTest {
                     ex.getMessage().contains("missing-return")
             );
         }
+    }
+
+    @Test
+    public void propagatesSubstationEnabledFlagToDiodeElement() {
+        GridModel gridModel = new GridModel();
+
+        Node feedingNode = new Node(
+                "F1",
+                "1 0+000"
+        );
+
+        Node returnNode = new Node(
+                "R1",
+                "1 0+000"
+        );
+
+        gridModel.addNode(feedingNode);
+        gridModel.addNode(returnNode);
+
+        PowerInstallation substation = new PowerInstallation(
+                "SS1",
+                InstallationType.SUBSTATION,
+                false,
+                Real.fromDouble(750.0),
+                Real.fromDouble(0.005),
+                RectifierType.DIODE
+        );
+
+        gridModel.addInstallation(substation);
+
+        gridModel.addInstallationConnection(
+                new InstallationConnection(
+                        "SS1",
+                        "F1",
+                        ConnectionType.FEEDING
+                )
+        );
+
+        gridModel.addInstallationConnection(
+                new InstallationConnection(
+                        "SS1",
+                        "R1",
+                        ConnectionType.RETURN
+                )
+        );
+
+        TrackTransformService trackTransform =
+                new FakeTrackTransformService();
+
+        CalculationNetwork network =
+                new CalculationNetworkBuilder(trackTransform)
+                        .buildBase(gridModel);
+
+        DiodeSubstationElement diode =
+                network.elements().stream()
+                        .filter(DiodeSubstationElement.class::isInstance)
+                        .map(DiodeSubstationElement.class::cast)
+                        .findFirst()
+                        .orElseThrow();
+
+        assertFalse(diode.enabled());
     }
 
     private static CalculationNetwork networkWithNodes(String... nodeIds) {

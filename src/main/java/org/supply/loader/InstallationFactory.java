@@ -43,6 +43,10 @@ public class InstallationFactory {
 
             boolean isSubstation = installationType == InstallationType.SUBSTATION;
 
+            boolean enabled = instConfig.hasPath("enabled")
+                    ? instConfig.getBoolean("enabled")
+                    : true;
+
             Real emfV = isSubstation
                     ? requirePositiveReal(instConfig, "emf_V")
                     : Real.ZERO;
@@ -58,6 +62,7 @@ public class InstallationFactory {
             PowerInstallation inst = new PowerInstallation(
                     installationId,
                     installationType,
+                    enabled,
                     emfV,
                     internalResistanceOhm,
                     rectifierType

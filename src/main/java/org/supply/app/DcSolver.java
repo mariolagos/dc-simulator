@@ -354,7 +354,8 @@ public final class DcSolver {
                 feedingVoltageV - returnVoltageV;
 
         boolean conducting =
-                terminalVoltageV <= dse.emfV().asDouble();
+                dse.enabled()
+                        && terminalVoltageV <= dse.emfV().asDouble();
 
         double currentA =
                 conducting
@@ -364,6 +365,13 @@ public final class DcSolver {
 
         double powerW =
                 terminalVoltageV * currentA;
+
+        String state =
+                !dse.enabled()
+                        ? "DISABLED"
+                        : conducting
+                        ? "CONDUCTING"
+                        : "BLOCKING";
 
         writer.signalRow(
                 timeSec,
@@ -406,7 +414,7 @@ public final class DcSolver {
                 "DIODE_SUBSTATION",
                 dse.id(),
                 "state",
-                conducting ? "CONDUCTING" : "BLOCKING",
+                state,
                 "",
                 "RESULT",
                 null,

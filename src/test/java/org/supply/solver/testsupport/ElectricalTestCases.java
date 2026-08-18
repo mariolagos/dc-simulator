@@ -63,8 +63,8 @@ public final class ElectricalTestCases {
                 "F_SUB",
                 "R_SUB",
                 Real.fromDouble(SYSTEM_PARAMETERS.uNominalV()),
-                Real.fromDouble(R_INTERNAL_OHM)
-        );
+                Real.fromDouble(R_INTERNAL_OHM),
+                true);
 
         List<CalculationNode> nodes = List.of(fSub, fTrain, rTrain, rSub);
         List<CalculationBranch> branches = List.of(feedLine, returnLine);

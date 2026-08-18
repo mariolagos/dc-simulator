@@ -5,6 +5,7 @@ import org.supply.solver.model.CalculationBranch;
 import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationNode;
 import org.supply.solver.model.ElectricalElement;
+import org.supply.solver.model.SubstationElement;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -50,6 +51,11 @@ public final class AdmittanceSystemBuilder {
                 new AdmittanceStamp(matrix, vector, nodeIndexById, previousVoltages);
 
         for (ElectricalElement element : network.elements()) {
+            if (element instanceof SubstationElement substation
+                    && !substation.enabled()) {
+                continue;
+            }
+
             element.stamp(stamp);
         }
 

@@ -13,6 +13,7 @@ public class PowerInstallation {
     private final Real emf_v;
     private final Real internal_resistance_ohm;
     private final RectifierType rectifier_type;
+    private final boolean enabled;
 
     // Optional metadata
     private final String description;
@@ -20,16 +21,18 @@ public class PowerInstallation {
     public PowerInstallation(
             String installation_id,
             InstallationType installation_type,
+            boolean enabled,
             Real emf_v,
             Real internal_resistance_ohm,
             RectifierType rectifier_type
     ) {
-        this(installation_id, installation_type, emf_v, internal_resistance_ohm, rectifier_type, null);
+        this(installation_id, installation_type, enabled, emf_v, internal_resistance_ohm, rectifier_type, null);
     }
 
     public PowerInstallation(
             String installation_id,
             InstallationType installation_type,
+            boolean enabled,
             Real emf_v,
             Real internal_resistance_ohm,
             RectifierType rectifier_type,
@@ -40,6 +43,7 @@ public class PowerInstallation {
         this.emf_v = emf_v;
         this.internal_resistance_ohm = internal_resistance_ohm;
         this.rectifier_type = rectifier_type;
+        this.enabled = enabled;
         this.description = description;
     }
 
@@ -85,5 +89,9 @@ public class PowerInstallation {
                 ", rectifier_type='" + rectifier_type +
                 ", description='" + description + '\'' +
                 '}';
+    }
+
+    public boolean isEnabled() {
+        return enabled;
     }
 }

@@ -6,6 +6,10 @@ import org.supply.solver.io.LongTableWriter;
 
 public interface ElectricalElement {
 
+   default boolean enabled() {
+      return true;
+   }
+
    public void stamp(AdmittanceStamp stamp);
 
    default void saveStaticResult(LongTableWriter writer) {

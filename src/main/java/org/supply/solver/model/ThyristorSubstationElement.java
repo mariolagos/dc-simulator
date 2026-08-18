@@ -10,8 +10,9 @@ public record ThyristorSubstationElement(
         String feedingNodeId,
         String returnNodeId,
         Real emfV,
-        Real internalResistanceOhm
-) implements ElectricalElement {
+        Real internalResistanceOhm,
+        boolean enabled
+) implements SubstationElement {
 
     @Override
     public void stamp(AdmittanceStamp stamp) {

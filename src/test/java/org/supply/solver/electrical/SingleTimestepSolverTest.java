@@ -4,7 +4,6 @@ import org.junit.Test;
 import org.supply.domain.SystemParameters;
 import org.supply.math.Real;
 import org.supply.solver.model.*;
-import org.supply.solver.optimization.PowerAllocationOptimizer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +12,6 @@ import java.util.Map;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertTrue;
 
@@ -254,8 +252,8 @@ public class SingleTimestepSolverTest {
                         "F1",
                         "R1",
                         Real.fromDouble(750.0),
-                        Real.fromDouble(0.1)
-                )
+                        Real.fromDouble(0.1),
+                        true)
         );
 
         CalculationNetwork network =
@@ -437,8 +435,8 @@ public class SingleTimestepSolverTest {
                         "F1",
                         "R1",
                         Real.fromDouble(750.0),
-                        Real.fromDouble(0.1)
-                )
+                        Real.fromDouble(0.1),
+                        true)
         );
 
         CalculationNetwork network =
@@ -570,8 +568,8 @@ public class SingleTimestepSolverTest {
                         "F1",
                         "R1",
                         Real.fromDouble(750.0),
-                        Real.fromDouble(0.1)
-                )
+                        Real.fromDouble(0.1),
+                        true)
         );
 
         return new CalculationNetwork(

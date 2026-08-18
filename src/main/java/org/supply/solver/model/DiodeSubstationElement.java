@@ -9,13 +9,15 @@ public record DiodeSubstationElement(
         String feedingNodeId,
         String returnNodeId,
         Real emfV,
-        Real internalResistanceOhm
-) implements ElectricalElement {
+        Real internalResistanceOhm,
+        boolean enabled
+) implements SubstationElement {
 
     private static final double VOLTAGE_TOLERANCE_V = 1e-3;
 
     @Override
     public void stamp(AdmittanceStamp stamp) {
+
         Real feedingVoltage =
                 stamp.previousVoltageOf(feedingNodeId);
 

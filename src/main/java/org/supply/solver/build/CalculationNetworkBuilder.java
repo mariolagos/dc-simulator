@@ -119,7 +119,8 @@ public final class CalculationNetworkBuilder {
                             feeding.getNodeId(),
                             returning.getNodeId(),
                             inst.getEmfV(),
-                            inst.getInternalResistanceOhm()
+                            inst.getInternalResistanceOhm(),
+                            inst.isEnabled()
                     ));
                     break;
 
@@ -129,7 +130,8 @@ public final class CalculationNetworkBuilder {
                             feeding.getNodeId(),
                             returning.getNodeId(),
                             inst.getEmfV(),
-                            inst.getInternalResistanceOhm()
+                            inst.getInternalResistanceOhm(),
+                            inst.isEnabled()
                     ));
                     break;
 

@@ -97,7 +97,8 @@ public final class AdmittanceSystemBuilderTest {
                 "F1",
                 "R1",
                 Real.fromDouble(780.0),
-                Real.fromDouble(0.1)
+                Real.fromDouble(0.1),
+                true
         );
 
         CalculationNetwork network = new CalculationNetwork(
