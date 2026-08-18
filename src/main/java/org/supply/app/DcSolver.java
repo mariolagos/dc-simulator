@@ -12,10 +12,7 @@ import org.supply.solver.build.CalculationNetworkBuilder;
 import org.supply.solver.build.TopologyPrinter;
 import org.supply.solver.build.TrainNodeInserter;
 import org.supply.solver.build.TrainPositionFactory;
-import org.supply.solver.electrical.AdmittanceSystem;
-import org.supply.solver.electrical.AdmittanceSystemBuilder;
 import org.supply.solver.electrical.LinearSystemSolver;
-import org.supply.solver.electrical.MatrixPrinter;
 import org.supply.solver.electrical.SingleTimestepSolver;
 import org.supply.solver.io.LongTableWriter;
 import org.supply.solver.model.CalculationNetwork;
@@ -23,7 +20,6 @@ import org.supply.solver.model.CalculationTrainPosition;
 import org.supply.solver.model.DiodeSubstationElement;
 import org.supply.solver.model.ElectricalElement;
 import org.supply.solver.model.TrainLoadElement;
-import org.supply.solver.optimization.PowerAllocationOptimizer;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
 import org.supply.track.TrackConfigLoader;
@@ -32,7 +28,6 @@ import org.supply.solver.model.CalculationTrainLoad;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +57,10 @@ public final class DcSolver {
 
         try (LongTableWriter writer = createLongTableWriter(context)) {
 
+            Path runCsv =
+                    context.exportDirectory()
+                            .resolve("run.csv");
+
             CalculationNetwork baseNetwork =
                     new CalculationNetworkBuilder(
                             solverContext.trackTransform()
@@ -77,8 +76,8 @@ public final class DcSolver {
             solveRun(
                     solverContext.systemParameters(),
                     baseNetwork,
-                    writer
-            );
+                    writer,
+                    runCsv);
         }
     }
 
@@ -118,10 +117,8 @@ public final class DcSolver {
     private static void solveRun(
             SystemParameters systemParameters,
             CalculationNetwork baseNetwork,
-            LongTableWriter writer
-    ) throws Exception {
-
-        Path runCsv = Path.of("dc", "exports", "run.csv");
+            LongTableWriter writer,
+            Path runCsv) throws Exception {
 
         List<RunSample> samples =
                 new RunSampleLoader().load(runCsv);

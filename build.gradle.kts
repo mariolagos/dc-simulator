@@ -68,11 +68,30 @@ tasks.register<JavaExec>("runDcSim") {
     jvmArgs("-Dfile.encoding=UTF-8")
 }
 
-tasks.register<JavaExec>("dcSolver, JavaExec") {
+val studyWorkingDir =
+    providers.gradleProperty("workingDir")
+        .orElse(project.projectDir.absolutePath)
+
+tasks.register<JavaExec>("dcExporter") {
+    group = "application"
+    description = "Run DcExporter"
+    mainClass.set("org.supply.app.DcExporter")
+    classpath = sourceSets.main.get().runtimeClasspath
+
+    workingDir(studyWorkingDir.get())
+
+    providers.gradleProperty("args").orNull
+        ?.takeIf { it.isNotBlank() }
+        ?.let { raw -> args(raw.split(Regex("\\s+"))) }
+}
+
+tasks.register<JavaExec>("dcSolver") {
     group = "application"
     description = "Run DcSolver"
     mainClass.set("org.supply.app.DcSolver")
     classpath = sourceSets.main.get().runtimeClasspath
+
+    workingDir(studyWorkingDir.get())
 
     providers.gradleProperty("args").orNull
         ?.takeIf { it.isNotBlank() }
@@ -81,17 +100,38 @@ tasks.register<JavaExec>("dcSolver, JavaExec") {
     jvmArgs("-Dfile.encoding=UTF-8")
 }
 
-tasks.register<JavaExec>("dcExporter") {
+tasks.register<JavaExec>("dcReporter") {
     group = "application"
-    description = "Run DcExporter explicitly"
-    mainClass.set("org.supply.app.DcExporter")
+    description = "Run DcReporter"
+    mainClass.set("org.supply.app.DcReporter")
     classpath = sourceSets.main.get().runtimeClasspath
+
+    workingDir(studyWorkingDir.get())
 
     providers.gradleProperty("args").orNull
         ?.takeIf { it.isNotBlank() }
         ?.let { raw -> args(raw.split(Regex("\\s+"))) }
 
     jvmArgs("-Dfile.encoding=UTF-8")
+}
+
+tasks.named("dcSolver") {
+    mustRunAfter("dcExporter")
+}
+
+tasks.named("dcReporter") {
+    mustRunAfter("dcSolver")
+}
+
+tasks.register("dcStudy") {
+    group = "application"
+    description = "Run DcExporter -> DcSolver -> DcReporter"
+
+    dependsOn(
+        "dcExporter",
+        "dcSolver",
+        "dcReporter"
+    )
 }
 
 //

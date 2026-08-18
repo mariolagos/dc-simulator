@@ -38,7 +38,9 @@ public final class DcStudyContextLoader {
                         : "";
 
         Path dcDirectory =
-                workingDirectory.resolve("dc");
+                workingDirectory
+                        .resolve("dc")
+                        .resolve(studyId);
 
         Path exportDirectory =
                 dcDirectory.resolve("exports");
