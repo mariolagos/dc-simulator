@@ -58,6 +58,38 @@ public final class RunCsvInputFactory {
                             train.getString("departure")
                     );
 
+            int count = train.getInt("count");
+
+            if (count <= 0) {
+                throw new IllegalArgumentException(
+                        "count must be > 0 for train " + trainId
+                );
+            }
+
+            int headwaySec = 0;
+
+            if (count > 1) {
+                if (!train.hasPath("headway")) {
+                    throw new IllegalArgumentException(
+                            "Missing required field 'headway' for train "
+                                    + trainId
+                                    + " with count="
+                                    + count
+                    );
+                }
+
+                headwaySec =
+                        TimeUtils.parseHmsToSeconds(
+                                train.getString("headway")
+                        );
+            }
+
+            if (count > 1 && headwaySec <= 0) {
+                throw new IllegalArgumentException(
+                        "headway must be > 0 for train " + trainId
+                );
+            }
+
             Config templateConfig =
                     templates.getConfig(templateId);
 
@@ -84,11 +116,26 @@ public final class RunCsvInputFactory {
                 );
             }
 
-            trainIds.add(trainId);
-            sectionIds.add(sectionId);
-            trackIds.add(trackId);
-            departureTimes.add(departureSec);
-            runExcels.add(runExcel);
+            for (int i = 0; i < count; i++) {
+
+                String expandedTrainId =
+                        count == 1
+                                ? trainId
+                                : String.format(
+                                "%s-%03d",
+                                trainId,
+                                i + 1
+                        );
+
+                int expandedDepartureSec =
+                        departureSec + i * headwaySec;
+
+                trainIds.add(expandedTrainId);
+                sectionIds.add(sectionId);
+                trackIds.add(trackId);
+                departureTimes.add(expandedDepartureSec);
+                runExcels.add(runExcel);
+            }
         }
 
         double exportResolutionS =
