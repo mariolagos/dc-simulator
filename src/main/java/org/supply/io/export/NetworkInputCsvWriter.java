@@ -1,6 +1,7 @@
 package org.supply.io.export;
 
 import com.typesafe.config.Config;
+import org.supply.domain.Load;
 import org.supply.model.GridModel;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
@@ -31,6 +32,8 @@ public final class NetworkInputCsvWriter {
         writeTrackStations(trackModel, exportDir.resolve("track_stations.csv"));
         writeTrackSegments(trackModel, exportDir.resolve("track_segments.csv"));
         writeTrackJunctions(trackModel, exportDir.resolve("track_junctions.csv"));
+        writeFixedLoads(model, exportDir.resolve("fixed_loads.csv")
+        );
     }
 
     public void writeSystemParameters(Config dcsim, Path file) throws IOException {
@@ -109,7 +112,7 @@ public final class NetworkInputCsvWriter {
                 writer.write(
                         installation.getString("installation_id") + "," +
                                 installation.getString("installation_type") + "," +
-                                enabled+ "," +
+                                enabled + "," +
                                 installation.getDouble("emf_V") + "," +
                                 installation.getDouble("internal_resistance_ohm") + "," +
                                 installation.getString("rectifier_type")
@@ -222,6 +225,26 @@ public final class NetworkInputCsvWriter {
                                 from.toDisplayString() + "," +
                                 to.getSectionId() + "," +
                                 to.toDisplayString()
+                );
+                writer.newLine();
+            }
+        }
+    }
+
+    private void writeFixedLoads(
+            GridModel model,
+            Path file
+    ) throws IOException {
+
+        try (BufferedWriter writer = Files.newBufferedWriter(file)) {
+            writer.write("id,position_rwy,power_W");
+            writer.newLine();
+
+            for (Load.FixedLoad load : model.fixedLoads()) {
+                writer.write(
+                        load.id() + ","
+                                + load.position().getPositionText() + ","
+                                + load.powerW()
                 );
                 writer.newLine();
             }

@@ -1,6 +1,7 @@
 package org.supply.model;
 
 import org.supply.domain.Line;
+import org.supply.domain.Load;
 import org.supply.domain.Node;
 import org.supply.domain.InstallationConnection;
 import org.supply.domain.PowerInstallation;
@@ -17,6 +18,7 @@ public class GridModel {
     private final List<Line> lines = new ArrayList<>();
     private final List<PowerInstallation> installations = new ArrayList<>();
     private final List<InstallationConnection> installationConnections = new ArrayList<>();
+    private final List<Load.FixedLoad> fixedLoads = new ArrayList<>();
 
     // --- Nodes ---
     public void addNode(Node node) {
@@ -64,5 +66,14 @@ public class GridModel {
 
     public List<InstallationConnection> getInstallationConnections() {
         return installationConnections;
+    }
+
+    // --- Loads ---
+    public void addFixedLoad(Load.FixedLoad load) {
+        fixedLoads.add(load);
+    }
+
+    public List<Load.FixedLoad> fixedLoads() {
+        return fixedLoads;
     }
 }

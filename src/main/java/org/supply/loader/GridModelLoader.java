@@ -11,6 +11,7 @@ public class GridModelLoader {
     private final LineFactory lineFactory = new LineFactory();
     private final InstallationFactory installationFactory = new InstallationFactory();
     private final GridModelValidator validator = new GridModelValidator();
+    private final FixedLoadFactory fixedLoadFactory = new FixedLoadFactory();
 
     public GridModel load(Config config) {
         Config grid = config.getConfig("grid");
@@ -20,6 +21,7 @@ public class GridModelLoader {
         nodeFactory.build(model, grid);
         lineFactory.build(model, grid);
         installationFactory.build(model, grid);
+        fixedLoadFactory.build(model, grid);
 
         validator.validate(model);
 
