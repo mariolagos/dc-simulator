@@ -25,7 +25,6 @@ public class FixedLoadFactory {
             );
 
             model.addFixedLoad(load);
-            System.out.println("Loading fixed load: " + loadConfig.getString("id"));
         }
     }
 

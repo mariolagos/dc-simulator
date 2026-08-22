@@ -40,19 +40,5 @@ public final class DcExporter {
                 context.confFile(),
                 context.exportDirectory()
         );
-
-        // Temporary sanity output during integration
-        System.out.println(
-                "Loaded track sections: "
-                        + trackModel.getSectionsById().keySet()
-        );
-        System.out.println(
-                "Loaded track junctions: "
-                        + trackModel.getJunctions().size()
-        );
-        System.out.println(
-                "Loaded track stations: "
-                        + trackModel.getStations().size()
-        );
     }
 }

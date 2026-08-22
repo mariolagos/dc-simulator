@@ -5,6 +5,7 @@ import org.supply.domain.ConnectionType;
 import org.supply.domain.InstallationConnection;
 import org.supply.domain.InstallationType;
 import org.supply.domain.Line;
+import org.supply.domain.Load;
 import org.supply.domain.Node;
 import org.supply.domain.PowerInstallation;
 import org.supply.domain.RectifierType;
@@ -14,6 +15,7 @@ import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationNode;
 import org.supply.solver.model.CalculationNodeType;
 import org.supply.solver.model.DiodeSubstationElement;
+import org.supply.solver.model.FixedLoadElement;
 import org.supply.track.*;
 
 import java.util.ArrayList;
@@ -252,5 +254,77 @@ public class CalculationNetworkBuilderTest {
                     "Substation return terminal node not found: " + returnNodeId
             );
         }
+    }
+
+    @Test
+    public void buildsFixedLoadElement() {
+        GridModel gridModel = new GridModel();
+
+        Node feedingNode = new Node(
+                "F_FL1",
+                "1 0+500"
+        );
+
+        Node returnNode = new Node(
+                "R_FL1",
+                "1 0+500"
+        );
+
+        gridModel.addNode(feedingNode);
+        gridModel.addNode(returnNode);
+
+        Load.FixedLoad fixedLoad = new Load.FixedLoad(
+                "FL1",
+                RwyCoordinateParser.parse("1 0+500"),
+                1_000_000.0
+        );
+
+        gridModel.addFixedLoad(fixedLoad);
+
+        PowerInstallation installation = new PowerInstallation(
+                "FL1",
+                InstallationType.FIXED_LOAD,
+                true,
+                Real.ZERO,
+                Real.ZERO,
+                null
+        );
+
+        gridModel.addInstallation(installation);
+
+        gridModel.addInstallationConnection(
+                new InstallationConnection(
+                        "FL1",
+                        "F_FL1",
+                        ConnectionType.FEEDING
+                )
+        );
+
+        gridModel.addInstallationConnection(
+                new InstallationConnection(
+                        "FL1",
+                        "R_FL1",
+                        ConnectionType.RETURN
+                )
+        );
+
+        TrackTransformService trackTransform =
+                new FakeTrackTransformService();
+
+        CalculationNetwork network =
+                new CalculationNetworkBuilder(trackTransform)
+                        .buildBase(gridModel);
+
+        FixedLoadElement element =
+                network.elements().stream()
+                        .filter(FixedLoadElement.class::isInstance)
+                        .map(FixedLoadElement.class::cast)
+                        .findFirst()
+                        .orElseThrow();
+
+        assertEquals("FL1", element.id());
+        assertEquals("F_FL1", element.feedingNodeId());
+        assertEquals("R_FL1", element.returnNodeId());
+        assertEquals(1_000_000.0, element.powerW(), 1e-9);
     }
 }

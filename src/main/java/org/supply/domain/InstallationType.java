@@ -2,5 +2,6 @@ package org.supply.domain;
 
 public enum InstallationType {
     SUBSTATION,
-    POINT
+    POINT,
+    FIXED_LOAD
 }

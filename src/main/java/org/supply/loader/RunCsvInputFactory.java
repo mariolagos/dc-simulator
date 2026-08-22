@@ -101,12 +101,6 @@ public final class RunCsvInputFactory {
                             .resolve(runExcelText)
                             .normalize();
 
-            System.out.println(
-                    "train=" + trainId
-                            + " template=" + templateId
-                            + " runExcel=" + runExcel
-            );
-
             if (!Files.exists(runExcel)) {
                 throw new IllegalArgumentException(
                         "Run Excel not found for train "

@@ -321,13 +321,6 @@ public final class RunCsvFromExcel {
 
         List<Map<String, String>> allRows = new ArrayList<>();
 
-        if (DEBUG_VERBOSITY) {
-            System.out.println("RUNCSV about to resolve exportResolution_s");
-            System.out.println("RUNCSV about to write: trains=" + trainIds.size() + " files=" + excelXlsxs.size());
-            System.out.println("RUNCSV departures=" + departureTimes);
-            System.out.println("CWD=" + Path.of("").toAbsolutePath());
-        }
-
         for (int i = 0; i < excelXlsxs.size(); i++) {
             Path runExcel = excelXlsxs.get(i);
             String trainId = trainIds.get(i);
@@ -368,12 +361,5 @@ public final class RunCsvFromExcel {
         writer.write(outRunCsv, allRows);
 
         Path p = outRunCsv.toAbsolutePath();
-        if (DEBUG_VERBOSITY) {
-            System.out.println("RUNCSV total rows=" + allRows.size());
-            System.out.println("RUNCSV exists after write=" + Files.exists(p));
-            System.out.println("RUNCSV size after write=" + (Files.exists(p) ? Files.size(p) : -1));
-            System.out.println("RUNCSV modified after write=" + (Files.exists(p) ? Files.getLastModifiedTime(p) : "n/a"));
-            System.out.println("RUNCSV absolute path=" + p);
-        }
     }
 }

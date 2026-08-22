@@ -55,9 +55,11 @@ public class InstallationFactory {
                     ? requirePositiveReal(instConfig, "internal_resistance_ohm")
                     : Real.ZERO;
 
-            RectifierType rectifierType = RectifierType.valueOf(
+            RectifierType rectifierType = isSubstation
+                    ? RectifierType.valueOf(
                     requireString(instConfig, "rectifier_type").toUpperCase()
-            );
+            )
+                    : null;
 
             PowerInstallation inst = new PowerInstallation(
                     installationId,
@@ -106,4 +108,5 @@ public class InstallationFactory {
                 .orElseThrow(() ->
                         new IllegalArgumentException("Unknown installation_id: " + installationId));
     }
+
 }

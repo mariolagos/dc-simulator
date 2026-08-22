@@ -4,6 +4,8 @@ import org.supply.math.Real;
 
 import java.util.Objects;
 
+import static org.supply.utils.ConfigUtils.requireString;
+
 public class PowerInstallation {
 
     private final String installation_id;
@@ -77,6 +79,10 @@ public class PowerInstallation {
 
     public boolean isPoint() {
         return installation_type == InstallationType.POINT;
+    }
+
+    public boolean isFixedLoad() {
+        return installation_type == InstallationType.FIXED_LOAD;
     }
 
     @Override

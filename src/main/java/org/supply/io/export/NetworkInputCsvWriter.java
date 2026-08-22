@@ -106,17 +106,34 @@ public final class NetworkInputCsvWriter {
             writer.newLine();
 
             for (Config installation : grid.getConfigList("power_installations")) {
-                boolean enabled = installation.hasPath("enabled")
-                        ? installation.getBoolean("enabled")
-                        : true;
-                writer.write(
-                        installation.getString("installation_id") + "," +
-                                installation.getString("installation_type") + "," +
-                                enabled + "," +
-                                installation.getDouble("emf_V") + "," +
-                                installation.getDouble("internal_resistance_ohm") + "," +
-                                installation.getString("rectifier_type")
-                );
+                String installationId =
+                        installation.getString("installation_id");
+
+                String installationType =
+                        installation.getString("installation_type");
+
+                boolean enabled =
+                        installation.hasPath("enabled")
+                                ? installation.getBoolean("enabled")
+                                : true;
+
+                if ("SUBSTATION".equalsIgnoreCase(installationType)) {
+                    writer.write(
+                            installationId + ","
+                                    + installationType + ","
+                                    + enabled + ","
+                                    + installation.getDouble("emf_V") + ","
+                                    + installation.getDouble("internal_resistance_ohm") + ","
+                                    + installation.getString("rectifier_type")
+                    );
+                } else {
+                    writer.write(
+                            installationId + ","
+                                    + installationType + ","
+                                    + enabled + ",,,"
+                    );
+                }
+
                 writer.newLine();
             }
         }

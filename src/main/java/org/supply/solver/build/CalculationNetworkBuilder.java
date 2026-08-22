@@ -3,6 +3,7 @@ package org.supply.solver.build;
 import org.supply.domain.ConnectionType;
 import org.supply.domain.InstallationConnection;
 import org.supply.domain.Line;
+import org.supply.domain.Load;
 import org.supply.domain.Node;
 import org.supply.domain.PowerInstallation;
 import org.supply.math.Real;
@@ -12,6 +13,7 @@ import org.supply.solver.model.CalculationNetwork;
 import org.supply.solver.model.CalculationNode;
 import org.supply.solver.model.CalculationNodeType;
 import org.supply.solver.model.ElectricalElement;
+import org.supply.solver.model.FixedLoadElement;
 import org.supply.solver.model.ThyristorSubstationElement;
 import org.supply.solver.model.DiodeSubstationElement;
 import org.supply.track.ModelCoordinate;
@@ -86,8 +88,46 @@ public final class CalculationNetworkBuilder {
         elements.addAll(branches);
 
         addSubstationElements(gridModel, elements);
+
+        addFixedLoadElements(gridModel, elements);
+
         return new CalculationNetwork(nodes, branches, List.of(), elements);
     }
+
+    private void addFixedLoadElements(
+            GridModel gridModel,
+            List<ElectricalElement> elements
+    ) {
+        for (Load.FixedLoad load : gridModel.fixedLoads()) {
+
+            PowerInstallation inst = gridModel.getInstallations().stream()
+                    .filter(i -> i.getInstallationId().equals(load.id()))
+                    .findFirst()
+                    .orElseThrow(() ->
+                            new IllegalArgumentException(
+                                    "Missing power installation for fixed load " + load.id()
+                            )
+                    );
+
+            InstallationConnection feeding =
+                    singleConnection(gridModel, inst, ConnectionType.FEEDING);
+
+            InstallationConnection returning =
+                    singleConnection(gridModel, inst, ConnectionType.RETURN);
+
+            elements.add(new FixedLoadElement(
+                    load.id(),
+                    feeding.getNodeId(),
+                    returning.getNodeId(),
+                    load.powerW()
+            ));
+        }
+    }
+
+    private record FixedLoadConnection(
+            String feedingNodeId,
+            String returnNodeId
+    ) {}
 
     private static void addSubstationElements(
             GridModel gridModel,
