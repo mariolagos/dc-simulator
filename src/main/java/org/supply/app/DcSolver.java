@@ -41,7 +41,7 @@ public final class DcSolver {
     private static final boolean DEBUG_MATRIX = false;
     private static final boolean DEBUG_ALL_NODE_VOLTAGES = false;
 
-    private record SolveResult(
+    record SolveResult(
             SingleTimestepSolver.NetworkResult networkResult,
             Map<String, Double> allocatedPowersW
     ) {
@@ -520,7 +520,7 @@ public final class DcSolver {
     ) {
     }
 
-    private static SolveResult solveWithFallback(
+    static SolveResult solveWithFallback(
             SystemParameters systemParameters,
             CalculationNetwork timestepNetwork,
             Map<String, Double> requestedPowersW,
@@ -548,6 +548,7 @@ public final class DcSolver {
                     requestedPowersW
             );
         }
+
         double feasibleAlpha = 0.0;
         double infeasibleAlpha = 1.0;
 
@@ -555,7 +556,10 @@ public final class DcSolver {
                 timestepSolver.solve(
                         timestepNetwork,
                         "R1",
-                        scaledPowers(requestedPowersW, 0.0),
+                        scaledRegenerationOnly(
+                                requestedPowersW,
+                                0.0
+                        ),
                         200,
                         1e-3,
                         previousVoltages
@@ -563,7 +567,7 @@ public final class DcSolver {
 
         if (!feasibleResult.converged()) {
             throw new IllegalStateException(
-                    "DC network is not solvable even with zero train power"
+                    "DC network is not solvable even with zero regenerative train power"
             );
         }
 
@@ -572,7 +576,7 @@ public final class DcSolver {
                     0.5 * (feasibleAlpha + infeasibleAlpha);
 
             Map<String, Double> candidatePowersW =
-                    scaledPowers(
+                    scaledRegenerationOnly(
                             requestedPowersW,
                             alpha
                     );
@@ -596,7 +600,7 @@ public final class DcSolver {
         }
 
         Map<String, Double> feasiblePowersW =
-                scaledPowers(
+                scaledRegenerationOnly(
                         requestedPowersW,
                         feasibleAlpha
                 );
@@ -605,6 +609,29 @@ public final class DcSolver {
                 feasibleResult,
                 feasiblePowersW
         );
+    }
+
+    private static Map<String, Double> scaledRegenerationOnly(
+            Map<String, Double> requestedPowersW,
+            double alpha
+    ) {
+        Map<String, Double> result =
+                new LinkedHashMap<>();
+
+        for (Map.Entry<String, Double> entry :
+                requestedPowersW.entrySet()) {
+
+            double powerW = entry.getValue();
+
+            result.put(
+                    entry.getKey(),
+                    powerW < 0.0
+                            ? alpha * powerW
+                            : powerW
+            );
+        }
+
+        return result;
     }
 
     private static Map<String, Double> scaledPowers(
@@ -625,4 +652,7 @@ public final class DcSolver {
 
         return result;
     }
+
+
+
 }
