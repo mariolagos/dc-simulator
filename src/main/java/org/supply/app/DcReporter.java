@@ -31,11 +31,11 @@ public final class DcReporter {
 
         Path longTablePath =
                 context.resultDirectory()
-                        .resolve("longtable.csv");
+                        .resolve(context.studyId() + "_longtable.csv");
 
         Path outputPath =
                 context.resultDirectory()
-                        .resolve("results_installation.xlsx");
+                        .resolve(context.studyId() + "_results_installation.xlsx");
 
         List<LongTableRow> rows =
                 readLongTable(longTablePath);
@@ -51,7 +51,7 @@ public final class DcReporter {
 
         Path resultsTrain =
                 context.resultDirectory()
-                        .resolve("results_train.xlsx");
+                        .resolve(context.studyId() + "_results_train.xlsx");
 
         writeTrainWorkbook(
                 rows,

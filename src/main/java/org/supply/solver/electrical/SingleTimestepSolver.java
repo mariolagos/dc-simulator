@@ -218,9 +218,9 @@ public final class SingleTimestepSolver {
                         linearSystemSolver.solveVoltages(system);
             } catch (IllegalArgumentException e) {
 
-                if (!e.getMessage().startsWith("Singular admittance matrix")) {
-                    throw e;
-                }
+//                if (!e.getMessage().startsWith("Singular admittance matrix")) {
+//                    throw e;
+//                }
 
                 System.out.println(
                         "SINGULAR at iteration=" + iteration

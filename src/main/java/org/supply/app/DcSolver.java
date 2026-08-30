@@ -525,7 +525,7 @@ public final class DcSolver {
 
         return new LongTableWriter(
                 context.resultDirectory()
-                        .resolve("longtable.csv")
+                        .resolve(context.studyId() + "_longtable.csv")
                         .toString(),
                 true,
                 "dc-simulator",
