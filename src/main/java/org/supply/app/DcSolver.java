@@ -27,6 +27,7 @@ import org.supply.track.LoadedTrackModel;
 import org.supply.track.TrackConfigLoader;
 import org.supply.track.TrackTransformService;
 import org.supply.solver.model.CalculationTrainLoad;
+import org.supply.solver.model.RegenerativeTrainElement;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -301,18 +302,12 @@ public final class DcSolver {
                         0.0
                 );
 
-        TrainLoadElement solvedLoad =
-                new TrainLoadElement(
-                        trainLoad.trainId(),
-                        trainLoad.feedingNodeId(),
-                        trainLoad.returnNodeId(),
-                        allocatedPowerW,
-                        terminalVoltageV,
-                        systemParameters
-                );
-
         double currentA =
-                solvedLoad.currentA();
+                trainCurrentA(
+                        systemParameters,
+                        allocatedPowerW,
+                        terminalVoltageV
+                );
 
         double powerW =
                 terminalVoltageV * currentA;
@@ -472,6 +467,33 @@ public final class DcSolver {
             );
 
         }
+    }
+
+    static double trainCurrentA(
+            SystemParameters systemParameters,
+            double allocatedPowerW,
+            double terminalVoltageV
+    ) {
+        if (allocatedPowerW < 0.0) {
+            return -RegenerativeTrainElement.regenerativeCurrentA(
+                    allocatedPowerW,
+                    terminalVoltageV,
+                    850.0,
+                    systemParameters.uMaxV()
+            );
+        }
+
+        TrainLoadElement load =
+                new TrainLoadElement(
+                        "result",
+                        "F",
+                        "R",
+                        allocatedPowerW,
+                        terminalVoltageV,
+                        systemParameters
+                );
+
+        return load.currentA();
     }
 
     private static double voltageOf(Map<String, Real> voltages, String nodeId) {

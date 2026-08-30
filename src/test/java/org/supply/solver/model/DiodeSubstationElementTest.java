@@ -114,4 +114,6 @@ public final class DiodeSubstationElementTest {
                 CalculationNodeType.GRID_NODE
         );
     }
+
+
 }

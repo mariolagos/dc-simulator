@@ -80,24 +80,52 @@ public final class SingleTimestepSolver {
         );
     }
 
-    private CalculationNetwork withTrainLoad(
-            String trainId,
+    private CalculationNetwork withTrainLoads(
             CalculationNetwork baseNetwork,
-            String feedingNodeId,
-            String returnNodeId,
-            double requestedPowerW,
-            double voltageV
+            Map<String, Double> requestedPowersW,
+            Map<String, Double> voltageGuessByTrain
     ) {
         List<ElectricalElement> elements =
-                new ArrayList<>(baseNetwork.elements());
+                new ArrayList<>();
 
-        elements.add(new TrainLoadElement(
-                trainId,
-                feedingNodeId,
-                returnNodeId,
-                requestedPowerW,
-                voltageV,
-                systemParameters));
+        for (ElectricalElement element : baseNetwork.elements()) {
+            if (!(element instanceof TrainLoadElement)) {
+                elements.add(element);
+            }
+        }
+
+        for (CalculationTrainLoad load : baseNetwork.trainLoads()) {
+
+            double requestedPowerW =
+                    requestedPowersW.getOrDefault(
+                            load.trainId(),
+                            load.pReqW().asDouble()
+                    );
+
+            double voltageV =
+                    voltageGuessByTrain.get(load.trainId());
+
+            if (requestedPowerW < 0.0) {
+                elements.add(new RegenerativeTrainElement(
+                        load.trainId(),
+                        load.feedingNodeId(),
+                        load.returnNodeId(),
+                        requestedPowerW,
+                        voltageV,
+                        850.0,
+                        systemParameters.uMaxV()
+                ));
+            } else {
+                elements.add(new TrainLoadElement(
+                        load.trainId(),
+                        load.feedingNodeId(),
+                        load.returnNodeId(),
+                        requestedPowerW,
+                        voltageV,
+                        systemParameters
+                ));
+            }
+        }
 
         return new CalculationNetwork(
                 baseNetwork.nodes(),
@@ -157,8 +185,10 @@ public final class SingleTimestepSolver {
             Map<String, Real> initialVoltages
     ) {
         Map<String, Double> voltageGuessByTrain =
-                initialVoltageGuesses(baseNetwork);
-
+                initialVoltageGuesses(
+                        baseNetwork,
+                        requestedPowersW
+                );
         Map<String, Real> previousVoltages =
                 initialVoltages == null
                         ? Map.of()
@@ -191,6 +221,11 @@ public final class SingleTimestepSolver {
                 if (!e.getMessage().startsWith("Singular admittance matrix")) {
                     throw e;
                 }
+
+                System.out.println(
+                        "SINGULAR at iteration=" + iteration
+                                + ", voltageGuessByTrain=" + voltageGuessByTrain
+                );
 
                 return new NetworkResult(
                         previousVoltages,
@@ -253,36 +288,13 @@ public final class SingleTimestepSolver {
     }
 
     private Map<String, Double> initialVoltageGuesses(
-            CalculationNetwork network
+            CalculationNetwork network,
+            Map<String, Double> requestedPowersW
     ) {
         Map<String, Double> guesses =
                 new java.util.LinkedHashMap<>();
 
         for (CalculationTrainLoad load : network.trainLoads()) {
-            guesses.put(
-                    load.trainId(),
-                    systemParameters.uNominalV()
-            );
-        }
-
-        return guesses;
-    }
-
-    private CalculationNetwork withTrainLoads(
-            CalculationNetwork baseNetwork,
-            Map<String, Double> requestedPowersW,
-            Map<String, Double> voltageGuessByTrain
-    ) {
-        List<ElectricalElement> elements =
-                new ArrayList<>();
-
-        for (ElectricalElement element : baseNetwork.elements()) {
-            if (!(element instanceof TrainLoadElement)) {
-                elements.add(element);
-            }
-        }
-
-        for (CalculationTrainLoad load : baseNetwork.trainLoads()) {
 
             double requestedPowerW =
                     requestedPowersW.getOrDefault(
@@ -290,18 +302,39 @@ public final class SingleTimestepSolver {
                             load.pReqW().asDouble()
                     );
 
-            double voltageV =
-                    voltageGuessByTrain.get(load.trainId());
+            double initialVoltageV =
+                    requestedPowerW < 0.0
+                            ? 850.0
+                            : systemParameters.uNominalV();
 
-            elements.add(new TrainLoadElement(
+            guesses.put(
                     load.trainId(),
-                    load.feedingNodeId(),
-                    load.returnNodeId(),
-                    requestedPowerW,
-                    voltageV,
-                    systemParameters
-            ));
+                    initialVoltageV
+            );
         }
+
+        return guesses;
+    }
+
+    private CalculationNetwork withTrainLoad(
+            String trainId,
+            CalculationNetwork baseNetwork,
+            String feedingNodeId,
+            String returnNodeId,
+            double requestedPowerW,
+            double voltageV
+    ) {
+        List<ElectricalElement> elements =
+                new ArrayList<>(baseNetwork.elements());
+
+        elements.add(new TrainLoadElement(
+                trainId,
+                feedingNodeId,
+                returnNodeId,
+                requestedPowerW,
+                voltageV,
+                systemParameters
+        ));
 
         return new CalculationNetwork(
                 baseNetwork.nodes(),

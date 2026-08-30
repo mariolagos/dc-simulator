@@ -12,6 +12,7 @@ import java.util.Map;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertTrue;
 
@@ -76,13 +77,6 @@ public class SingleTimestepSolverTest {
 
         double feasiblePowerW =
                 feasibleAlpha * requestedPowerW;
-
-        System.out.printf(
-                "requested=%.3f W  alpha=%.9f  feasible=%.3f W%n",
-                requestedPowerW,
-                feasibleAlpha,
-                feasiblePowerW
-        );
 
         assertTrue(feasibleAlpha >= 0.0);
         assertTrue(feasibleAlpha < 1.0);
@@ -591,4 +585,353 @@ public class SingleTimestepSolverTest {
                 3_000_000.0
         );
     }
+
+    @Test
+    public void regenerativeTrainEstablishesVoltageWhenDiodeSubstationIsBlocked() {
+
+        CalculationNode f1 =
+                new CalculationNode(
+                        "F1", "F1",
+                        "section-1", "track-1",
+                        0.0,
+                        CalculationNodeType.GRID_NODE
+                );
+
+        CalculationNode r1 =
+                new CalculationNode(
+                        "R1", "R1",
+                        "section-1", "track-1",
+                        0.0,
+                        CalculationNodeType.GRID_NODE
+                );
+
+        CalculationNode trainF =
+                new CalculationNode(
+                        "train_T1_F", "T1",
+                        "section-1", "track-1",
+                        500.0,
+                        CalculationNodeType.TRAIN_NODE
+                );
+
+        CalculationNode trainR =
+                new CalculationNode(
+                        "train_T1_R", "T1",
+                        "section-1", "track-1",
+                        500.0,
+                        CalculationNodeType.TRAIN_NODE
+                );
+
+        List<CalculationBranch> branches =
+                List.of(
+                        new CalculationBranch(
+                                "F1-T1",
+                                "line-F",
+                                "F1",
+                                "train_T1_F",
+                                Real.fromDouble(0.05)
+                        ),
+                        new CalculationBranch(
+                                "R1-T1",
+                                "line-R",
+                                "R1",
+                                "train_T1_R",
+                                Real.fromDouble(0.05)
+                        )
+                );
+
+        List<ElectricalElement> elements =
+                new ArrayList<>();
+
+        elements.addAll(branches);
+
+        elements.add(
+                new DiodeSubstationElement(
+                        "SS0",
+                        "F1",
+                        "R1",
+                        Real.fromDouble(780.0),
+                        Real.fromDouble(0.005),
+                        true
+                )
+        );
+
+        elements.add(
+                new RegenerativeTrainElement(
+                        "T1",
+                        "train_T1_F",
+                        "train_T1_R",
+                        -1_200_000.0,
+                        875.0,
+                        850.0,
+                        900.0
+                )
+        );
+
+        CalculationNetwork network =
+                new CalculationNetwork(
+                        List.of(f1, r1, trainF, trainR),
+                        branches,
+                        List.of(),
+                        elements
+                );
+
+        AdmittanceSystem system =
+                new AdmittanceSystemBuilder().build(
+                        network,
+                        "R1",
+                        List.of(),
+                        Map.of(
+                                "F1", Real.fromDouble(800.0),
+                                "R1", Real.fromDouble(0.0),
+                                "train_T1_F", Real.fromDouble(850.0),
+                                "train_T1_R", Real.fromDouble(0.0)
+                        )
+                );
+
+        Map<String, Real> voltages =
+                new LinearSystemSolver().solveVoltages(system);
+
+        double uTrain =
+                voltages.get("train_T1_F").asDouble()
+                        - voltages.get("train_T1_R").asDouble();
+
+        double uSubstation =
+                voltages.get("F1").asDouble()
+                        - voltages.get("R1").asDouble();
+
+        assertThat(uTrain, greaterThan(850.0));
+        assertThat(uTrain, lessThanOrEqualTo(900.0));
+
+        assertThat(uSubstation, greaterThan(780.0));
+    }
+
+    @Test
+    public void regenerativeTrainSuppliesMotoringTrainWhileSubstationIsBlocked() {
+
+        SystemParameters systemParameters =
+                systemParameters();
+
+        SingleTimestepSolver solver =
+                new SingleTimestepSolver(
+                        systemParameters,
+                        new LinearSystemSolver()
+                );
+
+        CalculationNode f1 =
+                new CalculationNode(
+                        "F1", "F1",
+                        "section-1", "track-1",
+                        0.0,
+                        CalculationNodeType.GRID_NODE
+                );
+
+        CalculationNode r1 =
+                new CalculationNode(
+                        "R1", "R1",
+                        "section-1", "track-1",
+                        0.0,
+                        CalculationNodeType.GRID_NODE
+                );
+
+        CalculationNode t1f =
+                new CalculationNode(
+                        "train_T1_F", "T1",
+                        "section-1", "track-1",
+                        300.0,
+                        CalculationNodeType.TRAIN_NODE
+                );
+
+        CalculationNode t1r =
+                new CalculationNode(
+                        "train_T1_R", "T1",
+                        "section-1", "track-1",
+                        300.0,
+                        CalculationNodeType.TRAIN_NODE
+                );
+
+        CalculationNode t2f =
+                new CalculationNode(
+                        "train_T2_F", "T2",
+                        "section-1", "track-1",
+                        700.0,
+                        CalculationNodeType.TRAIN_NODE
+                );
+
+        CalculationNode t2r =
+                new CalculationNode(
+                        "train_T2_R", "T2",
+                        "section-1", "track-1",
+                        700.0,
+                        CalculationNodeType.TRAIN_NODE
+                );
+
+        List<CalculationNode> nodes =
+                List.of(
+                        f1, r1,
+                        t1f, t1r,
+                        t2f, t2r
+                );
+
+        List<CalculationBranch> branches =
+                List.of(
+                        new CalculationBranch(
+                                "F1-T1-F",
+                                "line-F",
+                                "F1",
+                                "train_T1_F",
+                                Real.fromDouble(0.03)
+                        ),
+                        new CalculationBranch(
+                                "T1-T2-F",
+                                "line-F",
+                                "train_T1_F",
+                                "train_T2_F",
+                                Real.fromDouble(0.04)
+                        ),
+                        new CalculationBranch(
+                                "R1-T1-R",
+                                "line-R",
+                                "R1",
+                                "train_T1_R",
+                                Real.fromDouble(0.03)
+                        ),
+                        new CalculationBranch(
+                                "T1-T2-R",
+                                "line-R",
+                                "train_T1_R",
+                                "train_T2_R",
+                                Real.fromDouble(0.04)
+                        )
+                );
+
+        CalculationTrainLoad t2Load =
+                new CalculationTrainLoad(
+                        "T2",
+                        "train_T2_F",
+                        "train_T2_R",
+                        Real.fromDouble(200_000.0)
+                );
+
+        List<ElectricalElement> elements =
+                new ArrayList<>();
+
+        elements.addAll(branches);
+
+        elements.add(
+                new DiodeSubstationElement(
+                        "SS0",
+                        "F1",
+                        "R1",
+                        Real.fromDouble(780.0),
+                        Real.fromDouble(0.005),
+                        true
+                )
+        );
+
+        elements.add(
+                new RegenerativeTrainElement(
+                        "T1",
+                        "train_T1_F",
+                        "train_T1_R",
+                        -1_200_000.0,
+                        875.0,
+                        850.0,
+                        900.0
+                )
+        );
+
+        CalculationNetwork network =
+                new CalculationNetwork(
+                        nodes,
+                        branches,
+                        List.of(t2Load),
+                        elements
+                );
+
+        SingleTimestepSolver.NetworkResult result =
+                solver.solve(
+                        network,
+                        "R1",
+                        Map.of("T2", 200_000.0),
+                        200,
+                        1e-3
+                );
+
+        assertThat(result.converged(), is(true));
+
+        double uT1 =
+                result.voltages().get("train_T1_F").asDouble()
+                        - result.voltages().get("train_T1_R").asDouble();
+
+        double uT2 =
+                result.voltages().get("train_T2_F").asDouble()
+                        - result.voltages().get("train_T2_R").asDouble();
+
+        double uSS0 =
+                result.voltages().get("F1").asDouble()
+                        - result.voltages().get("R1").asDouble();
+
+        double iT1NetA =
+                RegenerativeTrainElement.regenerativeCurrentA(
+                        -1_200_000.0,
+                        uT1,
+                        850.0,
+                        900.0
+                );
+
+        double pT1NetW =
+                uT1 * iT1NetA;
+
+        assertThat(uT1, greaterThan(850.0));
+        assertThat(uT1, lessThanOrEqualTo(900.0));
+
+        assertThat(uT2, greaterThan(780.0));
+
+        // SS0 must remain above its diode EMF and therefore blocking.
+        assertThat(uSS0, greaterThan(780.0));
+
+        // T1 must feed at least the 200 kW consumed by T2.
+        // The excess accounts for line losses.
+        assertThat(pT1NetW, greaterThan(200_000.0));
+    }
+
+    @Test
+    public void solvesNonReceptiveRegenerationUsingVoltageControl() {
+
+        SystemParameters systemParameters =
+                systemParameters();
+
+        SingleTimestepSolver solver =
+                new SingleTimestepSolver(
+                        systemParameters,
+                        new LinearSystemSolver()
+                );
+
+        CalculationNetwork network =
+                createSingleRegenTrainNetwork();
+
+        SingleTimestepSolver.NetworkResult result =
+                solver.solve(
+                        network,
+                        "R1",
+                        Map.of("T1", -1_200_000.0),
+                        200,
+                        1e-3
+                );
+
+        assertThat(result.converged(), is(true));
+
+        double uTrain =
+                result.voltages().get("train_T1_F").asDouble()
+                        - result.voltages().get("train_T1_R").asDouble();
+
+        double uSS =
+                result.voltages().get("F1").asDouble()
+                        - result.voltages().get("R1").asDouble();
+
+        assertThat(uTrain, greaterThan(850.0));
+        assertThat(uTrain, lessThanOrEqualTo(900.0));
+        assertThat(uSS, greaterThan(780.0));
+    }
+
 }

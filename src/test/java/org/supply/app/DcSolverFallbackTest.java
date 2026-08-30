@@ -3,6 +3,8 @@ package org.supply.app;
 import org.junit.Test;
 import org.supply.domain.SystemParameters;
 import org.supply.math.Real;
+import org.supply.solver.electrical.LinearSystemSolver;
+import org.supply.solver.electrical.SingleTimestepSolver;
 import org.supply.solver.model.*;
 
 import java.util.ArrayList;
@@ -30,7 +32,7 @@ public class DcSolverFallbackTest {
         assertAllocation(
                 -800_000.0,
                 600_000.0,
-                -600_000.0,
+                -800_000.0,
                 600_000.0
         );
     }
@@ -98,6 +100,27 @@ public class DcSolverFallbackTest {
                         "TrainBrake", requestedBrakeW,
                         "TrainMotor", requestedMotorW
                 );
+
+        SingleTimestepSolver directSolver =
+                new SingleTimestepSolver(
+                        SYSTEM_PARAMETERS,
+                        new LinearSystemSolver()
+                );
+
+        SingleTimestepSolver.NetworkResult direct =
+                directSolver.solve(
+                        network,
+                        "R1",
+                        requestedPowersW,
+                        200,
+                        1e-3,
+                        Map.of()
+                );
+
+        assertTrue(
+                "SingleTimestepSolver should converge without regeneration fallback",
+                direct.converged()
+        );
 
         DcSolver.SolveResult result =
                 DcSolver.solveWithFallback(
@@ -235,6 +258,32 @@ public class DcSolverFallbackTest {
                 "SINGLE",
                 positionM,
                 CalculationNodeType.GRID_NODE
+        );
+    }
+
+    @Test
+    public void reportsRegenerativeCurrentFromVoltageDependentCharacteristic() {
+
+        double terminalVoltageV = 872.738;
+        double requestedPowerW = -900_000.0;
+
+        double currentA =
+                DcSolver.trainCurrentA(
+                        SYSTEM_PARAMETERS,
+                        requestedPowerW,
+                        terminalVoltageV
+                );
+
+        assertEquals(
+                -577.3,
+                currentA,
+                0.1
+        );
+
+        assertEquals(
+                -503_800.0,
+                terminalVoltageV * currentA,
+                100.0
         );
     }
 }

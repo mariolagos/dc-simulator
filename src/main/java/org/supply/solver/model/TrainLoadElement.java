@@ -15,6 +15,8 @@ public final class TrainLoadElement implements ElectricalElement {
 
     private final SystemParameters systemParameters;
 
+    private static final double REGEN_DERATING_START_V = 850.0;
+
     public TrainLoadElement(
             String trainId,
             String feedingNodeId,
@@ -102,31 +104,58 @@ public final class TrainLoadElement implements ElectricalElement {
         return iTrainMaxA;
     }
 
+//    private static double regenerativeCurrentA(
+//            double requestedPowerW,
+//            double voltageV,
+//            SystemParameters systemParameters
+//    ) {
+//        double requestedCurrentA =
+//                requestedPowerW / voltageV;
+//
+//        return Math.max(
+//                requestedCurrentA,
+//                regenerativeCurrentLimitA(voltageV, systemParameters)
+//        );
+//    }
+
     private static double regenerativeCurrentA(
             double requestedPowerW,
             double voltageV,
             SystemParameters systemParameters
     ) {
+        double networkPowerW =
+                requestedPowerW
+                        * regenerativeNetworkFraction(
+                        voltageV,
+                        systemParameters
+                );
+
         double requestedCurrentA =
-                requestedPowerW / voltageV;
+                networkPowerW / voltageV;
 
         return Math.max(
                 requestedCurrentA,
-                regenerativeCurrentLimitA(voltageV, systemParameters)
+                -systemParameters.iMaxA()
         );
     }
 
-    private static double regenerativeCurrentLimitA(
+    private static double regenerativeNetworkFraction(
             double voltageV,
             SystemParameters systemParameters
     ) {
-        if (voltageV >= systemParameters.uMaxV()) {
+        double uMaxV = systemParameters.uMaxV();
+
+        if (voltageV <= REGEN_DERATING_START_V) {
+            return 1.0;
+        }
+
+        if (voltageV >= uMaxV) {
             return 0.0;
         }
 
-        return -systemParameters.iMaxA();
+        return (uMaxV - voltageV)
+                / (uMaxV - REGEN_DERATING_START_V);
     }
-
     public String feedingNodeId() {
         return feedingNodeId;
     }
