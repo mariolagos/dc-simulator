@@ -190,7 +190,6 @@ public final class DcSolver {
             TopologyPrinter.print(timestepNetwork);
         }
 
-
         SolveResult solveResult =
                 solveWithFallback(
                         systemParameters,
@@ -555,12 +554,10 @@ public final class DcSolver {
                 );
 
         SingleTimestepSolver.NetworkResult result =
-                timestepSolver.solve(
+                solveWithRetry(
+                        timestepSolver,
                         timestepNetwork,
-                        "R1",
                         requestedPowersW,
-                        200,
-                        1e-3,
                         previousVoltages
                 );
 
@@ -575,15 +572,13 @@ public final class DcSolver {
         double infeasibleAlpha = 1.0;
 
         SingleTimestepSolver.NetworkResult feasibleResult =
-                timestepSolver.solve(
+                solveWithRetry(
+                        timestepSolver,
                         timestepNetwork,
-                        "R1",
                         scaledRegenerationOnly(
                                 requestedPowersW,
                                 0.0
                         ),
-                        200,
-                        1e-3,
                         previousVoltages
                 );
 
@@ -604,12 +599,10 @@ public final class DcSolver {
                     );
 
             SingleTimestepSolver.NetworkResult candidateResult =
-                    timestepSolver.solve(
+                    solveWithRetry(
+                            timestepSolver,
                             timestepNetwork,
-                            "R1",
                             candidatePowersW,
-                            200,
-                            1e-3,
                             previousVoltages
                     );
 
@@ -631,6 +624,37 @@ public final class DcSolver {
                 feasibleResult,
                 feasiblePowersW
         );
+    }
+
+    private static SingleTimestepSolver.NetworkResult solveWithRetry(
+            SingleTimestepSolver timestepSolver,
+            CalculationNetwork timestepNetwork,
+            Map<String, Double> powersW,
+            Map<String, Real> previousVoltages
+    ) {
+        SingleTimestepSolver.NetworkResult result =
+                timestepSolver.solve(
+                        timestepNetwork,
+                        "R1",
+                        powersW,
+                        200,
+                        1e-3,
+                        previousVoltages
+                );
+
+        if (!result.converged() && !previousVoltages.isEmpty()) {
+            result =
+                    timestepSolver.solve(
+                            timestepNetwork,
+                            "R1",
+                            powersW,
+                            200,
+                            1e-3,
+                            Map.of()
+                    );
+        }
+
+        return result;
     }
 
     private static Map<String, Double> scaledRegenerationOnly(
