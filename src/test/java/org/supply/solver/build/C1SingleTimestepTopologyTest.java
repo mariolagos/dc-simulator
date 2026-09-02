@@ -50,12 +50,13 @@ public final class C1SingleTimestepTopologyTest {
                 "train_1",
                 "section-C1",
                 "track-1",
+                "U",
                 400.0,
                 Real.fromDouble(0.0)
         );
 
         CalculationNetwork result =
-                new TrainNodeInserter(ElectricalTestCases.SYSTEM_PARAMETERS)
+                new TrainNodeInserter(ElectricalTestCases.SYSTEM_PARAMETERS, List.of())
                         .insertTrainNodes(base, List.of(train));
 
         AdmittanceSystem system =

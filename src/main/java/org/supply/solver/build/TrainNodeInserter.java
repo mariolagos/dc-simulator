@@ -1,5 +1,6 @@
 package org.supply.solver.build;
 
+import org.supply.domain.Route;
 import org.supply.domain.SystemParameters;
 import org.supply.math.Real;
 import org.supply.solver.model.*;
@@ -12,13 +13,25 @@ public final class TrainNodeInserter {
     private static final double EPS = 1e-9;
 
     private final SystemParameters systemParameters;
+    private final Map<String, Route> routesById;
 
-    public TrainNodeInserter(SystemParameters systemParameters) {
+    public TrainNodeInserter(
+            SystemParameters systemParameters,
+            List<Route> routes
+    ) {
         this.systemParameters = Objects.requireNonNull(
                 systemParameters,
                 "systemParameters"
         );
+
+        Objects.requireNonNull(routes, "routes");
+
+        this.routesById = new LinkedHashMap<>();
+        for (Route route : routes) {
+            this.routesById.put(route.id(), route);
+        }
     }
+
     public CalculationNetwork insertTrainNodes(
             CalculationNetwork baseNetwork,
             List<CalculationTrainPosition> trains
@@ -48,6 +61,10 @@ public final class TrainNodeInserter {
                     continue;
                 }
 
+                if (!routeContains(branch, train, feedingBranch)) {
+                    continue;
+                }
+
                 if (!sameTrack(from, train) || !sameTrack(to, train)) {
                     continue;
                 }
@@ -60,7 +77,14 @@ public final class TrainNodeInserter {
             }
 
             List<CalculationTrainPosition> trainsOnBranch =
-                    trainsInsideBranch(from, to, trains, placedForBranch.keySet());
+                    trainsInsideBranch(
+                            branch,
+                            from,
+                            to,
+                            trains,
+                            placedForBranch.keySet(),
+                            feedingBranch
+                    );
 
             if (trainsOnBranch.isEmpty()) {
                 outBranches.add(branch);
@@ -150,11 +174,13 @@ public final class TrainNodeInserter {
 
 
 
-    private static List<CalculationTrainPosition> trainsInsideBranch(
+    private List<CalculationTrainPosition> trainsInsideBranch(
+            CalculationBranch branch,
             CalculationNode from,
             CalculationNode to,
             List<CalculationTrainPosition> trains,
-            Set<String> placedTrainIds
+            Set<String> placedTrainIds,
+            boolean feedingBranch
     ) {
         List<CalculationTrainPosition> out = new ArrayList<>();
 
@@ -163,6 +189,10 @@ public final class TrainNodeInserter {
 
         for (CalculationTrainPosition train : trains) {
             if (placedTrainIds.contains(train.trainId())) {
+                continue;
+            }
+
+            if (!routeContains(branch, train, feedingBranch)) {
                 continue;
             }
 
@@ -223,7 +253,24 @@ public final class TrainNodeInserter {
         }
     }
 
+    private boolean routeContains(
+            CalculationBranch branch,
+            CalculationTrainPosition train,
+            boolean feedingBranch
+    ) {
+        Route route = routesById.get(train.routeId());
 
+        if (route == null) {
+            return routesById.isEmpty();
+        }
+
+        List<String> lineIds =
+                feedingBranch
+                        ? route.feedingLineIds()
+                        : route.returnLineIds();
+
+        return lineIds.contains(branch.sourceId());
+    }
 
 
 

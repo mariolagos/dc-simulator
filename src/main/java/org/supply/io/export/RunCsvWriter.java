@@ -23,9 +23,11 @@ public final class RunCsvWriter {
                 input.trainIds(),
                 input.sectionIds(),
                 input.trackIds(),
+                input.routeIds(),
                 runCsvFile,
                 input.departureTimes(),
                 input.exportResolutionS()
-        );    }
+        );
+    }
 
 }

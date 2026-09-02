@@ -8,9 +8,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.supply.track.TrackInterpolationPoint;
-import org.supply.track.TrackPoint;
 
-import javax.xml.validation.TypeInfoProvider;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,6 +32,7 @@ public final class RunCsvFromExcel {
     private static final String K_TRAIN = "train_id";
     private static final String K_SECTION = "section_id";
     private static final String K_TRACK = "track_id";
+    private static final String K_ROUTE = "route_id";
     private static final String K_POS = "position_m";
     private static final String K_P = "p_req_W";
 
@@ -165,8 +164,8 @@ public final class RunCsvFromExcel {
             List<RunPoint> pts,
             String trainId,
             String sectionId,
-            String trackId
-    ) {
+            String trackId,
+            String routeId) {
         List<Map<String, String>> out = new ArrayList<>(pts.size());
 
         for (RunPoint p : pts) {
@@ -175,9 +174,9 @@ public final class RunCsvFromExcel {
             row.put(K_TRAIN, trainId);
             row.put(K_SECTION, sectionId);
             row.put(K_TRACK, trackId);
+            row.put(K_ROUTE, routeId);
             row.put(K_POS, fmt(p.positionM()));
-            row.put(K_P, fmt(p.pReqW()));
-            out.add(row);
+            row.put(K_P, fmt(p.pReqW()));            out.add(row);
         }
 
         return out;
@@ -193,6 +192,7 @@ public final class RunCsvFromExcel {
             String trainId,
             String sectionId,
             String trackId,
+            String routeId,
             int departureTime
     ) {
         Iterator<Row> it = shRun.rowIterator();
@@ -271,6 +271,7 @@ public final class RunCsvFromExcel {
             String trainId,
             String sectionId,
             String trackId,
+            String routeId,
             int departureTime
     ) throws Exception {
         try (InputStream in = Files.newInputStream(excelXlsx);
@@ -289,6 +290,7 @@ public final class RunCsvFromExcel {
                     trainId,
                     sectionId,
                     trackId,
+                    routeId,
                     departureTime
             );
         }
@@ -299,6 +301,7 @@ public final class RunCsvFromExcel {
             List<String> trainIds,
             List<String> sectionIds,
             List<String> trackIds,
+            List<String> routeIds,
             Path outRunCsv,
             List<Integer> departureTimes,
             double exportResolutionS
@@ -326,6 +329,7 @@ public final class RunCsvFromExcel {
             String trainId = trainIds.get(i);
             String sectionId = sectionIds.get(i);
             String trackId = trackIds.get(i);
+            String routeId = routeIds.get(i);
 
             List<Map<String, String>> rows =
                     readFullRunRows(
@@ -333,7 +337,7 @@ public final class RunCsvFromExcel {
                             trainId,
                             sectionId,
                             trackId,
-                            departureTimes.get(i)
+                            routeId, departureTimes.get(i)
                     );
 
             if (exportResolutionS > 0.0) {
@@ -343,8 +347,9 @@ public final class RunCsvFromExcel {
                         pts,
                         trainId,
                         sectionId,
-                        trackId
-                );            }
+                        trackId,
+                        routeId);
+            }
 
             allRows.addAll(rows);
         }

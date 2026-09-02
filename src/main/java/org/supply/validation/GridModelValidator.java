@@ -185,11 +185,12 @@ public class GridModelValidator {
                 }
             }
 
-            if (feedingCount != 1 || returnCount != 1) {
+            if (feedingCount < 1 || returnCount < 1) {
                 throw new IllegalArgumentException(
-                        "SUBSTATION must have exactly 1 FEEDING and 1 RETURN connection: installation_id="
-                                + installationId
-                                + " (FEEDING=" + feedingCount + ", RETURN=" + returnCount + ")"
+                        "SUBSTATION must have at least 1 FEEDING and 1 RETURN connection: "
+                                + "installation_id=" + installationId
+                                + " (FEEDING=" + feedingCount
+                                + ", RETURN=" + returnCount + ")"
                 );
             }
         }

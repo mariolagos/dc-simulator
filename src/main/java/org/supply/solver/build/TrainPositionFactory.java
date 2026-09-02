@@ -17,6 +17,7 @@ public final class TrainPositionFactory {
                     sample.trainId(),
                     sample.sectionId(),
                     sample.trackId(),
+                    sample.routeId(),
                     sample.positionM(),
                     Real.fromDouble(sample.pReqW())
             ));

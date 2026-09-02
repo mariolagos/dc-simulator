@@ -5,7 +5,7 @@ public record RunSample(
         String trainId,
         String sectionId,
         String trackId,
+        String routeId,
         double positionM,
         double pReqW
-) {
-}
+) {}

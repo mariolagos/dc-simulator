@@ -38,6 +38,7 @@ public final class RunCsvInputFactoryTest {
                                 headway = "00:01:30"
                                 sectionId = "1"
                                 trackId = "u"
+                                routeId = "U"
                               }
                             ]
                           }
@@ -117,6 +118,7 @@ public final class RunCsvInputFactoryTest {
                             count = 1
                             sectionId = "1"
                             trackId = "u"
+                            routeId = "U"
                           }
                         ]
                       }

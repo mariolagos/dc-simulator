@@ -32,7 +32,7 @@ public class CalculationNetworkBuilderTest {
         Node a = new Node("A", "1 0+0");
         Node b = new Node("B", "1 1+000");
 
-        Line line = new Line(a, b, Real.fromDouble(0.01));
+        Line line = new Line("L1", a, b, Real.fromDouble(0.01));
 
         GridModel grid = new GridModel();
 

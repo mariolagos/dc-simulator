@@ -17,6 +17,7 @@ public final class RunCsvInputFactory {
         List<Path> runExcels = new ArrayList<>();
         List<String> trainIds = new ArrayList<>();
         List<String> trackIds = new ArrayList<>();
+        List<String> routeIds = new ArrayList<>();
         List<String> sectionIds = new ArrayList<>();
         List<Integer> departureTimes = new ArrayList<>();
 
@@ -45,6 +46,9 @@ public final class RunCsvInputFactory {
 
             String trackId =
                     train.getString("trackId");
+
+            String routeId =
+                    train.getString("routeId");
 
             String templateId =
                     getString(
@@ -127,9 +131,9 @@ public final class RunCsvInputFactory {
                 trainIds.add(expandedTrainId);
                 sectionIds.add(sectionId);
                 trackIds.add(trackId);
+                routeIds.add(routeId);
                 departureTimes.add(expandedDepartureSec);
-                runExcels.add(runExcel);
-            }
+                runExcels.add(runExcel);            }
         }
 
         double exportResolutionS =
@@ -142,6 +146,7 @@ public final class RunCsvInputFactory {
                 trainIds,
                 sectionIds,
                 trackIds,
+                routeIds,
                 departureTimes,
                 exportResolutionS
         );

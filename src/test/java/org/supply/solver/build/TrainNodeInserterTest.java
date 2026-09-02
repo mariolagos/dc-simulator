@@ -20,7 +20,7 @@ public final class TrainNodeInserterTest {
         CalculationTrainPosition train1 = train("T1", 300.0);
 
         CalculationNetwork result =
-                new TrainNodeInserter(new SystemParameters(750, 500, 600, 900, 6000, 10000000, 3600000)).insertTrainNodes(base, List.of(train2, train1));
+                new TrainNodeInserter(new SystemParameters(750, 500, 600, 900, 6000, 10000000, 3600000), List.of()).insertTrainNodes(base, List.of(train2, train1));
 
         assertEquals(8, result.nodes().size());
         assertEquals(6, result.branches().size());
@@ -48,7 +48,7 @@ public final class TrainNodeInserterTest {
         CalculationNetwork base = baseNetwork();
 
         try {
-            new TrainNodeInserter(new SystemParameters(750, 500, 600, 900, 6000, 10000000, 3600000)).insertTrainNodes(base, List.of(train("T1", 1200.0)));
+            new TrainNodeInserter(new SystemParameters(750, 500, 600, 900, 6000, 10000000, 3600000), List.of()).insertTrainNodes(base, List.of(train("T1", 1200.0)));
             fail("Expected IllegalArgumentException");
         } catch (IllegalArgumentException ex) {
             assertTrue(ex.getMessage().contains("Could not connect train T1"));
@@ -60,7 +60,7 @@ public final class TrainNodeInserterTest {
         CalculationNetwork base = baseNetwork();
 
         CalculationNetwork result =
-                new TrainNodeInserter(new SystemParameters(750, 500, 600, 900, 6000, 10000000, 3600000)).insertTrainNodes(base, List.of(train("T1", 0.0)));
+                new TrainNodeInserter(new SystemParameters(750, 500, 600, 900, 6000, 10000000, 3600000), List.of()).insertTrainNodes(base, List.of(train("T1", 0.0)));
 
         assertEquals(4, result.nodes().size());
         assertEquals(2, result.branches().size());
@@ -83,10 +83,10 @@ public final class TrainNodeInserterTest {
         CalculationNetwork base = baseNetwork();
 
         CalculationNetwork result1 =
-                new TrainNodeInserter(new SystemParameters(750, 500, 600, 900, 6000, 10000000, 3600000)).insertTrainNodes(base, List.of(train("T1", 300.0), train("T2", 700.0)));
+                new TrainNodeInserter(new SystemParameters(750, 500, 600, 900, 6000, 10000000, 3600000), List.of()).insertTrainNodes(base, List.of(train("T1", 300.0), train("T2", 700.0)));
 
         CalculationNetwork result2 =
-                new TrainNodeInserter(new SystemParameters(750, 500, 600, 900, 6000, 10000000, 3600000)).insertTrainNodes(base, List.of(train("T2", 700.0), train("T1", 300.0)));
+                new TrainNodeInserter(new SystemParameters(750, 500, 600, 900, 6000, 10000000, 3600000), List.of()).insertTrainNodes(base, List.of(train("T2", 700.0), train("T1", 300.0)));
 
         assertSameTopology(result1, result2);
     }
@@ -96,11 +96,11 @@ public final class TrainNodeInserterTest {
         CalculationNetwork base = baseNetwork();
 
         CalculationNetwork result1 =
-                new TrainNodeInserter(ElectricalTestCases.SYSTEM_PARAMETERS)
+                new TrainNodeInserter(ElectricalTestCases.SYSTEM_PARAMETERS, List.of())
                         .insertTrainNodes(base, List.of(train("T1", 300.0), train("T2", 700.0)));
 
         CalculationNetwork result2 =
-                new TrainNodeInserter(ElectricalTestCases.SYSTEM_PARAMETERS)
+                new TrainNodeInserter(ElectricalTestCases.SYSTEM_PARAMETERS, List.of())
                         .insertTrainNodes(base, List.of(train("T1", 300.0), train("T2", 700.0)));
 
         assertSameTopology(result1, result2);
@@ -141,6 +141,7 @@ public final class TrainNodeInserterTest {
                 id,
                 "section-1",
                 "track-1",
+                "U",
                 positionM,
                 Real.fromDouble(0.0)
         );

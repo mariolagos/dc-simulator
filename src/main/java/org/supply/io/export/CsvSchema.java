@@ -30,6 +30,7 @@ public final class CsvSchema {
                         "train_id",
                         "section_id",
                         "track_id",
+                        "route_id",
                         "position_m",
                         "p_req_W"
                 )

@@ -18,6 +18,7 @@ public class LineFactory {
         List<? extends Config> lines = gridConfig.getConfigList("lines");
 
         for (Config lineConfig : lines) {
+            String lineId = lineConfig.getString("line_id");
             String nodeFromId = lineConfig.getString("node_from_id");
             String nodeToId = lineConfig.getString("node_to_id");
             double resistanceOhmPerM = lineConfig.getDouble("resistance_ohm_per_m");
@@ -26,6 +27,7 @@ public class LineFactory {
             Node to = model.getNode(nodeToId);
 
             Line line = new Line(
+                    lineId,
                     from,
                     to,
                     Real.fromDouble(resistanceOhmPerM)

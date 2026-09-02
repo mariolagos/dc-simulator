@@ -8,6 +8,7 @@ public record RunCsvInput(
         List<String> trainIds,
         List<String> sectionIds,
         List<String> trackIds,
+        List<String> routeIds,
         List<Integer> departureTimes,
         double exportResolutionS
 ) {

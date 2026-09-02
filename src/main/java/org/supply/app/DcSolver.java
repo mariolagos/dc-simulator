@@ -1,9 +1,11 @@
 package org.supply.app;
 
 import com.typesafe.config.Config;
+import org.supply.domain.Route;
 import org.supply.domain.RunSample;
 import org.supply.domain.SystemParameters;
 import org.supply.loader.GridModelLoader;
+import org.supply.loader.RouteFactory;
 import org.supply.loader.RunSampleLoader;
 import org.supply.loader.SystemParametersFactory;
 import org.supply.math.Real;
@@ -76,11 +78,17 @@ public final class DcSolver {
                     baseNetwork,
                     writer);
 
+            List<Route> routes =
+                    new RouteFactory().build(
+                            solverContext.dcsim().getConfig("traffic")
+                    );
+
             solveRun(
                     solverContext.systemParameters(),
                     baseNetwork,
                     writer,
-                    runCsv);
+                    runCsv,
+                    routes);
         }
     }
 
@@ -121,7 +129,9 @@ public final class DcSolver {
             SystemParameters systemParameters,
             CalculationNetwork baseNetwork,
             LongTableWriter writer,
-            Path runCsv) throws Exception {
+            Path runCsv,
+            List<Route> routes
+    ) throws Exception {
 
         List<RunSample> samples =
                 new RunSampleLoader().load(runCsv);
@@ -130,7 +140,7 @@ public final class DcSolver {
                 new TrainPositionFactory();
 
         TrainNodeInserter trainNodeInserter =
-                new TrainNodeInserter(systemParameters);
+                new TrainNodeInserter(systemParameters, routes);
 
         Map<Double, List<RunSample>> samplesByTime =
                 samples.stream()

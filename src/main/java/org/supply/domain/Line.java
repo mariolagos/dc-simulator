@@ -6,15 +6,23 @@ import java.util.Objects;
 
 public class Line {
 
+    private final String lineId;
     private final Node fromNode;
     private final Node toNode;
     private final Real resistanceOhmPerM;
     private String description;
 
-    public Line(Node fromNode, Node toNode, Real resistanceOhmPerM) {
+    public Line(
+            String lineId,
+            Node fromNode,
+            Node toNode,
+            Real resistanceOhmPerM
+    ) {
+        this.lineId = Objects.requireNonNull(lineId, "lineId");
         this.fromNode = Objects.requireNonNull(fromNode, "fromNode");
         this.toNode = Objects.requireNonNull(toNode, "toNode");
-        this.resistanceOhmPerM = Objects.requireNonNull(resistanceOhmPerM, "resistanceOhmPerM");
+        this.resistanceOhmPerM =
+                Objects.requireNonNull(resistanceOhmPerM, "resistanceOhmPerM");
     }
 
     public Node getFromNode() {
