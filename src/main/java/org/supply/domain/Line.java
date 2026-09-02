@@ -44,4 +44,8 @@ public class Line {
     public void setDescription(String description) {
         this.description = description;
     }
+
+    public String getLineId() {
+        return lineId;
+    }
 }

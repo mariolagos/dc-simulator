@@ -131,7 +131,23 @@ public final class TrainNodeInserter {
             String feedingNodeId = feedingNodeByTrain.get(train.trainId());
             String returnNodeId = returnNodeByTrain.get(train.trainId());
 
+
             if (feedingNodeId == null || returnNodeId == null) {
+                System.err.println(
+                        "FAILED train=" + train.trainId()
+                                + " route=" + train.routeId()
+                                + " pos=" + train.positionM()
+                );
+
+                for (CalculationBranch branch : outBranches) {
+                    System.err.println(
+                            "branch=" + branch.id()
+                                    + " sourceId=" + branch.sourceId()
+                                    + " from=" + branch.fromNodeId()
+                                    + " to=" + branch.toNodeId()
+                    );
+                }
+
                 throw new IllegalArgumentException(
                         "Could not connect train " + train.trainId()
                                 + " at " + train.sectionId()

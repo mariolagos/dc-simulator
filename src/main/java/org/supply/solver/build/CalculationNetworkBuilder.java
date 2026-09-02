@@ -76,8 +76,8 @@ public final class CalculationNetworkBuilder {
             );
 
             branches.add(new CalculationBranch(
-                    "line_" + branchIndex,
-                    from.getNodeId() + "-" + to.getNodeId(),
+                    line.getLineId() + "_" + branchIndex,
+                    line.getLineId(),
                     from.getNodeId(),
                     to.getNodeId(),
                     resistanceOhm
@@ -127,7 +127,8 @@ public final class CalculationNetworkBuilder {
     private record FixedLoadConnection(
             String feedingNodeId,
             String returnNodeId
-    ) {}
+    ) {
+    }
 
     private static void addSubstationElements(
             GridModel gridModel,
