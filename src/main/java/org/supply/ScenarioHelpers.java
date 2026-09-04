@@ -60,12 +60,15 @@ public final class ScenarioHelpers {
             int bisKm = (int) requireNumericCell(km, "bisKm", r.getRowNum());
             double bisMeter = requireNumericCell(m, "bisMeter", r.getRowNum());
 
-            if (bisMeter < 0.0 || bisMeter >= 1000.0) {
+            if (bisMeter < 0) {
                 throw new IllegalArgumentException(
-                        "Invalid bisMeter at row " + r.getRowNum() + ": " + bisMeter + " (expected 0 <= bisMeter < 1000)"
+                        "Invalid bisMeter at row "
+                                + r.getRowNum()
+                                + ": "
+                                + bisMeter
+                                + " (expected bisMeter >= 0)"
                 );
             }
-
             pts.add(new TrackInterpolationPoint(posM, bisKm, bisMeter));
         }
 
@@ -132,9 +135,9 @@ public final class ScenarioHelpers {
             if (Double.isNaN(tp.positionM) || Double.isInfinite(tp.positionM)) {
                 throw new IllegalArgumentException("Invalid track position at index " + i + ": " + tp.positionM);
             }
-            if (tp.bisMeter < 0.0 || tp.bisMeter >= 1000.0) {
+            if (tp.bisMeter < 0.0) {
                 throw new IllegalArgumentException(
-                        "Invalid bisMeter at index " + i + ": " + tp.bisMeter + " (expected 0 <= bisMeter < 1000)"
+                        "Invalid bisMeter at index " + i + ": " + tp.bisMeter + " (expected bisMeter >= 0)"
                 );
             }
             if (i > 0 && tp.positionM <= prev) {

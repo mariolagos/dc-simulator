@@ -176,7 +176,8 @@ public final class RunCsvFromExcel {
             row.put(K_TRACK, trackId);
             row.put(K_ROUTE, routeId);
             row.put(K_POS, fmt(p.positionM()));
-            row.put(K_P, fmt(p.pReqW()));            out.add(row);
+            row.put(K_P, fmt(p.pReqW()));
+            out.add(row);
         }
 
         return out;
@@ -202,7 +203,7 @@ public final class RunCsvFromExcel {
         Map<String, Integer> col = headerIndex(header);
 
         int cTime = requireCol(col, "time [s]");
-        int cPos = requireCol(col, "bisPosition [km,m]");
+        int cPos = requireCol(col, "position [m]");
         int cMot = requireCol(col, "primaryMotoringPower [kW]");
         int cBrk = requireCol(col, "primaryMotorBrakingPower [kW]");
 
@@ -218,8 +219,7 @@ public final class RunCsvFromExcel {
 
             double timeS = timeCell.getNumericCellValue() + departureTime;
 
-            double runPosM = posCell.getNumericCellValue() * 1000;
-            double posM = ScenarioHelpers.toAbsolutePositionM(runPosM, trackPoints);
+            double posM = posCell.getNumericCellValue();
             double motKW = numericOrZero(r.getCell(cMot));
             double brkKW = numericOrZero(r.getCell(cBrk));
 
@@ -277,10 +277,15 @@ public final class RunCsvFromExcel {
         try (InputStream in = Files.newInputStream(excelXlsx);
              Workbook wb = new XSSFWorkbook(in)) {
 
-            Sheet shRun = wb.getSheet("run");
+            Sheet shRun = wb.getSheet("+0sek");
             Sheet shTrack = wb.getSheet("track");
+
             if (shRun == null || shTrack == null) {
-                throw new IllegalArgumentException("Workbook must contain sheets named 'run' and 'track': " + excelXlsx);
+                throw new IllegalArgumentException(
+                        "Workbook must contain sheets named "
+                                + "'+0sek' and 'track': "
+                                + excelXlsx
+                );
             }
 
             List<TrackInterpolationPoint> trackPoints = ScenarioHelpers.buildTrackInterpolationPoints(shTrack);
