@@ -17,9 +17,7 @@ import org.supply.solver.build.TrainPositionFactory;
 import org.supply.solver.electrical.LinearSystemSolver;
 import org.supply.solver.electrical.SingleTimestepSolver;
 import org.supply.solver.io.LongTableWriter;
-import org.supply.solver.model.CalculationBranch;
 import org.supply.solver.model.CalculationNetwork;
-import org.supply.solver.model.CalculationNode;
 import org.supply.solver.model.CalculationTrainPosition;
 import org.supply.solver.model.DiodeSubstationElement;
 import org.supply.solver.model.ElectricalElement;
@@ -167,6 +165,48 @@ public final class DcSolver {
 
             previousVoltages = result.voltages();
         }
+    }
+
+    private static boolean isAcceptable(
+            SystemParameters systemParameters,
+            CalculationNetwork network,
+            SingleTimestepSolver.NetworkResult result
+    ) {
+        if (!result.converged()) {
+            return false;
+        }
+
+        for (Real voltage : result.voltages().values()) {
+            if (!Double.isFinite(voltage.asDouble())) {
+                return false;
+            }
+        }
+
+        double maxVoltageV =
+                systemParameters.uMaxV() + 1e-3;
+
+        for (CalculationTrainLoad load : network.trainLoads()) {
+            Real feedingVoltage =
+                    result.voltages().get(load.feedingNodeId());
+            Real returnVoltage =
+                    result.voltages().get(load.returnNodeId());
+
+            if (feedingVoltage == null || returnVoltage == null) {
+                return false;
+            }
+
+            double trainVoltageV =
+                    feedingVoltage.asDouble()
+                            - returnVoltage.asDouble();
+
+            if (!Double.isFinite(trainVoltageV)
+                    || trainVoltageV <= 0.0
+                    || trainVoltageV > maxVoltageV) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static SingleTimestepSolver.NetworkResult solveTimestep(
@@ -565,13 +605,17 @@ public final class DcSolver {
 
         SingleTimestepSolver.NetworkResult result =
                 solveWithRetry(
-                        timestepSolver,
+                        systemParameters, timestepSolver,
                         timestepNetwork,
                         requestedPowersW,
                         previousVoltages
                 );
 
-        if (result.converged()) {
+        if (isAcceptable(
+                systemParameters,
+                timestepNetwork,
+                result
+        )) {
             return new SolveResult(
                     result,
                     requestedPowersW
@@ -583,7 +627,7 @@ public final class DcSolver {
 
         SingleTimestepSolver.NetworkResult feasibleResult =
                 solveWithRetry(
-                        timestepSolver,
+                        systemParameters, timestepSolver,
                         timestepNetwork,
                         scaledRegenerationOnly(
                                 requestedPowersW,
@@ -592,7 +636,11 @@ public final class DcSolver {
                         previousVoltages
                 );
 
-        if (!feasibleResult.converged()) {
+        if (!isAcceptable(
+                systemParameters,
+                timestepNetwork,
+                feasibleResult
+        )) {
             throw new IllegalStateException(
                     "DC network is not solvable even with zero regenerative train power"
             );
@@ -610,13 +658,17 @@ public final class DcSolver {
 
             SingleTimestepSolver.NetworkResult candidateResult =
                     solveWithRetry(
-                            timestepSolver,
+                            systemParameters, timestepSolver,
                             timestepNetwork,
                             candidatePowersW,
                             previousVoltages
                     );
 
-            if (candidateResult.converged()) {
+            if (isAcceptable(
+                    systemParameters,
+                    timestepNetwork,
+                    candidateResult
+            )) {
                 feasibleAlpha = alpha;
                 feasibleResult = candidateResult;
             } else {
@@ -637,7 +689,7 @@ public final class DcSolver {
     }
 
     private static SingleTimestepSolver.NetworkResult solveWithRetry(
-            SingleTimestepSolver timestepSolver,
+            SystemParameters systemParameters, SingleTimestepSolver timestepSolver,
             CalculationNetwork timestepNetwork,
             Map<String, Double> powersW,
             Map<String, Real> previousVoltages
