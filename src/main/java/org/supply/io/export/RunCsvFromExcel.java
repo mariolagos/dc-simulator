@@ -203,7 +203,7 @@ public final class RunCsvFromExcel {
         Map<String, Integer> col = headerIndex(header);
 
         int cTime = requireCol(col, "time [s]");
-        int cPos = requireCol(col, "position [m]");
+        int cPos = requireCol(col, "bisPosition [km,m]");
         int cMot = requireCol(col, "primaryMotoringPower [kW]");
         int cBrk = requireCol(col, "primaryMotorBrakingPower [kW]");
 
@@ -219,7 +219,10 @@ public final class RunCsvFromExcel {
 
             double timeS = timeCell.getNumericCellValue() + departureTime;
 
-            double posM = posCell.getNumericCellValue();
+            double posM =
+                    posCell.getNumericCellValue()
+                            * 1000.0;
+
             double motKW = numericOrZero(r.getCell(cMot));
             double brkKW = numericOrZero(r.getCell(cBrk));
 
