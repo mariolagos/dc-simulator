@@ -5,6 +5,7 @@ import java.util.List;
 
 public record RunCsvInput(
         List<Path> runExcels,
+        List<String> runExcelSheets,
         List<String> trainIds,
         List<String> sectionIds,
         List<String> trackIds,

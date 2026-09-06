@@ -271,6 +271,7 @@ public final class RunCsvFromExcel {
 
     public static List<Map<String, String>> readFullRunRows(
             Path excelXlsx,
+            String runExcelSheet,
             String trainId,
             String sectionId,
             String trackId,
@@ -280,18 +281,28 @@ public final class RunCsvFromExcel {
         try (InputStream in = Files.newInputStream(excelXlsx);
              Workbook wb = new XSSFWorkbook(in)) {
 
-            Sheet shRun = wb.getSheet("+0sek");
+            Sheet shRun = wb.getSheet(runExcelSheet);
             Sheet shTrack = wb.getSheet("track");
 
-            if (shRun == null || shTrack == null) {
+            if (shRun == null) {
                 throw new IllegalArgumentException(
-                        "Workbook must contain sheets named "
-                                + "'+0sek' and 'track': "
+                        "Workbook does not contain run sheet '"
+                                + runExcelSheet
+                                + "': "
                                 + excelXlsx
                 );
             }
 
-            List<TrackInterpolationPoint> trackPoints = ScenarioHelpers.buildTrackInterpolationPoints(shTrack);
+            if (shTrack == null) {
+                throw new IllegalArgumentException(
+                        "Workbook does not contain sheet 'track': "
+                                + excelXlsx
+                );
+            }
+
+            List<TrackInterpolationPoint> trackPoints =
+                    ScenarioHelpers.buildTrackInterpolationPoints(shTrack);
+
             return readRunSheet(
                     shRun,
                     trackPoints,
@@ -306,6 +317,7 @@ public final class RunCsvFromExcel {
 
     public static void writeRunCsv(
             List<Path> excelXlsxs,
+            List<String> runExcelSheets,
             List<String> trainIds,
             List<String> sectionIds,
             List<String> trackIds,
@@ -314,18 +326,26 @@ public final class RunCsvFromExcel {
             List<Integer> departureTimes,
             double exportResolutionS
     ) throws Exception {
-        if (excelXlsxs == null || trainIds == null) {
-            throw new IllegalArgumentException("excelXlsxs and trainIds must not be null");
+        if (excelXlsxs == null
+                || runExcelSheets == null
+                || trainIds == null) {
+            throw new IllegalArgumentException(
+                    "excelXlsxs, runExcelSheets and trainIds must not be null"
+            );
         }
+
+        if (excelXlsxs.size() != runExcelSheets.size()) {
+            throw new IllegalArgumentException(
+                    "excelXlsxs and runExcelSheets must have the same size"
+            );
+        }
+
         if (excelXlsxs.size() != trainIds.size()) {
-            throw new IllegalArgumentException("excelXlsxs and trainIds must have the same size");
+            throw new IllegalArgumentException(
+                    "excelXlsxs and trainIds must have the same size"
+            );
         }
-        if (departureTimes == null) {
-            throw new IllegalArgumentException("departureTimes must not be null");
-        }
-        if (excelXlsxs.size() != departureTimes.size()) {
-            throw new IllegalArgumentException("excelXlsxs and departureTimes must have the same size");
-        }
+
         if (exportResolutionS < 0.0) {
             throw new IllegalArgumentException("exportResolutionS must be >= 0");
         }
@@ -334,6 +354,7 @@ public final class RunCsvFromExcel {
 
         for (int i = 0; i < excelXlsxs.size(); i++) {
             Path runExcel = excelXlsxs.get(i);
+            String runExcelSheet = runExcelSheets.get(i);
             String trainId = trainIds.get(i);
             String sectionId = sectionIds.get(i);
             String trackId = trackIds.get(i);
@@ -342,10 +363,12 @@ public final class RunCsvFromExcel {
             List<Map<String, String>> rows =
                     readFullRunRows(
                             runExcel,
+                            runExcelSheet,
                             trainId,
                             sectionId,
                             trackId,
-                            routeId, departureTimes.get(i)
+                            routeId,
+                            departureTimes.get(i)
                     );
 
             if (exportResolutionS > 0.0) {

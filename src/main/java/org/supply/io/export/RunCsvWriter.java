@@ -20,6 +20,7 @@ public final class RunCsvWriter {
 
         RunCsvFromExcel.writeRunCsv(
                 input.runExcels(),
+                input.runExcelSheets(),
                 input.trainIds(),
                 input.sectionIds(),
                 input.trackIds(),

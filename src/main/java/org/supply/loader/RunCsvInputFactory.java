@@ -15,6 +15,7 @@ public final class RunCsvInputFactory {
     public RunCsvInput build(Config dcsim, Path confFile) throws Exception {
 
         List<Path> runExcels = new ArrayList<>();
+        List<String> runExcelSheets = new ArrayList<>();
         List<String> trainIds = new ArrayList<>();
         List<String> trackIds = new ArrayList<>();
         List<String> routeIds = new ArrayList<>();
@@ -100,6 +101,11 @@ public final class RunCsvInputFactory {
             String runExcelText =
                     templateConfig.getString("run_excel");
 
+            String runExcelSheet =
+                    templateConfig.hasPath("run_excel_sheet")
+                            ? templateConfig.getString("run_excel_sheet")
+                            : "run";
+
             Path runExcel =
                     confFile.getParent()
                             .resolve(runExcelText)
@@ -133,7 +139,8 @@ public final class RunCsvInputFactory {
                 trackIds.add(trackId);
                 routeIds.add(routeId);
                 departureTimes.add(expandedDepartureSec);
-                runExcels.add(runExcel);            }
+                runExcels.add(runExcel);
+                runExcelSheets.add(runExcelSheet);}
         }
 
         double exportResolutionS =
@@ -143,6 +150,7 @@ public final class RunCsvInputFactory {
 
         return new RunCsvInput(
                 runExcels,
+                runExcelSheets,
                 trainIds,
                 sectionIds,
                 trackIds,

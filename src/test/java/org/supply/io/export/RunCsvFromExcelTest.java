@@ -34,6 +34,7 @@ public final class RunCsvFromExcelTest {
         List<Map<String, String>> up =
                 RunCsvFromExcel.readFullRunRows(
                         ae,
+                        "+0sek",
                         "T_up",
                         "1",
                         "u",
@@ -44,6 +45,7 @@ public final class RunCsvFromExcelTest {
         List<Map<String, String>> down =
                 RunCsvFromExcel.readFullRunRows(
                         ea,
+                        "+0sek",
                         "T_down",
                         "1",
                         "d",
