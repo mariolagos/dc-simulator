@@ -83,11 +83,14 @@ public final class DcSolver {
 
             solveRun(
                     solverContext.systemParameters(),
+                    solverContext.trackTransform(),
                     baseNetwork,
                     writer,
                     runCsv,
-                    routes);
+                    routes
+            );
         }
+
     }
 
     private static void saveStaticResults(SystemParameters systemParameters, CalculationNetwork baseNetwork, LongTableWriter writer) {
@@ -125,6 +128,7 @@ public final class DcSolver {
 
     private static void solveRun(
             SystemParameters systemParameters,
+            TrackTransformService trackTransform,
             CalculationNetwork baseNetwork,
             LongTableWriter writer,
             Path runCsv,
@@ -135,7 +139,7 @@ public final class DcSolver {
                 new RunSampleLoader().load(runCsv);
 
         TrainPositionFactory trainPositionFactory =
-                new TrainPositionFactory();
+                new TrainPositionFactory(trackTransform);
 
         TrainNodeInserter trainNodeInserter =
                 new TrainNodeInserter(systemParameters, routes);
@@ -296,6 +300,7 @@ public final class DcSolver {
                 timeSec
         );
     }
+
     private static void saveNetworkResults(
             SystemParameters systemParameters,
             CalculationNetwork timestepNetwork,
@@ -760,7 +765,6 @@ public final class DcSolver {
 
         return result;
     }
-
 
 
 }
