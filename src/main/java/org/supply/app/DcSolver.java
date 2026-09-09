@@ -41,6 +41,7 @@ public final class DcSolver {
     private static final boolean DEBUG_TOPOLOGY = false;
     private static final boolean DEBUG_MATRIX = false;
     private static final boolean DEBUG_ALL_NODE_VOLTAGES = false;
+    private static Object trackModel;
 
     record SolveResult(
             SingleTimestepSolver.NetworkResult networkResult,
@@ -109,8 +110,16 @@ public final class DcSolver {
         GridModel grid =
                 new GridModelLoader().load(dcsim);
 
+        new TrackConfigLoader().load(
+                dcsim,
+                context.confFile()
+        );
+
         LoadedTrackModel trackModel =
-                new TrackConfigLoader().load(dcsim);
+                new TrackConfigLoader().load(
+                        dcsim,
+                        context.confFile()
+                );
 
         SystemParameters systemParameters =
                 new SystemParametersFactory().build(dcsim);
@@ -488,9 +497,57 @@ public final class DcSolver {
                     timeSec,
                     "TRAIN",
                     train.trainId(),
+                    "electric_route_id",
+                    train.routeId(),
+                    "",
+                    "INPUT",
+                    null,
+                    null
+            );
+
+            writer.signalRow(
+                    timeSec,
+                    "TRAIN",
+                    train.trainId(),
+                    "electric_route_position_m",
+                    train.routePositionM(),
+                    "m",
+                    "INPUT",
+                    null,
+                    null
+            );
+
+            writer.signalRow(
+                    timeSec,
+                    "TRAIN",
+                    train.trainId(),
+                    "section_id",
+                    train.sectionId(),
+                    "",
+                    "INPUT",
+                    null,
+                    null
+            );
+
+            writer.signalRow(
+                    timeSec,
+                    "TRAIN",
+                    train.trainId(),
+                    "track_id",
+                    train.trackId(),
+                    "",
+                    "INPUT",
+                    null,
+                    null
+            );
+
+            writer.signalRow(
+                    timeSec,
+                    "TRAIN",
+                    train.trainId(),
                     "position_m",
                     train.positionM(),
-                    "m",
+                    "",
                     "INPUT",
                     null,
                     null
@@ -702,7 +759,7 @@ public final class DcSolver {
         SingleTimestepSolver.NetworkResult result =
                 timestepSolver.solve(
                         timestepNetwork,
-                        "R1",
+                        systemParameters.referenceNodeId(),
                         powersW,
                         200,
                         1e-3,
@@ -713,7 +770,7 @@ public final class DcSolver {
             result =
                     timestepSolver.solve(
                             timestepNetwork,
-                            "R1",
+                            systemParameters.referenceNodeId(),
                             powersW,
                             200,
                             1e-3,

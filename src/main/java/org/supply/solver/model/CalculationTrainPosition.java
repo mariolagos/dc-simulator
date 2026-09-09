@@ -7,6 +7,7 @@ public record CalculationTrainPosition(
         String sectionId,
         String trackId,
         String routeId,
+        double routePositionM,
         double positionM,
         Real pReqW
 ) {

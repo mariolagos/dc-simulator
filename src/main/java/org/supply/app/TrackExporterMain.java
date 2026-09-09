@@ -38,7 +38,11 @@ public final class TrackExporterMain {
         Config scenario = DcSimConfigLoader.loadScenarioConfig(confFile);
         Config dcsim = DcSimConfigLoader.requireDcsim(scenario, confFile);
 
-        LoadedTrackModel trackModel = new TrackConfigLoader().load(dcsim);
+        LoadedTrackModel trackModel =
+                new TrackConfigLoader().load(
+                        dcsim,
+                        confFile
+                );
 
         Path exportDir = outputRoot != null
                 ? outputRoot

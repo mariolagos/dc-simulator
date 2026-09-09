@@ -131,6 +131,22 @@ public final class DcReporter {
 
             switch (row.signal) {
 
+                case "electric_route_id" ->
+                        trainResult.electricRouteId =
+                                row.value;
+
+                case "electric_route_position_m" ->
+                        trainResult.electricRoutePositionM =
+                                parseDouble(row.value);
+
+                case "section_id" ->
+                        trainResult.sectionId =
+                                row.value;
+
+                case "track_id" ->
+                        trainResult.trackId =
+                                row.value;
+
                 case "position_m" ->
                         trainResult.positionM =
                                 parseDouble(row.value);
@@ -159,30 +175,33 @@ public final class DcReporter {
 
         return result;
     }
+
     private static void writeTrainSheet(
             Sheet sheet,
             String trainId,
             Map<Double, TrainResult> results
     ) {
-        Row header =
-                sheet.createRow(0);
+        Row header = sheet.createRow(0);
 
         header.createCell(0)
                 .setCellValue(trainId + ".time_s");
-
         header.createCell(1)
-                .setCellValue(trainId + ".position_m");
-
+                .setCellValue(trainId + ".electric_route_id");
         header.createCell(2)
-                .setCellValue(trainId + ".u_V");
-
+                .setCellValue(trainId + ".electric_route_position_m");
         header.createCell(3)
-                .setCellValue(trainId + ".i_A");
-
+                .setCellValue(trainId + ".section_id");
         header.createCell(4)
-                .setCellValue(trainId + ".p_req_W");
-
+                .setCellValue(trainId + ".track_id");
         header.createCell(5)
+                .setCellValue(trainId + ".position_m");
+        header.createCell(6)
+                .setCellValue(trainId + ".u_V");
+        header.createCell(7)
+                .setCellValue(trainId + ".i_A");
+        header.createCell(8)
+                .setCellValue(trainId + ".p_req_W");
+        header.createCell(9)
                 .setCellValue(trainId + ".p_W");
 
         int rowIndex = 1;
@@ -190,28 +209,31 @@ public final class DcReporter {
         for (Map.Entry<Double, TrainResult> entry
                 : results.entrySet()) {
 
-            Row row =
-                    sheet.createRow(rowIndex++);
+            Row row = sheet.createRow(rowIndex++);
 
             row.createCell(0)
                     .setCellValue(entry.getKey());
 
-            TrainResult result =
-                    entry.getValue();
+            TrainResult result = entry.getValue();
 
-            setNumericCell(row, 1, result.positionM);
-            setNumericCell(row, 2, result.uV);
-            setNumericCell(row, 3, result.iA);
-            setNumericCell(row, 4, result.pReqW);
-            setNumericCell(row, 5, result.pW);
+            setTextCell(row, 1, result.electricRouteId);
+            setNumericCell(row, 2, result.electricRoutePositionM);
+            setTextCell(row, 3, result.sectionId);
+            setTextCell(row, 4, result.trackId);
+            setNumericCell(row, 5, result.positionM);
+            setNumericCell(row, 6, result.uV);
+            setNumericCell(row, 7, result.iA);
+            setNumericCell(row, 8, result.pReqW);
+            setNumericCell(row, 9, result.pW);
         }
 
         sheet.createFreezePane(0, 1);
 
-        for (int column = 0; column < 6; column++) {
+        for (int column = 0; column < 10; column++) {
             sheet.autoSizeColumn(column);
         }
     }
+
     private static void writeInstallationWorkbook(
             List<LongTableRow> rows,
             ResultMetadata metadata, Path outputPath
@@ -650,10 +672,25 @@ public final class DcReporter {
     }
 
     private static final class TrainResult {
+        private String electricRouteId;
+        private Double electricRoutePositionM;
+        private String sectionId;
+        private String trackId;
         private Double positionM;
         private Double uV;
         private Double iA;
         private Double pReqW;
         private Double pW;
+    }
+
+    private static void setTextCell(
+            Row row,
+            int column,
+            String value
+    ) {
+        if (value != null) {
+            row.createCell(column)
+                    .setCellValue(value);
+        }
     }
 }

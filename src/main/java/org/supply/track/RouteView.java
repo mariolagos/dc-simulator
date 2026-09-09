@@ -4,20 +4,49 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A named linearized view of the network.
+ * A named linearized view of the track.
  */
 public final class RouteView {
 
     private final String routeId;
     private final String description;
-    private final List<RouteSegment> segments;
+    private final List<PathSample> samples;
 
-    public RouteView(String routeId, String description, List<RouteSegment> segments) {
+    public RouteView(
+            String routeId,
+            String description,
+            List<PathSample> samples
+    ) {
         this.routeId = Objects.requireNonNull(routeId, "routeId");
         this.description = description;
-        this.segments = List.copyOf(Objects.requireNonNull(segments, "segments"));
-        if (this.segments.isEmpty()) {
-            throw new IllegalArgumentException("RouteView must contain at least one segment");
+        this.samples = List.copyOf(
+                Objects.requireNonNull(samples, "samples")
+        );
+
+        if (this.samples.size() < 2) {
+            throw new IllegalArgumentException(
+                    "RouteView must contain at least two path samples"
+            );
+        }
+
+        double previous = Double.NEGATIVE_INFINITY;
+
+        for (PathSample sample : this.samples) {
+            double positionM = sample.getPathPositionM();
+
+            if (!Double.isFinite(positionM)) {
+                throw new IllegalArgumentException(
+                        "Route path position must be finite: " + positionM
+                );
+            }
+
+            if (positionM <= previous) {
+                throw new IllegalArgumentException(
+                        "Route path positions must be strictly increasing"
+                );
+            }
+
+            previous = positionM;
         }
     }
 
@@ -29,7 +58,7 @@ public final class RouteView {
         return description;
     }
 
-    public List<RouteSegment> getSegments() {
-        return segments;
+    public List<PathSample> getSamples() {
+        return samples;
     }
 }

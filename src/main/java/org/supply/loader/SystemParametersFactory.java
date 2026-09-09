@@ -14,7 +14,10 @@ public final class SystemParametersFactory {
                 grid.getDouble("u_max_V"),
                 grid.getDouble("i_train_max_A"),
                 grid.getDouble("p_train_max_W"),
-                grid.getDouble("p_allow_W")
+                grid.getDouble("p_allow_W"),
+                grid.hasPath("reference_node_id")
+                        ? grid.getString("reference_node_id")
+                        : "R1"
         );
     }
 }

@@ -52,6 +52,7 @@ public final class C1SingleTimestepTopologyTest {
                 "track-1",
                 "U",
                 400.0,
+                400.0,
                 Real.fromDouble(0.0)
         );
 

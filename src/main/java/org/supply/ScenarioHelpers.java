@@ -69,8 +69,47 @@ public final class ScenarioHelpers {
                                 + " (expected bisMeter >= 0)"
                 );
             }
-            pts.add(new TrackInterpolationPoint(posM, bisKm, bisMeter));
-        }
+            TrackInterpolationPoint point =
+                    new TrackInterpolationPoint(
+                            posM,
+                            bisKm,
+                            bisMeter
+                    );
+
+            if (!pts.isEmpty()) {
+                TrackInterpolationPoint previous =
+                        pts.get(pts.size() - 1);
+
+                if (Double.compare(
+                        point.positionM,
+                        previous.positionM
+                ) == 0) {
+                    if (point.bisKm == previous.bisKm
+                            && Double.compare(
+                            point.bisMeter,
+                            previous.bisMeter
+                    ) == 0) {
+                        // BA may emit identical consecutive track points.
+                        // One point is sufficient for interpolation.
+                        continue;
+                    }
+
+                    throw new IllegalArgumentException(
+                            "Conflicting track points at position "
+                                    + point.positionM
+                                    + ": "
+                                    + previous.bisKm
+                                    + "+"
+                                    + previous.bisMeter
+                                    + " and "
+                                    + point.bisKm
+                                    + "+"
+                                    + point.bisMeter
+                    );
+                }
+            }
+
+            pts.add(point);        }
 
         validateTrackInterpolationPoints(pts);
         return pts;

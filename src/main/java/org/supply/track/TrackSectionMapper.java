@@ -30,8 +30,20 @@ public final class TrackSectionMapper {
             }
         }
 
+        RouteSegment last =
+                section.getSegments().get(
+                        section.getSegments().size() - 1
+                );
+
         throw new IllegalArgumentException(
-                "Coordinate not found within section '" + section.getSectionId() + "': " + railwayCoordinate
+                "Coordinate not found within section '"
+                        + section.getSectionId()
+                        + "': "
+                        + railwayCoordinate
+                        + "; last segment="
+                        + last.getStartRwy()
+                        + " -> "
+                        + last.getEndRwy()
         );
     }
 

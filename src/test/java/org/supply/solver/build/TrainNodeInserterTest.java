@@ -143,6 +143,7 @@ public final class TrainNodeInserterTest {
                 "track-1",
                 "U",
                 positionM,
+                positionM,
                 Real.fromDouble(0.0)
         );
     }

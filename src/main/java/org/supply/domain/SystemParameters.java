@@ -9,8 +9,30 @@ public record SystemParameters(
         double uMaxV,
         double iMaxA,
         double pTrainMaxW,
-        double pAllowW
+        double pAllowW,
+        String referenceNodeId
 ) {
+    public SystemParameters(
+            double uNominalV,
+            double uMinV,
+            double uCutoffV,
+            double uMaxV,
+            double iMaxA,
+            double pTrainMaxW,
+            double pAllowW
+    ) {
+        this(
+                uNominalV,
+                uMinV,
+                uCutoffV,
+                uMaxV,
+                iMaxA,
+                pTrainMaxW,
+                pAllowW,
+                "R1"
+        );
+    }
+
     public void saveStaticData(LongTableWriter writer) {
         writer.signalRow(
                 null,

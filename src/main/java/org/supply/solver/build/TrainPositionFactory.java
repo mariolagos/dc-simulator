@@ -4,7 +4,6 @@ import org.supply.domain.RunSample;
 import org.supply.math.Real;
 import org.supply.solver.model.CalculationTrainPosition;
 import org.supply.track.ModelCoordinate;
-import org.supply.track.RwyCoordinate;
 import org.supply.track.TrackTransformService;
 
 import java.util.ArrayList;
@@ -29,23 +28,10 @@ public final class TrainPositionFactory {
         List<CalculationTrainPosition> out = new ArrayList<>();
 
         for (RunSample sample : samples) {
-            int railwayPositionM =
-                    Math.toIntExact(
-                            Math.round(sample.positionM())
-                    );
-
-            RwyCoordinate railwayCoordinate =
-                    new RwyCoordinate(
-                            sample.sectionId(),
-                            RwyCoordinate.formatKmShort(railwayPositionM),
-                            railwayPositionM,
-                            sample.trackId()
-                    );
-
             ModelCoordinate modelCoordinate =
-                    trackTransform.toModel(
+                    trackTransform.pathToModel(
                             sample.routeId(),
-                            railwayCoordinate
+                            sample.positionM()
                     );
 
             out.add(new CalculationTrainPosition(
@@ -53,7 +39,8 @@ public final class TrainPositionFactory {
                     modelCoordinate.getSectionId(),
                     modelCoordinate.getTrackId(),
                     sample.routeId(),
-                    modelCoordinate.getPositionM(),
+                    sample.positionM(),               // routePositionM
+                    modelCoordinate.getPositionM(),   // positionM inom sektionen
                     Real.fromDouble(sample.pReqW())
             ));
         }

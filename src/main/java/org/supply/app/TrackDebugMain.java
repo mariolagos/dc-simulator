@@ -31,7 +31,11 @@ public final class TrackDebugMain {
         Config scenario = DcSimConfigLoader.loadScenarioConfig(confFile);
         Config dcsim = DcSimConfigLoader.requireDcsim(scenario, confFile);
 
-        LoadedTrackModel trackModel = new TrackConfigLoader().load(dcsim);
+        LoadedTrackModel trackModel =
+                new TrackConfigLoader().load(
+                        dcsim,
+                        confFile
+                );
 
         System.out.println("=== TRACK DEBUG ===");
         System.out.println("Sections: " + trackModel.getSectionsById().keySet());

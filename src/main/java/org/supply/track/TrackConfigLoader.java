@@ -5,25 +5,158 @@ import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class TrackConfigLoader {
 
-    public LoadedTrackModel load(Config dcsim) {
+    public LoadedTrackModel load(Config dcsim)
+            throws Exception {
+        return load(dcsim, null);
+    }
+
+    public LoadedTrackModel load(
+            Config dcsim,
+            Path confFile
+    ) throws Exception {
+
         if (!dcsim.hasPath("track")) {
-            return new TrackLoader().load(List.of(), List.of(), List.of());
+            return new TrackLoader().load(
+                    List.of(),
+                    List.of(),
+                    List.of()
+            );
         }
 
         Config track = dcsim.getConfig("track");
 
-        List<KilometerBoard> boards = loadKilometerBoards(track);
-        List<TrackJunction> junctions = loadJunctions(track);
-        List<Station> stations = loadStations(track);
+        List<KilometerBoard> boards =
+                loadKilometerBoards(track);
+        List<TrackJunction> junctions =
+                loadJunctions(track);
+        List<Station> stations =
+                loadStations(track);
 
-        return new TrackLoader().load(boards, junctions, stations);
+        LoadedTrackModel sectionModel =
+                new TrackLoader().load(
+                        boards,
+                        junctions,
+                        stations
+                );
+
+        Map<String, RouteView> routeViews =
+                loadRouteViews(
+                        track,
+                        confFile
+                );
+
+        return new LoadedTrackModel(
+                sectionModel.getSectionsById(),
+                sectionModel.getJunctions(),
+                sectionModel.getStations(),
+                routeViews
+        );    }
+
+
+    private Map<String, RouteView> loadRouteViews(
+            Config track,
+            Path confFile
+    ) throws Exception {
+        boolean hasWorkbook =
+                track.hasPath("route_data_excel");
+        boolean hasViews =
+                track.hasPath("route_views");
+
+        if (!hasWorkbook && !hasViews) {
+            return Map.of();
+        }
+
+        if (!hasWorkbook || !hasViews) {
+            throw new IllegalArgumentException(
+                    "track.route_data_excel and "
+                            + "track.route_views must be configured together"
+            );
+        }
+
+        Path workbookPath =
+                resolveRelativeToConfig(
+                        confFile,
+                        track.getString("route_data_excel")
+                );
+
+        Map<String, RouteView> result =
+                new LinkedHashMap<>();
+
+        RouteViewExcelReader reader =
+                new RouteViewExcelReader();
+
+        for (Config routeConfig :
+                track.getConfigList("route_views")) {
+
+            String routeId =
+                    routeConfig.getString("route_id");
+
+            String sheetName =
+                    routeConfig.getString("sheet");
+
+            RouteView previous =
+                    result.put(
+                            routeId,
+                            reader.read(
+                                    workbookPath,
+                                    sheetName,
+                                    routeId
+                            )
+                    );
+
+            if (previous != null) {
+                throw new IllegalArgumentException(
+                        "Duplicate track route_id: "
+                                + routeId
+                );
+            }
+        }
+
+        return Map.copyOf(result);
     }
 
+    private Path resolveRelativeToConfig(
+            Path confFile,
+            String pathText
+    ) {
+        Path path = Path.of(pathText);
+
+        if (path.isAbsolute()) {
+            return path.normalize();
+        }
+
+        if (confFile == null
+                || confFile.toAbsolutePath().getParent() == null) {
+            throw new IllegalArgumentException(
+                    "Cannot resolve relative track route workbook: "
+                            + pathText
+            );
+        }
+
+        Path resolved =
+                confFile.toAbsolutePath()
+                        .getParent()
+                        .resolve(path)
+                        .normalize();
+
+        if (!Files.isRegularFile(resolved)) {
+            throw new IllegalArgumentException(
+                    "Track route workbook not found: "
+                            + resolved
+            );
+        }
+
+        return resolved;
+    }
     private List<KilometerBoard> loadKilometerBoards(Config track) {
         List<KilometerBoard> result = new ArrayList<>();
         if (!track.hasPath("kilometer_boards")) {

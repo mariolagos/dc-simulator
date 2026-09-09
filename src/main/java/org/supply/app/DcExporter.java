@@ -26,7 +26,10 @@ public final class DcExporter {
                 new GridModelLoader().load(dcsim);
 
         LoadedTrackModel trackModel =
-                new TrackConfigLoader().load(dcsim);
+                new TrackConfigLoader().load(
+                        dcsim,
+                        context.confFile()
+                );
 
         new NetworkInputCsvWriter().writeAll(
                 dcsim,

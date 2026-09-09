@@ -17,7 +17,7 @@ import static org.junit.Assert.assertTrue;
 public final class RunCsvFromExcelTest {
 
     @Test
-    public void usesBisPositionAndPreservesDirection()
+    public void usesRoutePositionInsteadOfBisPosition()
             throws Exception {
 
         Path tempDir =
@@ -54,34 +54,25 @@ public final class RunCsvFromExcelTest {
                 );
 
         assertEquals(
-                500.0,
+                0.0,
                 position(up.get(0)),
                 1e-9
         );
         assertEquals(
-                5153.0,
+                4653.0,
                 position(up.get(1)),
                 1e-9
         );
 
         assertEquals(
-                5153.0,
+                0.0,
                 position(down.get(0)),
                 1e-9
         );
         assertEquals(
-                500.0,
+                4653.0,
                 position(down.get(1)),
                 1e-9
-        );
-
-        assertTrue(
-                position(up.get(1))
-                        > position(up.get(0))
-        );
-        assertTrue(
-                position(down.get(1))
-                        < position(down.get(0))
         );
     }
 

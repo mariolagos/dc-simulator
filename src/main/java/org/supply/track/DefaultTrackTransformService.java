@@ -10,10 +10,18 @@ public final class DefaultTrackTransformService implements TrackTransformService
 
     private final LoadedTrackModel trackModel;
     private final TrackSectionMapper mapper;
+    private final RouteViewMapper routeViewMapper;
 
-    public DefaultTrackTransformService(LoadedTrackModel trackModel) {
-        this.trackModel = Objects.requireNonNull(trackModel, "trackModel");
+    public DefaultTrackTransformService(
+            LoadedTrackModel trackModel
+    ) {
+        this.trackModel =
+                Objects.requireNonNull(
+                        trackModel,
+                        "trackModel"
+                );
         this.mapper = new TrackSectionMapper();
+        this.routeViewMapper = new RouteViewMapper();
     }
 
     @Override
@@ -42,13 +50,42 @@ public final class DefaultTrackTransformService implements TrackTransformService
     }
 
     @Override
-    public ModelCoordinate pathToModel(String routeId, double pathPositionM) {
-        throw new UnsupportedOperationException("pathToModel not implemented yet");
+    public ModelCoordinate pathToModel(
+            String routeId,
+            double pathPositionM
+    ) {
+        RwyCoordinate railwayCoordinate =
+                pathToRailway(
+                        routeId,
+                        pathPositionM
+                );
+
+        return toModel(
+                routeId,
+                railwayCoordinate
+        );
     }
 
     @Override
-    public RwyCoordinate pathToRailway(String routeId, double pathPositionM) {
-        throw new UnsupportedOperationException("pathToRailway not implemented yet");
+    public RwyCoordinate pathToRailway(
+            String routeId,
+            double pathPositionM
+    ) {
+        RouteView route =
+                trackModel
+                        .getRouteViewsById()
+                        .get(routeId);
+
+        if (route == null) {
+            throw new IllegalArgumentException(
+                    "Unknown track route: " + routeId
+            );
+        }
+
+        return routeViewMapper.toRailway(
+                route,
+                pathPositionM
+        );
     }
 
     @Override
