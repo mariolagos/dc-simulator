@@ -148,6 +148,25 @@ public final class RunCsvInputFactory {
                         ? dcsim.getDouble("export.exportResolution_s")
                         : 0.0;
 
+        Config simulationControl =
+                dcsim.getConfig("simulationControl");
+
+        int simulationStartSec =
+                TimeUtils.parseHmsToSeconds(
+                        simulationControl.getString("simulationStart")
+                );
+
+        int simulationEndSec =
+                TimeUtils.parseHmsToSeconds(
+                        simulationControl.getString("simulationEnd")
+                );
+
+        if (simulationEndSec < simulationStartSec) {
+            throw new IllegalArgumentException(
+                    "simulationEnd must not be before simulationStart"
+            );
+        }
+
         return new RunCsvInput(
                 runExcels,
                 runExcelSheets,
@@ -156,6 +175,8 @@ public final class RunCsvInputFactory {
                 trackIds,
                 routeIds,
                 departureTimes,
+                simulationStartSec,
+                simulationEndSec,
                 exportResolutionS
         );
     }

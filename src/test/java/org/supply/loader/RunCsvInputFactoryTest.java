@@ -27,6 +27,11 @@ public final class RunCsvInputFactoryTest {
 
         Config dcsim =
                 ConfigFactory.parseString("""
+                        simulationControl {
+                          simulationStart = "10:00:00"
+                          simulationEnd = "11:00:00"
+                        }
+
                         traffic {
                           timetable {
                             trains = [
@@ -77,6 +82,15 @@ public final class RunCsvInputFactoryTest {
                 input.departureTimes()
         );
 
+        assertEquals(
+                36000,
+                input.simulationStartSec()
+        );
+
+        assertEquals(
+                39600,
+                input.simulationEndSec()
+        );
         assertEquals(3, input.runExcels().size());
         assertEquals(runExcel, input.runExcels().get(0));
         assertEquals(runExcel, input.runExcels().get(1));
@@ -108,6 +122,11 @@ public final class RunCsvInputFactoryTest {
 
         Config dcsim =
                 ConfigFactory.parseString("""
+                    simulationControl {
+                      simulationStart = "10:00:00"
+                      simulationEnd = "11:00:00"
+                    }
+
                     traffic {
                       timetable {
                         trains = [
@@ -147,6 +166,16 @@ public final class RunCsvInputFactoryTest {
         assertEquals(
                 java.util.List.of(18000),
                 input.departureTimes()
+        );
+
+        assertEquals(
+                36000,
+                input.simulationStartSec()
+        );
+
+        assertEquals(
+                39600,
+                input.simulationEndSec()
         );
     }
 }

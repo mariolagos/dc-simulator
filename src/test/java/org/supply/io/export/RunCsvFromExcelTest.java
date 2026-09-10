@@ -76,6 +76,81 @@ public final class RunCsvFromExcelTest {
         );
     }
 
+    @Test
+    public void clipsRunToAbsoluteSimulationWindow()
+            throws Exception {
+
+        Path tempDir =
+                Files.createTempDirectory(
+                        "run-csv-time-window-test"
+                );
+
+        Path runExcel = tempDir.resolve("run.xlsx");
+        Path runCsv = tempDir.resolve("run.csv");
+
+        writeWorkbook(runExcel, 0.500, 5.153);
+
+        RunCsvFromExcel.writeRunCsv(
+                List.of(runExcel),
+                List.of("+0sek"),
+                List.of("T1"),
+                List.of("1"),
+                List.of("u"),
+                List.of("U"),
+                runCsv,
+                List.of(36000),
+                36004,
+                36008,
+                0.0
+        );
+
+        List<String> lines = Files.readAllLines(runCsv);
+
+        assertEquals(3, lines.size());
+
+        String[] first = lines.get(1).split(",", -1);
+        String[] last = lines.get(2).split(",", -1);
+
+        assertEquals(36004.0, Double.parseDouble(first[0]), 1e-9);
+        assertEquals(1861.2, Double.parseDouble(first[5]), 1e-9);
+
+        assertEquals(36008.0, Double.parseDouble(last[0]), 1e-9);
+        assertEquals(3722.4, Double.parseDouble(last[5]), 1e-9);
+    }
+
+    @Test
+    public void omitsRunOutsideSimulationWindow()
+            throws Exception {
+
+        Path tempDir =
+                Files.createTempDirectory(
+                        "run-csv-outside-window-test"
+                );
+
+        Path runExcel = tempDir.resolve("run.xlsx");
+        Path runCsv = tempDir.resolve("run.csv");
+
+        writeWorkbook(runExcel, 0.500, 5.153);
+
+        RunCsvFromExcel.writeRunCsv(
+                List.of(runExcel),
+                List.of("+0sek"),
+                List.of("T1"),
+                List.of("1"),
+                List.of("u"),
+                List.of("U"),
+                runCsv,
+                List.of(36000),
+                36100,
+                36200,
+                0.0
+        );
+
+        List<String> lines = Files.readAllLines(runCsv);
+
+        assertEquals(1, lines.size());
+    }
+
     private static double position(
             Map<String, String> row
     ) {
@@ -140,7 +215,7 @@ public final class RunCsvFromExcelTest {
         addRunRow(
                 sheet,
                 2,
-                1.0,
+                10.0,
                 4653.0,
                 lastBisPosition
         );

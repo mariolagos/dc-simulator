@@ -11,6 +11,8 @@ public record RunCsvInput(
         List<String> trackIds,
         List<String> routeIds,
         List<Integer> departureTimes,
+        int simulationStartSec,
+        int simulationEndSec,
         double exportResolutionS
 ) {
 }

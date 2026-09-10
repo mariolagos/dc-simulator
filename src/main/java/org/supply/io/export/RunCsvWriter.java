@@ -27,8 +27,9 @@ public final class RunCsvWriter {
                 input.routeIds(),
                 runCsvFile,
                 input.departureTimes(),
+                input.simulationStartSec(),
+                input.simulationEndSec(),
                 input.exportResolutionS()
-        );
-    }
+        );    }
 
 }

@@ -51,7 +51,64 @@ public final class RunCsvFromExcel {
         return pts;
     }
 
-    private static List<RunPoint> resampleRunPoints(List<RunPoint> src, double resolutionS) {
+    private static List<RunPoint> clipRunPoints(
+            List<RunPoint> source,
+            double simulationStartS,
+            double simulationEndS
+    ) {
+        if (simulationEndS < simulationStartS) {
+            throw new IllegalArgumentException(
+                    "simulationEndS must not be before simulationStartS"
+            );
+        }
+
+        if (source == null || source.isEmpty()) {
+            return List.of();
+        }
+
+        double runStartS = source.get(0).timeS();
+        double runEndS = source.get(source.size() - 1).timeS();
+
+        double overlapStartS =
+                Math.max(simulationStartS, runStartS);
+        double overlapEndS =
+                Math.min(simulationEndS, runEndS);
+
+        if (overlapEndS < overlapStartS) {
+            return List.of();
+        }
+
+        List<RunPoint> clipped = new ArrayList<>();
+
+        clipped.add(new RunPoint(
+                overlapStartS,
+                interpolatePositionAt(source, overlapStartS),
+                powerAt(source, overlapStartS)
+        ));
+
+        for (RunPoint point : source) {
+            if (point.timeS() > overlapStartS
+                    && point.timeS() < overlapEndS) {
+                clipped.add(point);
+            }
+        }
+
+        if (overlapEndS > overlapStartS) {
+            clipped.add(new RunPoint(
+                    overlapEndS,
+                    interpolatePositionAt(source, overlapEndS),
+                    powerAt(source, overlapEndS)
+            ));
+        }
+
+        return clipped;
+    }
+
+    private static List<RunPoint> resampleRunPoints(
+            List<RunPoint> src,
+            double resolutionS,
+            double anchor
+    ) {
         if (src == null || src.isEmpty()) {
             throw new IllegalArgumentException("src must not be empty");
         }
@@ -67,7 +124,6 @@ public final class RunCsvFromExcel {
         double tStartRaw = src.get(0).timeS();
         double tEnd = src.get(src.size() - 1).timeS();
 
-        double anchor = 0.0;
         double tStart = Math.ceil((tStartRaw - anchor) / resolutionS) * resolutionS + anchor;
 
         for (double t0 = tStart; t0 <= tEnd + 1e-9; t0 += resolutionS) {
@@ -323,6 +379,8 @@ public final class RunCsvFromExcel {
             List<String> routeIds,
             Path outRunCsv,
             List<Integer> departureTimes,
+            int simulationStartSec,
+            int simulationEndSec,
             double exportResolutionS
     ) throws Exception {
         if (excelXlsxs == null
@@ -349,6 +407,12 @@ public final class RunCsvFromExcel {
             throw new IllegalArgumentException("exportResolutionS must be >= 0");
         }
 
+        if (simulationEndSec < simulationStartSec) {
+            throw new IllegalArgumentException(
+                    "simulationEndSec must not be before simulationStartSec"
+            );
+        }
+
         List<Map<String, String>> allRows = new ArrayList<>();
 
         for (int i = 0; i < excelXlsxs.size(); i++) {
@@ -370,16 +434,32 @@ public final class RunCsvFromExcel {
                             departureTimes.get(i)
                     );
 
-            if (exportResolutionS > 0.0) {
-                List<RunPoint> pts = toRunPoints(rows);
-                pts = resampleRunPoints(pts, exportResolutionS);
-                rows = fromRunPoints(
-                        pts,
-                        trainId,
-                        sectionId,
-                        trackId,
-                        routeId);
+            List<RunPoint> points =
+                    clipRunPoints(
+                            toRunPoints(rows),
+                            simulationStartSec,
+                            simulationEndSec
+                    );
+
+            if (points.isEmpty()) {
+                continue;
             }
+
+            if (exportResolutionS > 0.0) {
+                points = resampleRunPoints(
+                        points,
+                        exportResolutionS,
+                        simulationStartSec
+                );
+            }
+
+            rows = fromRunPoints(
+                    points,
+                    trainId,
+                    sectionId,
+                    trackId,
+                    routeId
+            );
 
             allRows.addAll(rows);
         }
