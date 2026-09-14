@@ -1,6 +1,9 @@
 package org.supply.loader;
 
 import com.typesafe.config.Config;
+import org.supply.domain.InstallationModel;
+import org.supply.domain.SixTerminalRectifierInstallation;
+import org.supply.domain.SixTerminalRectifierTerminal;
 import org.supply.math.Real;
 import org.supply.domain.ConnectionType;
 import org.supply.domain.InstallationCategory;
@@ -9,8 +12,10 @@ import org.supply.domain.PowerInstallation;
 import org.supply.domain.RectifierType;
 import org.supply.model.GridModel;
 
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.supply.utils.ConfigUtils.requirePositiveReal;
@@ -71,9 +76,101 @@ public class InstallationFactory {
             );
 
             model.addInstallation(inst);
+
+            if (instConfig.hasPath("installation_model")) {
+                buildModeledInstallation(
+                        model,
+                        instConfig,
+                        inst
+                );
+            }
         }
     }
 
+    private static void buildModeledInstallation(
+            GridModel model,
+            Config instConfig,
+            PowerInstallation installation
+    ) {
+        InstallationModel installationModel =
+                InstallationModel.valueOf(
+                        requireString(
+                                instConfig,
+                                "installation_model"
+                        ).toUpperCase()
+                );
+
+        if (installation.getInstallationCategory()
+                != InstallationCategory.SUBSTATION) {
+            throw new IllegalArgumentException(
+                    "installation_model requires SUBSTATION: "
+                            + installation.getInstallationId()
+            );
+        }
+
+        switch (installationModel) {
+            case SIX_TERMINAL_RECTIFIER:
+                buildSixTerminalRectifier(
+                        model,
+                        instConfig,
+                        installation
+                );
+                break;
+
+            default:
+                throw new IllegalArgumentException(
+                        "Unsupported installation_model: "
+                                + installationModel
+                );
+        }
+    }
+
+    private static void buildSixTerminalRectifier(
+            GridModel model,
+            Config instConfig,
+            PowerInstallation installation
+    ) {
+        Config terminalsConfig =
+                instConfig.getConfig("terminals");
+
+        Map<SixTerminalRectifierTerminal, String>
+                terminalNodeIds =
+                new EnumMap<>(
+                        SixTerminalRectifierTerminal.class
+                );
+
+        for (SixTerminalRectifierTerminal terminal
+                : SixTerminalRectifierTerminal.values()) {
+            String nodeId = requireString(
+                    terminalsConfig,
+                    terminal.name()
+            );
+
+            model.getNode(nodeId);
+            terminalNodeIds.put(terminal, nodeId);
+
+            model.addInstallationConnection(
+                    new InstallationConnection(
+                            installation.getInstallationId(),
+                            nodeId,
+                            terminal.connectionType()
+                    )
+            );
+        }
+
+        model.addSixTerminalRectifierInstallation(
+                new SixTerminalRectifierInstallation(
+                        installation.getInstallationId(),
+                        installation.isEnabled(),
+                        installation.getEmfV().asDouble(),
+                        installation
+                                .getInternalResistanceOhm()
+                                .asDouble(),
+                        installation.getRectifierType(),
+                        terminalNodeIds
+                )
+        );
+    }
     private static void buildInstallationConnections(GridModel model, Config gridConfig) {
         if (!gridConfig.hasPath("installation_connections")) {
             return;

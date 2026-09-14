@@ -5,6 +5,7 @@ import org.supply.domain.Load;
 import org.supply.domain.Node;
 import org.supply.domain.InstallationConnection;
 import org.supply.domain.PowerInstallation;
+import org.supply.domain.SixTerminalRectifierInstallation;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,6 +20,9 @@ public class GridModel {
     private final List<PowerInstallation> installations = new ArrayList<>();
     private final List<InstallationConnection> installationConnections = new ArrayList<>();
     private final List<Load.FixedLoad> fixedLoads = new ArrayList<>();
+    private final List<SixTerminalRectifierInstallation>
+            sixTerminalRectifierInstallations =
+            new ArrayList<>();
 
     // --- Nodes ---
     public void addNode(Node node) {
@@ -76,4 +80,16 @@ public class GridModel {
     public List<Load.FixedLoad> fixedLoads() {
         return fixedLoads;
     }
+
+    public void addSixTerminalRectifierInstallation(
+            SixTerminalRectifierInstallation installation
+    ) {
+        sixTerminalRectifierInstallations.add(installation);
+    }
+
+    public List<SixTerminalRectifierInstallation>
+    getSixTerminalRectifierInstallations() {
+        return sixTerminalRectifierInstallations;
+    }
+
 }

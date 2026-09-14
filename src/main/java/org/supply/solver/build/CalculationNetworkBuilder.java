@@ -39,15 +39,46 @@ public final class CalculationNetworkBuilder {
         List<CalculationBranch> branches = new ArrayList<>();
         Map<String, ModelCoordinate> coordByNodeId = new LinkedHashMap<>();
 
+        ElectricalNodeAliases aliases =
+                ElectricalNodeAliases.from(gridModel);
+
+
         for (Node node : gridModel.getNodes()) {
-            RwyCoordinate rwy = RwyCoordinateParser.parse(node.getPositionRwy());
-            ModelCoordinate model = trackTransform.toModel(rwy.getSectionId(), rwy);
+            RwyCoordinate rwy =
+                    RwyCoordinateParser.parse(
+                            node.getPositionRwy()
+                    );
+
+            ModelCoordinate model =
+                    trackTransform.toModel(
+                            rwy.getSectionId(),
+                            rwy
+                    );
 
             coordByNodeId.put(node.getNodeId(), model);
+        }
+
+        Set<String> addedNodeIds = new HashSet<>();
+
+        for (Node node : gridModel.getNodes()) {
+            String canonicalNodeId =
+                    aliases.canonicalNodeId(
+                            node.getNodeId()
+                    );
+
+            if (!addedNodeIds.add(canonicalNodeId)) {
+                continue;
+            }
+
+            Node representative =
+                    gridModel.getNode(canonicalNodeId);
+
+            ModelCoordinate model =
+                    coordByNodeId.get(canonicalNodeId);
 
             nodes.add(new CalculationNode(
-                    node.getNodeId(),
-                    node.getNodeId(),
+                    canonicalNodeId,
+                    representative.getNodeId(),
                     model.getSectionId(),
                     model.getTrackId(),
                     model.getPositionM(),
@@ -78,8 +109,8 @@ public final class CalculationNetworkBuilder {
             branches.add(new CalculationBranch(
                     line.getLineId() + "_" + branchIndex,
                     line.getLineId(),
-                    from.getNodeId(),
-                    to.getNodeId(),
+                    aliases.canonicalNodeId(from.getNodeId()),
+                    aliases.canonicalNodeId(to.getNodeId()),
                     resistanceOhm
             ));
         }
@@ -87,16 +118,17 @@ public final class CalculationNetworkBuilder {
         List<ElectricalElement> elements = new ArrayList<>();
         elements.addAll(branches);
 
-        addSubstationElements(gridModel, elements);
+        addSubstationElements(gridModel, elements, aliases);
 
-        addFixedLoadElements(gridModel, elements);
+        addFixedLoadElements(gridModel, elements, aliases);
 
         return new CalculationNetwork(nodes, branches, List.of(), elements);
     }
 
     private void addFixedLoadElements(
             GridModel gridModel,
-            List<ElectricalElement> elements
+            List<ElectricalElement> elements,
+            ElectricalNodeAliases aliases
     ) {
         for (Load.FixedLoad load : gridModel.fixedLoads()) {
 
@@ -110,10 +142,10 @@ public final class CalculationNetworkBuilder {
                     );
 
             InstallationConnection feeding =
-                    singleConnection(gridModel, inst, ConnectionType.FEEDING);
+                    singleConnection(gridModel, inst, ConnectionType.FEEDING, aliases);
 
             InstallationConnection returning =
-                    singleConnection(gridModel, inst, ConnectionType.RETURN);
+                    singleConnection(gridModel, inst, ConnectionType.RETURN, aliases);
 
             elements.add(new FixedLoadElement(
                     load.id(),
@@ -132,7 +164,8 @@ public final class CalculationNetworkBuilder {
 
     private static void addSubstationElements(
             GridModel gridModel,
-            List<ElectricalElement> elements
+            List<ElectricalElement> elements,
+            ElectricalNodeAliases aliases
     ) {
         for (PowerInstallation inst : gridModel.getInstallations()) {
             if (!inst.isSubstation()) {
@@ -140,10 +173,10 @@ public final class CalculationNetworkBuilder {
             }
 
             InstallationConnection feeding =
-                    singleConnection(gridModel, inst, ConnectionType.FEEDING);
+                    singleConnection(gridModel, inst, ConnectionType.FEEDING, aliases);
 
             InstallationConnection returning =
-                    singleConnection(gridModel, inst, ConnectionType.RETURN);
+                    singleConnection(gridModel, inst, ConnectionType.RETURN, aliases);
 
             if (feeding.getNodeId().equals(returning.getNodeId())) {
                 throw new IllegalArgumentException(
@@ -201,79 +234,60 @@ public final class CalculationNetworkBuilder {
         return out;
     }
 
-    private static void addSubstationBranches(
-            GridModel gridModel,
-            List<CalculationBranch> branches
-    ) {
-        for (PowerInstallation inst : gridModel.getInstallations()) {
-            if (!inst.isSubstation()) {
-                continue;
-            }
-
-            InstallationConnection feeding = singleConnection(
-                    gridModel,
-                    inst,
-                    ConnectionType.FEEDING
-            );
-
-            InstallationConnection returning = singleConnection(
-                    gridModel,
-                    inst,
-                    ConnectionType.RETURN
-            );
-
-            if (feeding.getNodeId().equals(returning.getNodeId())) {
-                throw new IllegalArgumentException(
-                        "Substation " + inst.getInstallationId()
-                                + " has same feeding and return node: "
-                                + feeding.getNodeId()
-                );
-            }
-
-            branches.add(new CalculationBranch(
-                    "substation_" + inst.getInstallationId(),
-                    inst.getInstallationId(),
-                    feeding.getNodeId(),
-                    returning.getNodeId(),
-                    inst.getInternalResistanceOhm()
-            ));
-        }
-    }
-
     private static InstallationConnection singleConnection(
             GridModel gridModel,
             PowerInstallation inst,
-            ConnectionType type
+            ConnectionType type,
+            ElectricalNodeAliases aliases
     ) {
-        InstallationConnection found = null;
+        String foundNodeId = null;
 
-        for (InstallationConnection conn : gridModel.getInstallationConnections()) {
-            if (!conn.getInstallationId().equals(inst.getInstallationId())) {
+        for (InstallationConnection connection
+                : gridModel.getInstallationConnections()) {
+            if (!connection.getInstallationId().equals(
+                    inst.getInstallationId()
+            )) {
                 continue;
             }
 
-            if (!conn.getConnectionType().equals(type)) {
+            if (connection.getConnectionType() != type) {
                 continue;
             }
 
-            if (found != null) {
+            String canonicalNodeId =
+                    aliases.canonicalNodeId(
+                            connection.getNodeId()
+                    );
+
+            if (foundNodeId != null
+                    && !foundNodeId.equals(canonicalNodeId)) {
                 throw new IllegalArgumentException(
-                        "Substation " + inst.getInstallationId()
-                                + " has multiple " + type + " connections"
+                        "Substation "
+                                + inst.getInstallationId()
+                                + " has multiple electrical "
+                                + type
+                                + " connections"
                 );
             }
 
-            found = conn;
+            foundNodeId = canonicalNodeId;
         }
 
-        if (found == null) {
+        if (foundNodeId == null) {
             throw new IllegalArgumentException(
-                    "Substation " + inst.getInstallationId()
-                            + " missing " + type + " connection"
+                    "Substation "
+                            + inst.getInstallationId()
+                            + " missing "
+                            + type
+                            + " connection"
             );
         }
 
-        return found;
+        return new InstallationConnection(
+                inst.getInstallationId(),
+                foundNodeId,
+                type
+        );
     }
 
 }

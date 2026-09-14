@@ -163,34 +163,69 @@ public class GridModelValidator {
         }
     }
 
-    private void validateSubstationConnections(GridModel model) {
-        for (PowerInstallation installation : model.getInstallations()) {
-            if (installation.getInstallationCategory() != InstallationCategory.SUBSTATION) {
+    private void validateSubstationConnections(
+            GridModel model
+    ) {
+        for (PowerInstallation installation
+                : model.getInstallations()) {
+            if (installation.getInstallationCategory()
+                    != InstallationCategory.SUBSTATION) {
                 continue;
             }
 
-            String installationId = installation.getInstallationId();
+            String installationId =
+                    installation.getInstallationId();
+
             int feedingCount = 0;
             int returnCount = 0;
 
-            for (InstallationConnection connection : model.getInstallationConnections()) {
-                if (!installationId.equals(connection.getInstallationId())) {
+            for (InstallationConnection connection
+                    : model.getInstallationConnections()) {
+                if (!installationId.equals(
+                        connection.getInstallationId()
+                )) {
                     continue;
                 }
 
-                if (connection.getConnectionType() == ConnectionType.FEEDING) {
+                if (connection.getConnectionType()
+                        == ConnectionType.FEEDING) {
                     feedingCount++;
-                } else if (connection.getConnectionType() == ConnectionType.RETURN) {
+                } else if (connection.getConnectionType()
+                        == ConnectionType.RETURN) {
                     returnCount++;
                 }
             }
 
-            if (feedingCount < 1 || returnCount < 1) {
+            boolean sixTerminalRectifier =
+                    model.getSixTerminalRectifierInstallations()
+                            .stream()
+                            .anyMatch(modeledInstallation ->
+                                    installationId.equals(
+                                            modeledInstallation
+                                                    .installationId()
+                                    )
+                            );
+
+            int expectedFeedingCount =
+                    sixTerminalRectifier ? 4 : 1;
+
+            int expectedReturnCount =
+                    sixTerminalRectifier ? 2 : 1;
+
+            if (feedingCount != expectedFeedingCount
+                    || returnCount != expectedReturnCount) {
                 throw new IllegalArgumentException(
-                        "SUBSTATION must have at least 1 FEEDING and 1 RETURN connection: "
-                                + "installation_id=" + installationId
-                                + " (FEEDING=" + feedingCount
-                                + ", RETURN=" + returnCount + ")"
+                        "Invalid connections for SUBSTATION "
+                                + "installation_id="
+                                + installationId
+                                + ": expected FEEDING="
+                                + expectedFeedingCount
+                                + ", RETURN="
+                                + expectedReturnCount
+                                + " but was FEEDING="
+                                + feedingCount
+                                + ", RETURN="
+                                + returnCount
                 );
             }
         }

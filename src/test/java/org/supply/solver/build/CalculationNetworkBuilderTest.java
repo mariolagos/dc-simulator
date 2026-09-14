@@ -17,6 +17,11 @@ import org.supply.solver.model.CalculationNodeType;
 import org.supply.solver.model.DiodeSubstationElement;
 import org.supply.solver.model.FixedLoadElement;
 import org.supply.track.*;
+import org.supply.domain.SixTerminalRectifierInstallation;
+import org.supply.domain.SixTerminalRectifierTerminal;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -216,6 +221,116 @@ public class CalculationNetworkBuilderTest {
 
         assertFalse(diode.enabled());
     }
+
+    @Test
+    public void reducesSixTerminalRectifierToTwoElectricalNodes() {
+        Map<SixTerminalRectifierTerminal, String>
+                terminalNodeIds =
+                new EnumMap<>(
+                        SixTerminalRectifierTerminal.class
+                );
+
+        terminalNodeIds.put(
+                SixTerminalRectifierTerminal.NORTH_POWER_LEFT,
+                "F_N_LEFT"
+        );
+        terminalNodeIds.put(
+                SixTerminalRectifierTerminal.NORTH_POWER_RIGHT,
+                "F_N_RIGHT"
+        );
+        terminalNodeIds.put(
+                SixTerminalRectifierTerminal.SOUTH_POWER_LEFT,
+                "F_S_LEFT"
+        );
+        terminalNodeIds.put(
+                SixTerminalRectifierTerminal.SOUTH_POWER_RIGHT,
+                "F_S_RIGHT"
+        );
+        terminalNodeIds.put(
+                SixTerminalRectifierTerminal.NORTH_RETURN,
+                "R_N"
+        );
+        terminalNodeIds.put(
+                SixTerminalRectifierTerminal.SOUTH_RETURN,
+                "R_S"
+        );
+
+        GridModel gridModel = new GridModel();
+
+        for (String nodeId : terminalNodeIds.values()) {
+            gridModel.addNode(
+                    new Node(nodeId, "1 0+000")
+            );
+        }
+
+        PowerInstallation powerInstallation =
+                new PowerInstallation(
+                        "SS0",
+                        InstallationCategory.SUBSTATION,
+                        true,
+                        Real.fromDouble(3120.0),
+                        Real.fromDouble(0.08),
+                        RectifierType.DIODE
+                );
+
+        gridModel.addInstallation(powerInstallation);
+
+        gridModel.addSixTerminalRectifierInstallation(
+                new SixTerminalRectifierInstallation(
+                        "SS0",
+                        true,
+                        3120.0,
+                        0.08,
+                        RectifierType.DIODE,
+                        terminalNodeIds
+                )
+        );
+
+        for (Map.Entry<
+                SixTerminalRectifierTerminal,
+                String> entry : terminalNodeIds.entrySet()) {
+
+            gridModel.addInstallationConnection(
+                    new InstallationConnection(
+                            "SS0",
+                            entry.getValue(),
+                            entry.getKey().connectionType()
+                    )
+            );
+        }
+
+        CalculationNetwork network =
+                new CalculationNetworkBuilder(
+                        new FakeTrackTransformService()
+                ).buildBase(gridModel);
+
+        Set<String> calculationNodeIds =
+                network.nodes().stream()
+                        .map(CalculationNode::id)
+                        .collect(Collectors.toSet());
+
+        assertEquals(
+                Set.of("F_N_LEFT", "R_N"),
+                calculationNodeIds
+        );
+
+        assertEquals(1, network.elements().size());
+
+        DiodeSubstationElement diode =
+                (DiodeSubstationElement)
+                        network.elements().get(0);
+
+        assertEquals("SS0", diode.id());
+        assertEquals(
+                "F_N_LEFT",
+                diode.feedingNodeId()
+        );
+        assertEquals(
+                "R_N",
+                diode.returnNodeId()
+        );
+    }
+
 
     private static CalculationNetwork networkWithNodes(String... nodeIds) {
         List<CalculationNode> nodes = new ArrayList<>();

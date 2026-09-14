@@ -40,7 +40,7 @@ output/
 **/~$*.xls*
 **/~$*.doc*
 **/~$*.ppt*
-build/
+/build/
 .gradle/
 *.patch
 **/~$*.xls*
