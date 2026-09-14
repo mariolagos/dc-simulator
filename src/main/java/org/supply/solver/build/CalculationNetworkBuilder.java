@@ -6,6 +6,8 @@ import org.supply.domain.Line;
 import org.supply.domain.Load;
 import org.supply.domain.Node;
 import org.supply.domain.PowerInstallation;
+import org.supply.domain.SixTerminalRectifierInstallation;
+import org.supply.domain.SixTerminalRectifierTerminal;
 import org.supply.math.Real;
 import org.supply.model.GridModel;
 import org.supply.solver.model.CalculationBranch;
@@ -56,35 +58,17 @@ public final class CalculationNetworkBuilder {
                     );
 
             coordByNodeId.put(node.getNodeId(), model);
-        }
-
-        Set<String> addedNodeIds = new HashSet<>();
-
-        for (Node node : gridModel.getNodes()) {
-            String canonicalNodeId =
-                    aliases.canonicalNodeId(
-                            node.getNodeId()
-                    );
-
-            if (!addedNodeIds.add(canonicalNodeId)) {
-                continue;
-            }
-
-            Node representative =
-                    gridModel.getNode(canonicalNodeId);
-
-            ModelCoordinate model =
-                    coordByNodeId.get(canonicalNodeId);
 
             nodes.add(new CalculationNode(
-                    canonicalNodeId,
-                    representative.getNodeId(),
+                    node.getNodeId(),
+                    node.getNodeId(),
                     model.getSectionId(),
                     model.getTrackId(),
                     model.getPositionM(),
                     CalculationNodeType.GRID_NODE
             ));
         }
+
 
         int branchIndex = 0;
 
@@ -109,11 +93,16 @@ public final class CalculationNetworkBuilder {
             branches.add(new CalculationBranch(
                     line.getLineId() + "_" + branchIndex,
                     line.getLineId(),
-                    aliases.canonicalNodeId(from.getNodeId()),
-                    aliases.canonicalNodeId(to.getNodeId()),
+                    from.getNodeId(),
+                    to.getNodeId(),
                     resistanceOhm
             ));
         }
+
+        addSixTerminalInternalBranches(
+                gridModel,
+                branches
+        );
 
         List<ElectricalElement> elements = new ArrayList<>();
         elements.addAll(branches);
@@ -123,6 +112,80 @@ public final class CalculationNetworkBuilder {
         addFixedLoadElements(gridModel, elements, aliases);
 
         return new CalculationNetwork(nodes, branches, List.of(), elements);
+    }
+
+    private static void addSixTerminalInternalBranches(
+            GridModel gridModel,
+            List<CalculationBranch> branches
+    ) {
+        for (SixTerminalRectifierInstallation installation
+                : gridModel.getSixTerminalRectifierInstallations()) {
+            Map<SixTerminalRectifierTerminal, String> terminals =
+                    installation.terminalNodeIds();
+
+            String powerBus = terminals.get(
+                    SixTerminalRectifierTerminal.NORTH_POWER_LEFT
+            );
+
+            addInternalBranch(
+                    branches,
+                    installation.installationId(),
+                    "north_power_right",
+                    powerBus,
+                    terminals.get(
+                            SixTerminalRectifierTerminal.NORTH_POWER_RIGHT
+                    )
+            );
+
+            addInternalBranch(
+                    branches,
+                    installation.installationId(),
+                    "south_power_left",
+                    powerBus,
+                    terminals.get(
+                            SixTerminalRectifierTerminal.SOUTH_POWER_LEFT
+                    )
+            );
+
+            addInternalBranch(
+                    branches,
+                    installation.installationId(),
+                    "south_power_right",
+                    powerBus,
+                    terminals.get(
+                            SixTerminalRectifierTerminal.SOUTH_POWER_RIGHT
+                    )
+            );
+
+            addInternalBranch(
+                    branches,
+                    installation.installationId(),
+                    "south_return",
+                    terminals.get(
+                            SixTerminalRectifierTerminal.NORTH_RETURN
+                    ),
+                    terminals.get(
+                            SixTerminalRectifierTerminal.SOUTH_RETURN
+                    )
+            );
+        }
+    }
+
+    private static void addInternalBranch(
+            List<CalculationBranch> branches,
+            String installationId,
+            String connectionId,
+            String fromNodeId,
+            String toNodeId
+    ) {
+        branches.add(new CalculationBranch(
+                "internal_" + installationId
+                        + "_" + connectionId,
+                "internal_" + installationId,
+                fromNodeId,
+                toNodeId,
+                Real.fromDouble(MIN_RESISTANCE_OHM)
+        ));
     }
 
     private void addFixedLoadElements(

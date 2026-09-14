@@ -223,7 +223,7 @@ public class CalculationNetworkBuilderTest {
     }
 
     @Test
-    public void reducesSixTerminalRectifierToTwoElectricalNodes() {
+    public void connectsSixTerminalRectifierWithInternalBranches() {
         Map<SixTerminalRectifierTerminal, String>
                 terminalNodeIds =
                 new EnumMap<>(
@@ -299,10 +299,18 @@ public class CalculationNetworkBuilderTest {
             );
         }
 
+        assertEquals(
+                6,
+                gridModel.getNodes().size()
+        );
+
         CalculationNetwork network =
                 new CalculationNetworkBuilder(
                         new FakeTrackTransformService()
                 ).buildBase(gridModel);
+
+        assertEquals(6, network.nodes().size());
+        assertEquals(4, network.branches().size());
 
         Set<String> calculationNodeIds =
                 network.nodes().stream()
@@ -310,15 +318,29 @@ public class CalculationNetworkBuilderTest {
                         .collect(Collectors.toSet());
 
         assertEquals(
-                Set.of("F_N_LEFT", "R_N"),
+                Set.of(
+                        "F_N_LEFT",
+                        "F_N_RIGHT",
+                        "F_S_LEFT",
+                        "F_S_RIGHT",
+                        "R_N",
+                        "R_S"
+                ),
                 calculationNodeIds
         );
 
-        assertEquals(1, network.elements().size());
+        assertEquals(5, network.elements().size());
 
         DiodeSubstationElement diode =
-                (DiodeSubstationElement)
-                        network.elements().get(0);
+                network.elements().stream()
+                        .filter(
+                                DiodeSubstationElement.class::isInstance
+                        )
+                        .map(
+                                DiodeSubstationElement.class::cast
+                        )
+                        .findFirst()
+                        .orElseThrow();
 
         assertEquals("SS0", diode.id());
         assertEquals(
