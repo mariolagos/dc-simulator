@@ -44,14 +44,14 @@ public class GridModelLoader {
               power_installations = [
                 {
                   installation_id = "PS1"
-                  installation_type = SUBSTATION
+                  installation_category = SUBSTATION
                   emf_V = 750.0
                   internal_resistance_ohm = 0.02
                   rectifier_type = DIODE
                 },
                 {
                   installation_id = "P1"
-                  installation_type = POINT
+                  installation_category = POINT
                   rectifier_type = DIODE
                 }
               ]

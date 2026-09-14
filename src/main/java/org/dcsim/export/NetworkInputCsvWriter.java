@@ -156,7 +156,7 @@ public final class NetworkInputCsvWriter {
         }
 
         try (BufferedWriter w = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
-            w.write("installation_id,installation_type,emf_V,internal_resistance_ohm,rectifier_type\n");
+            w.write("installation_id,installation_category,emf_V,internal_resistance_ohm,rectifier_type\n");
 
             if (!grid.hasPath("power_installations")) {
                 return;
@@ -166,7 +166,7 @@ public final class NetworkInputCsvWriter {
 
             for (Config pi : installations) {
                 String installationId = pi.getString("installation_id");
-                String installationType = pi.getString("installation_type");
+                String installationCategory = pi.getString("installation_category");
                 String emfV = pi.hasPath("emf_v")
                         ? String.valueOf(pi.getDouble("emf_v"))
                         : "";
@@ -179,7 +179,7 @@ public final class NetworkInputCsvWriter {
 
                 w.write(String.join(",",
                         installationId,
-                        installationType,
+                        installationCategory,
                         emfV,
                         internalResistance,
                         rectifierType

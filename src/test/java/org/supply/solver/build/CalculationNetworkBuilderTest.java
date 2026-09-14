@@ -3,7 +3,7 @@ package org.supply.solver.build;
 import org.junit.Test;
 import org.supply.domain.ConnectionType;
 import org.supply.domain.InstallationConnection;
-import org.supply.domain.InstallationType;
+import org.supply.domain.InstallationCategory;
 import org.supply.domain.Line;
 import org.supply.domain.Load;
 import org.supply.domain.Node;
@@ -175,7 +175,7 @@ public class CalculationNetworkBuilderTest {
 
         PowerInstallation substation = new PowerInstallation(
                 "SS1",
-                InstallationType.SUBSTATION,
+                InstallationCategory.SUBSTATION,
                 false,
                 Real.fromDouble(750.0),
                 Real.fromDouble(0.005),
@@ -283,7 +283,7 @@ public class CalculationNetworkBuilderTest {
 
         PowerInstallation installation = new PowerInstallation(
                 "FL1",
-                InstallationType.FIXED_LOAD,
+                InstallationCategory.FIXED_LOAD,
                 true,
                 Real.ZERO,
                 Real.ZERO,

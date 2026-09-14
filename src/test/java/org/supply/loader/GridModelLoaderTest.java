@@ -4,7 +4,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.junit.Test;
 import org.supply.domain.ConnectionType;
-import org.supply.domain.InstallationType;
+import org.supply.domain.InstallationCategory;
 import org.supply.domain.Load;
 import org.supply.model.GridModel;
 
@@ -35,7 +35,7 @@ public final class GridModelLoaderTest {
                   power_installations = [
                     {
                       installation_id = "FL1"
-                      installation_type = "FIXED_LOAD"
+                      installation_category = "FIXED_LOAD"
                     }
                   ]
 
@@ -68,8 +68,8 @@ public final class GridModelLoaderTest {
 
         assertEquals(1, model.getInstallations().size());
         assertEquals(
-                InstallationType.FIXED_LOAD,
-                model.getInstallations().get(0).getInstallationType()
+                InstallationCategory.FIXED_LOAD,
+                model.getInstallations().get(0).getInstallationCategory()
         );
 
         assertEquals(2, model.getInstallationConnections().size());

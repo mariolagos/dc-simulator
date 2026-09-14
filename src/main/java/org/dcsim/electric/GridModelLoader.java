@@ -40,7 +40,7 @@ public class GridModelLoader {
 
         for (PowerInstallation inst : installations) {
 
-            if (inst.getInstallationType() != InstallationType.SUBSTATION) continue;
+            if (inst.getInstallationCategory() != InstallationCategory.SUBSTATION) continue;
 
             String id = inst.getInstallationId();
 
@@ -366,8 +366,8 @@ public class GridModelLoader {
                 throw new IllegalArgumentException("Duplicate installation_id: " + installation_id);
             }
 
-            InstallationType installation_type =
-                    InstallationType.valueOf(requireString(conf, "installation_type").toUpperCase());
+            InstallationCategory installation_category =
+                    InstallationCategory.valueOf(requireString(conf, "installation_category").toUpperCase());
 
             // POINT may omit electrical parameters
             Real internal_resistance_ohm = conf.hasPath("internal_resistance_ohm")
@@ -382,7 +382,7 @@ public class GridModelLoader {
                     ? Real.fromDouble(conf.getDouble("emf_v"))
                     : null;
 
-            if (installation_type == InstallationType.SUBSTATION) {
+            if (installation_category == InstallationCategory.SUBSTATION) {
                 if (internal_resistance_ohm == null) {
                     throw new IllegalArgumentException(
                             "Missing required field internal_resistance_ohm for SUBSTATION: " + installation_id);
@@ -399,7 +399,7 @@ public class GridModelLoader {
 
             installations.add(LegacyPowerInstallationAdapter.fromLegacy(
                     installation_id,
-                    installation_type,
+                    installation_category,
                     emf_v,
                     internal_resistance_ohm,
                     rectifier_type,

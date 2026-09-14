@@ -102,25 +102,25 @@ public final class NetworkInputCsvWriter {
         Config grid = dcsim.getConfig("grid");
 
         try (BufferedWriter writer = Files.newBufferedWriter(file)) {
-            writer.write("installation_id,installation_type,enabled,emf_V,internal_resistance_ohm,rectifier_type");
+            writer.write("installation_id,installation_category,enabled,emf_V,internal_resistance_ohm,rectifier_type");
             writer.newLine();
 
             for (Config installation : grid.getConfigList("power_installations")) {
                 String installationId =
                         installation.getString("installation_id");
 
-                String installationType =
-                        installation.getString("installation_type");
+                String installationCategory =
+                        installation.getString("installation_category");
 
                 boolean enabled =
                         installation.hasPath("enabled")
                                 ? installation.getBoolean("enabled")
                                 : true;
 
-                if ("SUBSTATION".equalsIgnoreCase(installationType)) {
+                if ("SUBSTATION".equalsIgnoreCase(installationCategory)) {
                     writer.write(
                             installationId + ","
-                                    + installationType + ","
+                                    + installationCategory + ","
                                     + enabled + ","
                                     + installation.getDouble("emf_V") + ","
                                     + installation.getDouble("internal_resistance_ohm") + ","
@@ -129,7 +129,7 @@ public final class NetworkInputCsvWriter {
                 } else {
                     writer.write(
                             installationId + ","
-                                    + installationType + ","
+                                    + installationCategory + ","
                                     + enabled + ",,,"
                     );
                 }

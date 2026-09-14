@@ -2,7 +2,7 @@ package org.supply.validation;
 
 import org.supply.math.Real;
 import org.supply.domain.ConnectionType;
-import org.supply.domain.InstallationType;
+import org.supply.domain.InstallationCategory;
 import org.supply.domain.Line;
 import org.supply.domain.Node;
 import org.supply.domain.InstallationConnection;
@@ -88,12 +88,12 @@ public class GridModelValidator {
                 throw new IllegalArgumentException("Duplicate installation_id: " + installationId);
             }
 
-            InstallationType installationType = Objects.requireNonNull(
-                    installation.getInstallationType(),
-                    "installation_type for installation_id=" + installationId
+            InstallationCategory installationCategory = Objects.requireNonNull(
+                    installation.getInstallationCategory(),
+                    "installation_category for installation_id=" + installationId
             );
 
-            if (installationType == InstallationType.SUBSTATION) {
+            if (installationCategory == InstallationCategory.SUBSTATION) {
                 Real emfV = Objects.requireNonNull(
                         installation.getEmfV(),
                         "emf_V for installation_id=" + installationId
@@ -121,7 +121,7 @@ public class GridModelValidator {
                 }
             }
 
-            if (installationType == InstallationType.POINT) {
+            if (installationCategory == InstallationCategory.POINT) {
                 if (installation.getEmfV() == null || installation.getInternalResistanceOhm() == null) {
                     throw new IllegalArgumentException(
                             "POINT installation must have neutral electrical placeholders, installation_id="
@@ -165,7 +165,7 @@ public class GridModelValidator {
 
     private void validateSubstationConnections(GridModel model) {
         for (PowerInstallation installation : model.getInstallations()) {
-            if (installation.getInstallationType() != InstallationType.SUBSTATION) {
+            if (installation.getInstallationCategory() != InstallationCategory.SUBSTATION) {
                 continue;
             }
 

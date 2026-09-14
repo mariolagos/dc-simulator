@@ -184,7 +184,7 @@ Line length is derived from node positions after mapping to model coordinates.
 power_installations = [
   {
     installation_id,
-    installation_type,
+    installation_category,
     emf_V,
     internal_resistance_ohm,
     rectifier_type
@@ -193,7 +193,7 @@ power_installations = [
 ```
 
 ```text
-installation_type ∈ { SUBSTATION, POINT }
+installation_category ∈ { SUBSTATION, POINT }
 rectifier_type ∈ { DIODE, THYRISTOR }
 ```
 

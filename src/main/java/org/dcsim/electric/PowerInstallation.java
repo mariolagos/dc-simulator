@@ -7,7 +7,7 @@ import java.util.Objects;
 public class PowerInstallation {
 
     private final String installation_id;
-    private final InstallationType installation_type;
+    private final InstallationCategory installation_category;
 
     // Electrical parameters
     private final Real emf_v;
@@ -19,24 +19,24 @@ public class PowerInstallation {
 
     public PowerInstallation(
             String installation_id,
-            InstallationType installation_type,
+            InstallationCategory installation_category,
             Real emf_v,
             Real internal_resistance_ohm,
             RectifierType rectifier_type
     ) {
-        this(installation_id, installation_type, emf_v, internal_resistance_ohm, rectifier_type, null);
+        this(installation_id, installation_category, emf_v, internal_resistance_ohm, rectifier_type, null);
     }
 
     public PowerInstallation(
             String installation_id,
-            InstallationType installation_type,
+            InstallationCategory installation_category,
             Real emf_v,
             Real internal_resistance_ohm,
             RectifierType rectifier_type,
             String description
     ) {
         this.installation_id = Objects.requireNonNull(installation_id);
-        this.installation_type = Objects.requireNonNull(installation_type);
+        this.installation_category = Objects.requireNonNull(installation_category);
         this.emf_v = emf_v;
         this.internal_resistance_ohm = internal_resistance_ohm;
         this.rectifier_type = rectifier_type;
@@ -47,8 +47,8 @@ public class PowerInstallation {
         return installation_id;
     }
 
-    public InstallationType getInstallationType() {
-        return installation_type;
+    public InstallationCategory getInstallationCategory() {
+        return installation_category;
     }
 
     public Real getEmfV() {
@@ -68,18 +68,18 @@ public class PowerInstallation {
     }
 
     public boolean isSubstation() {
-        return installation_type == InstallationType.SUBSTATION;
+        return installation_category == InstallationCategory.SUBSTATION;
     }
 
     public boolean isPoint() {
-        return installation_type == InstallationType.POINT;
+        return installation_category == InstallationCategory.POINT;
     }
 
     @Override
     public String toString() {
         return "PowerInstallation{" +
                 "installation_id='" + installation_id + '\'' +
-                ", installation_type=" + installation_type +
+                ", installation_category=" + installation_category +
                 ", emf_v=" + emf_v +
                 ", internal_resistance_ohm=" + internal_resistance_ohm +
                 ", rectifier_type='" + rectifier_type +

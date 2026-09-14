@@ -9,7 +9,7 @@ public final class LegacyPowerInstallationAdapter {
 
     public static PowerInstallation fromLegacy(
             String installationId,
-            InstallationType installationType,
+            InstallationCategory installationCategory,
             Real emfV,
             Real internalResistanceOhm,
             String rectifierType,
@@ -17,7 +17,7 @@ public final class LegacyPowerInstallationAdapter {
     ) {
         return new PowerInstallation(
                 installationId,
-                installationType,
+                installationCategory,
                 emfV,
                 internalResistanceOhm,
                 RectifierType.valueOf(rectifierType.toUpperCase()),

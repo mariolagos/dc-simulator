@@ -3,7 +3,7 @@ package org.supply.loader;
 import com.typesafe.config.Config;
 import org.supply.math.Real;
 import org.supply.domain.ConnectionType;
-import org.supply.domain.InstallationType;
+import org.supply.domain.InstallationCategory;
 import org.supply.domain.InstallationConnection;
 import org.supply.domain.PowerInstallation;
 import org.supply.domain.RectifierType;
@@ -37,11 +37,11 @@ public class InstallationFactory {
                 throw new IllegalArgumentException("Duplicate installation_id: " + installationId);
             }
 
-            InstallationType installationType = InstallationType.valueOf(
-                    requireString(instConfig, "installation_type").toUpperCase()
+            InstallationCategory installationCategory = InstallationCategory.valueOf(
+                    requireString(instConfig, "installation_category").toUpperCase()
             );
 
-            boolean isSubstation = installationType == InstallationType.SUBSTATION;
+            boolean isSubstation = installationCategory == InstallationCategory.SUBSTATION;
 
             boolean enabled = instConfig.hasPath("enabled")
                     ? instConfig.getBoolean("enabled")
@@ -63,7 +63,7 @@ public class InstallationFactory {
 
             PowerInstallation inst = new PowerInstallation(
                     installationId,
-                    installationType,
+                    installationCategory,
                     enabled,
                     emfV,
                     internalResistanceOhm,
