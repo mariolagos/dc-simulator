@@ -151,6 +151,116 @@ public final class RunCsvFromExcelTest {
         assertEquals(1, lines.size());
     }
 
+    @Test
+    public void usesRunExcelRelativeDepartureWhenLegDepartureIsMissing()
+            throws Exception {
+        Path tempDir = Files.createTempDirectory("run-csv-leg-times-test");
+        Path firstLeg = tempDir.resolve("A-B.xlsx");
+        Path secondLeg = tempDir.resolve("B-C.xlsx");
+        Path runCsv = tempDir.resolve("run.csv");
+
+        writeWorkbookWithTimetableDeparture(firstLeg, 0.0, 10.0);
+        writeWorkbookWithTimetableDeparture(secondLeg, 15.0, 10.0);
+
+        RunCsvFromExcel.writeRunCsv(
+                List.of(firstLeg, secondLeg),
+                List.of("+0sek", "+0sek"),
+                List.of("T1", "T1"),
+                List.of("", ""),
+                List.of("", ""),
+                List.of("A-C", "A-C"),
+                runCsv,
+                List.of(36000, 36000),
+                java.util.Arrays.asList(null, null),
+                36000,
+                36100,
+                0.0
+        );
+
+        List<String> lines = Files.readAllLines(runCsv);
+        assertEquals(5, lines.size());
+        assertEquals(36000.0, time(lines.get(1)), 1e-9);
+        assertEquals(36010.0, time(lines.get(2)), 1e-9);
+        assertEquals(36015.0, time(lines.get(3)), 1e-9);
+        assertEquals(36025.0, time(lines.get(4)), 1e-9);
+        assertEquals(9306.0, csvPosition(lines.get(4)), 1e-9);
+    }
+
+    @Test
+    public void acceptsNextLegStartingWhenPreviousLegEnds()
+            throws Exception {
+        Path tempDir = Files.createTempDirectory("run-csv-adjacent-legs-test");
+        Path firstLeg = tempDir.resolve("A-B.xlsx");
+        Path secondLeg = tempDir.resolve("B-C.xlsx");
+        Path runCsv = tempDir.resolve("run.csv");
+
+        writeWorkbookWithTimes(firstLeg, 0.0, 10.0);
+        writeWorkbookWithTimes(secondLeg, 0.0, 10.0);
+
+        RunCsvFromExcel.writeRunCsv(
+                List.of(firstLeg, secondLeg),
+                List.of("+0sek", "+0sek"),
+                List.of("T1", "T1"),
+                List.of("", ""),
+                List.of("", ""),
+                List.of("A-C", "A-C"),
+                runCsv,
+                List.of(36000, 36000),
+                java.util.Arrays.asList(null, 10),
+                36000,
+                36100,
+                0.0
+        );
+
+        List<String> lines = Files.readAllLines(runCsv);
+        assertEquals(4, lines.size());
+        assertEquals(36010.0, time(lines.get(2)), 1e-9);
+        assertEquals(4653.0, csvPosition(lines.get(2)), 1e-9);
+        assertEquals(36020.0, time(lines.get(3)), 1e-9);
+        assertEquals(9306.0, csvPosition(lines.get(3)), 1e-9);
+    }
+
+    @Test
+    public void rejectsNextLegStartingBeforePreviousLegEnds()
+            throws Exception {
+        Path tempDir = Files.createTempDirectory("run-csv-overlapping-legs-test");
+        Path firstLeg = tempDir.resolve("A-B.xlsx");
+        Path secondLeg = tempDir.resolve("B-C.xlsx");
+
+        writeWorkbookWithTimes(firstLeg, 0.0, 10.0);
+        writeWorkbookWithTimes(secondLeg, 0.0, 10.0);
+
+        try {
+            RunCsvFromExcel.writeRunCsv(
+                    List.of(firstLeg, secondLeg),
+                    List.of("+0sek", "+0sek"),
+                    List.of("T1", "T1"),
+                    List.of("", ""),
+                    List.of("", ""),
+                    List.of("A-C", "A-C"),
+                    tempDir.resolve("run.csv"),
+                    List.of(36000, 36000),
+                    java.util.Arrays.asList(null, 5),
+                    36000,
+                    36100,
+                    0.0
+            );
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("before previous leg ends"));
+            return;
+        }
+
+        throw new AssertionError("Expected overlapping legs to be rejected");
+    }
+
+    private static double time(String csvLine) {
+        return Double.parseDouble(csvLine.split(",", -1)[0]);
+    }
+
+    private static double csvPosition(String csvLine) {
+        return Double.parseDouble(csvLine.split(",", -1)[5]);
+    }
+
     private static double position(
             Map<String, String> row
     ) {
@@ -164,13 +274,91 @@ public final class RunCsvFromExcelTest {
             double firstBisPosition,
             double lastBisPosition
     ) throws Exception {
+        writeWorkbook(
+                path,
+                firstBisPosition,
+                lastBisPosition,
+                0.0,
+                10.0
+        );
+    }
+
+    private static void writeWorkbookWithTimes(
+            Path path,
+            double firstTimeS,
+            double lastTimeS
+    ) throws Exception {
+        writeWorkbook(
+                path,
+                0.500,
+                5.153,
+                firstTimeS,
+                lastTimeS
+        );
+    }
+
+    private static void writeWorkbookWithTimetableDeparture(
+            Path path,
+            double relativeDepartureS,
+            double runDurationS
+    ) throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            writeRunSheet(
+                    workbook,
+                    0.500,
+                    5.153,
+                    0.0,
+                    runDurationS
+            );
+            writeTrackSheet(workbook);
+            writeTimetableSheet(workbook, relativeDepartureS);
+
+            try (OutputStream out = Files.newOutputStream(path)) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private static void writeTimetableSheet(
+            XSSFWorkbook workbook,
+            double relativeDepartureS
+    ) {
+        Sheet sheet = workbook.createSheet("timetable");
+        Row header = sheet.createRow(0);
+        header.createCell(0).setCellValue("Station");
+        header.createCell(1).setCellValue("Time");
+        header.createCell(2).setCellValue("Time s");
+        header.createCell(3).setCellValue("Type");
+
+        Row departure = sheet.createRow(1);
+        departure.createCell(0).setCellValue("A");
+        int totalSeconds = (int) relativeDepartureS;
+        departure.createCell(1).setCellValue(String.format(
+                "%02d:%02d:%02d",
+                totalSeconds / 3600,
+                totalSeconds % 3600 / 60,
+                totalSeconds % 60
+        ));
+        departure.createCell(2).setCellValue(0.0);
+        departure.createCell(3).setCellValue("departure");
+    }
+
+    private static void writeWorkbook(
+            Path path,
+            double firstBisPosition,
+            double lastBisPosition,
+            double firstTimeS,
+            double lastTimeS
+    ) throws Exception {
         try (XSSFWorkbook workbook =
                      new XSSFWorkbook()) {
 
             writeRunSheet(
                     workbook,
                     firstBisPosition,
-                    lastBisPosition
+                    lastBisPosition,
+                    firstTimeS,
+                    lastTimeS
             );
             writeTrackSheet(workbook);
 
@@ -184,7 +372,9 @@ public final class RunCsvFromExcelTest {
     private static void writeRunSheet(
             XSSFWorkbook workbook,
             double firstBisPosition,
-            double lastBisPosition
+            double lastBisPosition,
+            double firstTimeS,
+            double lastTimeS
     ) {
         Sheet sheet =
                 workbook.createSheet("+0sek");
@@ -208,14 +398,14 @@ public final class RunCsvFromExcelTest {
         addRunRow(
                 sheet,
                 1,
-                0.0,
+                firstTimeS,
                 0.0,
                 firstBisPosition
         );
         addRunRow(
                 sheet,
                 2,
-                10.0,
+                lastTimeS,
                 4653.0,
                 lastBisPosition
         );

@@ -21,6 +21,7 @@ public final class RunCsvInputFactory {
         List<String> routeIds = new ArrayList<>();
         List<String> sectionIds = new ArrayList<>();
         List<Integer> departureTimes = new ArrayList<>();
+        List<Integer> relativeLegDepartureTimes = new ArrayList<>();
 
         if (!dcsim.hasPath("traffic.timetable.trains")) {
             throw new IllegalArgumentException(
@@ -41,12 +42,6 @@ public final class RunCsvInputFactory {
 
             String trainId =
                     train.getString("id");
-
-            String sectionId =
-                    train.getString("sectionId");
-
-            String trackId =
-                    train.getString("trackId");
 
             String routeId =
                     train.getString("routeId");
@@ -98,25 +93,14 @@ public final class RunCsvInputFactory {
             Config templateConfig =
                     templates.getConfig(templateId);
 
-            String runExcelText =
-                    templateConfig.getString("run_excel");
+            List<? extends Config> legs =
+                    templateConfig.hasPath("legs")
+                            ? templateConfig.getConfigList("legs")
+                            : List.of(templateConfig);
 
-            String runExcelSheet =
-                    templateConfig.hasPath("run_excel_sheet")
-                            ? templateConfig.getString("run_excel_sheet")
-                            : "run";
-
-            Path runExcel =
-                    confFile.getParent()
-                            .resolve(runExcelText)
-                            .normalize();
-
-            if (!Files.exists(runExcel)) {
+            if (legs.isEmpty()) {
                 throw new IllegalArgumentException(
-                        "Run Excel not found for train "
-                                + trainId
-                                + ": "
-                                + runExcel
+                        "Template " + templateId + " must contain at least one leg"
                 );
             }
 
@@ -134,13 +118,47 @@ public final class RunCsvInputFactory {
                 int expandedDepartureSec =
                         departureSec + i * headwaySec;
 
-                trainIds.add(expandedTrainId);
-                sectionIds.add(sectionId);
-                trackIds.add(trackId);
-                routeIds.add(routeId);
-                departureTimes.add(expandedDepartureSec);
-                runExcels.add(runExcel);
-                runExcelSheets.add(runExcelSheet);}
+                for (int legIndex = 0; legIndex < legs.size(); legIndex++) {
+                    Config leg = legs.get(legIndex);
+
+                    String runExcelText = leg.getString("run_excel");
+                    String runExcelSheet =
+                            leg.hasPath("run_excel_sheet")
+                                    ? leg.getString("run_excel_sheet")
+                                    : "run";
+
+                    Path runExcel = resolveRunExcel(confFile, runExcelText);
+
+                    if (!Files.exists(runExcel)) {
+                        throw new IllegalArgumentException(
+                                "Run Excel not found for train "
+                                        + expandedTrainId
+                                        + ", template "
+                                        + templateId
+                                        + ", leg "
+                                        + (legIndex + 1)
+                                        + ": "
+                                        + runExcel
+                        );
+                    }
+
+                    Integer relativeLegDepartureSec =
+                            leg.hasPath("departure")
+                                    ? TimeUtils.parseHmsToSeconds(
+                                    leg.getString("departure")
+                            )
+                                    : null;
+
+                    trainIds.add(expandedTrainId);
+                    sectionIds.add(getOptionalString(leg, train, "sectionId"));
+                    trackIds.add(getOptionalString(leg, train, "trackId"));
+                    routeIds.add(routeId);
+                    departureTimes.add(expandedDepartureSec);
+                    relativeLegDepartureTimes.add(relativeLegDepartureSec);
+                    runExcels.add(runExcel);
+                    runExcelSheets.add(runExcelSheet);
+                }
+            }
         }
 
         double exportResolutionS =
@@ -175,6 +193,7 @@ public final class RunCsvInputFactory {
                 trackIds,
                 routeIds,
                 departureTimes,
+                relativeLegDepartureTimes,
                 simulationStartSec,
                 simulationEndSec,
                 exportResolutionS
@@ -223,6 +242,20 @@ public final class RunCsvInputFactory {
         throw new IllegalArgumentException(
                 "Missing required field: " + preferred + " (legacy: " + legacy + ")"
         );
+    }
+
+    private static String getOptionalString(
+            Config preferred,
+            Config fallback,
+            String path
+    ) {
+        if (preferred.hasPath(path)) {
+            return preferred.getString(path);
+        }
+        if (fallback.hasPath(path)) {
+            return fallback.getString(path);
+        }
+        return "";
     }
 
 }

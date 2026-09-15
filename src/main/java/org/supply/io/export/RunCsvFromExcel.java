@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -39,6 +40,12 @@ public final class RunCsvFromExcel {
     private record RunPoint(double timeS, double positionM, double pReqW) {
     }
 
+    private record RunExcelData(
+            List<Map<String, String>> rows,
+            Double relativeDepartureS
+    ) {
+    }
+
     private static List<RunPoint> toRunPoints(List<Map<String, String>> rows) {
         List<RunPoint> pts = new ArrayList<>(rows.size());
         for (Map<String, String> r : rows) {
@@ -49,6 +56,22 @@ public final class RunCsvFromExcel {
             ));
         }
         return pts;
+    }
+
+    private static List<RunPoint> shiftRunPoints(
+            List<RunPoint> source,
+            double timeShiftS,
+            double positionShiftM
+    ) {
+        List<RunPoint> shifted = new ArrayList<>(source.size());
+        for (RunPoint point : source) {
+            shifted.add(new RunPoint(
+                    point.timeS() + timeShiftS,
+                    point.positionM() + positionShiftM,
+                    point.pReqW()
+            ));
+        }
+        return shifted;
     }
 
     private static List<RunPoint> clipRunPoints(
@@ -243,6 +266,29 @@ public final class RunCsvFromExcel {
         return Double.toString(v);
     }
 
+    private static List<Map<String, String>> removeDuplicateTrainTimes(
+            List<Map<String, String>> sortedRows
+    ) {
+        List<Map<String, String>> result = new ArrayList<>(sortedRows.size());
+
+        for (Map<String, String> row : sortedRows) {
+            if (!result.isEmpty()) {
+                Map<String, String> previous = result.get(result.size() - 1);
+                if (previous.get(K_TRAIN).equals(row.get(K_TRAIN))
+                        && Math.abs(
+                        Double.parseDouble(previous.get(K_TIME))
+                                - Double.parseDouble(row.get(K_TIME))
+                ) <= 1e-9) {
+                    result.set(result.size() - 1, row);
+                    continue;
+                }
+            }
+            result.add(row);
+        }
+
+        return result;
+    }
+
     private static List<Map<String, String>> readRunSheet(
             Sheet shRun,
             List<TrackInterpolationPoint> trackPoints,
@@ -324,7 +370,89 @@ public final class RunCsvFromExcel {
         return Double.parseDouble(s.replace(',', '.'));
     }
 
-    public static List<Map<String, String>> readFullRunRows(
+    private static Double readRelativeDepartureS(Workbook workbook) {
+        Sheet timetable = workbook.getSheet("timetable");
+        if (timetable == null) {
+            return null;
+        }
+
+        Iterator<Row> rows = timetable.rowIterator();
+        if (!rows.hasNext()) {
+            return null;
+        }
+
+        Map<String, Integer> columns = headerIndex(rows.next());
+        Integer timeColumn = columns.get("Time");
+        Integer typeColumn = columns.get("Type");
+        if (timeColumn == null || typeColumn == null) {
+            return null;
+        }
+
+        while (rows.hasNext()) {
+            Row row = rows.next();
+            Cell typeCell = row.getCell(typeColumn);
+            if (typeCell == null
+                    || !"departure".equalsIgnoreCase(
+                    typeCell.toString().trim()
+            )) {
+                continue;
+            }
+
+            Cell timeCell = row.getCell(timeColumn);
+            if (timeCell == null) {
+                throw new IllegalArgumentException(
+                        "Departure row in 'timetable' has no 'Time' value"
+                );
+            }
+            if (timeCell.getCellType() == CellType.NUMERIC) {
+                return timeCell.getNumericCellValue() * 24.0 * 60.0 * 60.0;
+            }
+
+            String value = timeCell.toString().trim();
+            if (value.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Departure row in 'timetable' has an empty 'Time' value"
+                );
+            }
+            return parseHmsToSeconds(value);
+        }
+
+        return null;
+    }
+
+    private static double parseHmsToSeconds(String value) {
+        String[] parts = value.split(":", -1);
+        if (parts.length != 3) {
+            throw new IllegalArgumentException(
+                    "Invalid timetable departure time: " + value
+            );
+        }
+
+        try {
+            int hours = Integer.parseInt(parts[0]);
+            int minutes = Integer.parseInt(parts[1]);
+            double seconds = Double.parseDouble(parts[2].replace(',', '.'));
+
+            if (hours < 0
+                    || minutes < 0
+                    || minutes >= 60
+                    || seconds < 0.0
+                    || seconds >= 60.0) {
+                throw new IllegalArgumentException(
+                        "Invalid timetable departure time: " + value
+                );
+            }
+
+            return hours * 3600.0 + minutes * 60.0 + seconds;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "Invalid timetable departure time: " + value,
+                    e
+            );
+        }
+    }
+
+    private static RunExcelData readRunExcel(
             Path excelXlsx,
             String runExcelSheet,
             String trainId,
@@ -358,16 +486,39 @@ public final class RunCsvFromExcel {
             List<TrackInterpolationPoint> trackPoints =
                     ScenarioHelpers.buildTrackInterpolationPoints(shTrack);
 
-            return readRunSheet(
-                    shRun,
-                    trackPoints,
-                    trainId,
-                    sectionId,
-                    trackId,
-                    routeId,
-                    departureTime
+            return new RunExcelData(
+                    readRunSheet(
+                            shRun,
+                            trackPoints,
+                            trainId,
+                            sectionId,
+                            trackId,
+                            routeId,
+                            departureTime
+                    ),
+                    readRelativeDepartureS(wb)
             );
         }
+    }
+
+    public static List<Map<String, String>> readFullRunRows(
+            Path excelXlsx,
+            String runExcelSheet,
+            String trainId,
+            String sectionId,
+            String trackId,
+            String routeId,
+            int departureTime
+    ) throws Exception {
+        return readRunExcel(
+                excelXlsx,
+                runExcelSheet,
+                trainId,
+                sectionId,
+                trackId,
+                routeId,
+                departureTime
+        ).rows();
     }
 
     public static void writeRunCsv(
@@ -383,23 +534,61 @@ public final class RunCsvFromExcel {
             int simulationEndSec,
             double exportResolutionS
     ) throws Exception {
+        writeRunCsv(
+                excelXlsxs,
+                runExcelSheets,
+                trainIds,
+                sectionIds,
+                trackIds,
+                routeIds,
+                outRunCsv,
+                departureTimes,
+                excelXlsxs == null
+                        ? null
+                        : Collections.nCopies(excelXlsxs.size(), null),
+                simulationStartSec,
+                simulationEndSec,
+                exportResolutionS
+        );
+    }
+
+    public static void writeRunCsv(
+            List<Path> excelXlsxs,
+            List<String> runExcelSheets,
+            List<String> trainIds,
+            List<String> sectionIds,
+            List<String> trackIds,
+            List<String> routeIds,
+            Path outRunCsv,
+            List<Integer> departureTimes,
+            List<Integer> relativeLegDepartureTimes,
+            int simulationStartSec,
+            int simulationEndSec,
+            double exportResolutionS
+    ) throws Exception {
         if (excelXlsxs == null
                 || runExcelSheets == null
-                || trainIds == null) {
+                || trainIds == null
+                || sectionIds == null
+                || trackIds == null
+                || routeIds == null
+                || departureTimes == null
+                || relativeLegDepartureTimes == null) {
             throw new IllegalArgumentException(
-                    "excelXlsxs, runExcelSheets and trainIds must not be null"
+                    "Run CSV input lists must not be null"
             );
         }
 
-        if (excelXlsxs.size() != runExcelSheets.size()) {
+        int inputSize = excelXlsxs.size();
+        if (runExcelSheets.size() != inputSize
+                || trainIds.size() != inputSize
+                || sectionIds.size() != inputSize
+                || trackIds.size() != inputSize
+                || routeIds.size() != inputSize
+                || departureTimes.size() != inputSize
+                || relativeLegDepartureTimes.size() != inputSize) {
             throw new IllegalArgumentException(
-                    "excelXlsxs and runExcelSheets must have the same size"
-            );
-        }
-
-        if (excelXlsxs.size() != trainIds.size()) {
-            throw new IllegalArgumentException(
-                    "excelXlsxs and trainIds must have the same size"
+                    "Run CSV input lists must have the same size"
             );
         }
 
@@ -414,6 +603,8 @@ public final class RunCsvFromExcel {
         }
 
         List<Map<String, String>> allRows = new ArrayList<>();
+        Map<String, Double> previousLegEndTimes = new HashMap<>();
+        Map<String, Double> previousLegEndPositions = new HashMap<>();
 
         for (int i = 0; i < excelXlsxs.size(); i++) {
             Path runExcel = excelXlsxs.get(i);
@@ -423,23 +614,72 @@ public final class RunCsvFromExcel {
             String trackId = trackIds.get(i);
             String routeId = routeIds.get(i);
 
-            List<Map<String, String>> rows =
-                    readFullRunRows(
+            RunExcelData runExcelData =
+                    readRunExcel(
                             runExcel,
                             runExcelSheet,
                             trainId,
                             sectionId,
                             trackId,
                             routeId,
-                            departureTimes.get(i)
+                            0
                     );
 
+            List<Map<String, String>> rows = runExcelData.rows();
+
             List<RunPoint> points =
-                    clipRunPoints(
-                            toRunPoints(rows),
-                            simulationStartSec,
-                            simulationEndSec
-                    );
+                    toRunPoints(rows);
+
+            double runExcelStartS = points.get(0).timeS();
+            Integer configuredRelativeDepartureS =
+                    relativeLegDepartureTimes.get(i);
+            double relativeDepartureS =
+                    configuredRelativeDepartureS != null
+                            ? configuredRelativeDepartureS
+                            : runExcelData.relativeDepartureS() != null
+                            ? runExcelData.relativeDepartureS()
+                            : runExcelStartS;
+            double absoluteLegStartS =
+                    departureTimes.get(i) + relativeDepartureS;
+
+            Double previousLegEndS = previousLegEndTimes.get(trainId);
+            if (previousLegEndS != null
+                    && absoluteLegStartS < previousLegEndS - 1e-9) {
+                throw new IllegalArgumentException(
+                        "Leg for train "
+                                + trainId
+                                + " starts at "
+                                + absoluteLegStartS
+                                + " s, before previous leg ends at "
+                                + previousLegEndS
+                                + " s: "
+                                + runExcel
+                );
+            }
+
+            Double previousLegEndPositionM =
+                    previousLegEndPositions.get(trainId);
+            double positionShiftM =
+                    previousLegEndPositionM == null
+                            ? 0.0
+                            : previousLegEndPositionM
+                            - points.get(0).positionM();
+
+            points = shiftRunPoints(
+                    points,
+                    absoluteLegStartS - runExcelStartS,
+                    positionShiftM
+            );
+
+            RunPoint fullLegEnd = points.get(points.size() - 1);
+            previousLegEndTimes.put(trainId, fullLegEnd.timeS());
+            previousLegEndPositions.put(trainId, fullLegEnd.positionM());
+
+            points = clipRunPoints(
+                    points,
+                    simulationStartSec,
+                    simulationEndSec
+            );
 
             if (points.isEmpty()) {
                 continue;
@@ -467,6 +707,8 @@ public final class RunCsvFromExcel {
         allRows.sort(Comparator
                 .comparing((Map<String, String> r) -> Double.parseDouble(r.get(K_TIME)))
                 .thenComparing(r -> r.get(K_TRAIN)));
+
+        allRows = removeDuplicateTrainTimes(allRows);
 
         org.supply.io.export.CsvSchema schema = org.supply.io.export.CsvSchema.runSchema();
 

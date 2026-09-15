@@ -105,6 +105,11 @@ public final class RunCsvInputFactoryTest {
                 java.util.List.of("u", "u", "u"),
                 input.trackIds()
         );
+
+        assertEquals(
+                java.util.Arrays.asList(null, null, null),
+                input.relativeLegDepartureTimes()
+        );
     }
 
     @Test
@@ -176,6 +181,86 @@ public final class RunCsvInputFactoryTest {
         assertEquals(
                 39600,
                 input.simulationEndSec()
+        );
+
+        assertEquals(
+                java.util.Arrays.asList((Integer) null),
+                input.relativeLegDepartureTimes()
+        );
+    }
+
+    @Test
+    public void expandsMultipleLegTemplateForEveryTrain() throws Exception {
+        Path tempDir =
+                Files.createTempDirectory("run-csv-multiple-legs-test");
+
+        Path firstLeg = tempDir.resolve("A-B.xlsx");
+        Path secondLeg = tempDir.resolve("B-C.xlsx");
+        Files.createFile(firstLeg);
+        Files.createFile(secondLeg);
+
+        Path confFile = tempDir.resolve("application.conf");
+
+        Config dcsim = ConfigFactory.parseString("""
+                simulationControl {
+                  simulationStart = "06:00:00"
+                  simulationEnd = "08:00:00"
+                }
+
+                traffic {
+                  timetable.trains = [
+                    {
+                      id = "Train"
+                      template_id = "ABC"
+                      departure = "06:00:00"
+                      count = 2
+                      headway = "00:05:00"
+                      routeId = "A-C"
+                    }
+                  ]
+
+                  templates.ABC.legs = [
+                    {
+                      run_excel = "A-B.xlsx"
+                      run_excel_sheet = "+0sek"
+                    },
+                    {
+                      run_excel = "B-C.xlsx"
+                      departure = "00:15:00"
+                    }
+                  ]
+                }
+                """);
+
+        RunCsvInput input =
+                new RunCsvInputFactory().build(dcsim, confFile);
+
+        assertEquals(
+                java.util.List.of(
+                        "Train-001", "Train-001",
+                        "Train-002", "Train-002"
+                ),
+                input.trainIds()
+        );
+        assertEquals(
+                java.util.List.of(firstLeg, secondLeg, firstLeg, secondLeg),
+                input.runExcels()
+        );
+        assertEquals(
+                java.util.List.of(21600, 21600, 21900, 21900),
+                input.departureTimes()
+        );
+        assertEquals(
+                java.util.Arrays.asList(null, 900, null, 900),
+                input.relativeLegDepartureTimes()
+        );
+        assertEquals(
+                java.util.List.of("", "", "", ""),
+                input.sectionIds()
+        );
+        assertEquals(
+                java.util.List.of("+0sek", "run", "+0sek", "run"),
+                input.runExcelSheets()
         );
     }
 }
