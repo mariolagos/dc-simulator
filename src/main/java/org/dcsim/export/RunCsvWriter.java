@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+@Deprecated
 public final class RunCsvWriter {
     private final CsvSchema schema;
 

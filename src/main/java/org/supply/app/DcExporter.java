@@ -15,6 +15,12 @@ import java.nio.file.Path;
 public final class DcExporter {
 
     public static void main(String[] args) throws Exception {
+        for (String arg : args) {
+            if ("--check".equals(arg)) {
+                DcCheck.main(args);
+                return;
+            }
+        }
         DcStudyContext context = DcStudyContextLoader.load(args[0]);
         run(context);
     }

@@ -85,6 +85,28 @@ tasks.register<JavaExec>("dcExporter") {
         ?.let { raw -> args(raw.split(Regex("\\s+"))) }
 }
 
+tasks.register<JavaExec>("dcCheck") {
+    group = "verification"
+    description = "Check study input and print electrical route topology without solving"
+    mainClass.set("org.supply.app.DcCheck")
+    classpath = sourceSets.main.get().runtimeClasspath
+    workingDir(studyWorkingDir.get())
+
+    val confFile = providers.gradleProperty("confFile").orNull
+    if (!confFile.isNullOrBlank()) {
+        args(confFile)
+    } else {
+        providers.gradleProperty("args").orNull
+            ?.takeIf { it.isNotBlank() }
+            ?.let { raw -> args(raw.split(Regex("\\s+"))) }
+    }
+    providers.gradleProperty("routeId").orNull
+        ?.takeIf { it.isNotBlank() }
+        ?.let { args("--route", it) }
+
+    jvmArgs("-Dfile.encoding=UTF-8")
+}
+
 tasks.register<JavaExec>("dcSolver") {
     group = "application"
     description = "Run DcSolver"

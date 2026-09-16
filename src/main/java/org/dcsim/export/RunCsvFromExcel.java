@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+@Deprecated
 public final class RunCsvFromExcel {
 
     static final boolean DEBUG_VERBOSITY = false;
