@@ -58,6 +58,22 @@ public final class DcReporter {
                 metadata,
                 resultsTrain
         );
+
+        Path resultsLine =
+                context.resultDirectory()
+                        .resolve(context.studyId() + "_results_line.xlsx");
+
+        writeLineWorkbook(
+                rows,
+                metadata,
+                resultsLine
+        );
+
+        Path resultsSystem =
+                context.resultDirectory()
+                        .resolve(context.studyId() + "_results_system.xlsx");
+
+        writeSystemWorkbook(rows, metadata, resultsSystem);
     }
 
     private static void writeTrainWorkbook(
@@ -167,6 +183,19 @@ public final class DcReporter {
                         trainResult.pW =
                                 parseDouble(row.value);
 
+                case "p_delta_W" ->
+                        trainResult.pDeltaW =
+                                parseDouble(row.value);
+
+                case "e_consumed_J" ->
+                        trainResult.eConsumedJ = parseDouble(row.value);
+
+                case "e_regenerated_J" ->
+                        trainResult.eRegeneratedJ = parseDouble(row.value);
+
+                case "e_net_J" ->
+                        trainResult.eNetJ = parseDouble(row.value);
+
                 default -> {
                     // Ignore other signals.
                 }
@@ -203,6 +232,14 @@ public final class DcReporter {
                 .setCellValue(trainId + ".p_req_W");
         header.createCell(9)
                 .setCellValue(trainId + ".p_W");
+        header.createCell(10)
+                .setCellValue(trainId + ".p_delta_W");
+        header.createCell(11)
+                .setCellValue(trainId + ".e_consumed_J");
+        header.createCell(12)
+                .setCellValue(trainId + ".e_regenerated_J");
+        header.createCell(13)
+                .setCellValue(trainId + ".e_net_J");
 
         int rowIndex = 1;
 
@@ -225,11 +262,217 @@ public final class DcReporter {
             setNumericCell(row, 7, result.iA);
             setNumericCell(row, 8, result.pReqW);
             setNumericCell(row, 9, result.pW);
+            setNumericCell(row, 10, result.pDeltaW);
+            setNumericCell(row, 11, result.eConsumedJ);
+            setNumericCell(row, 12, result.eRegeneratedJ);
+            setNumericCell(row, 13, result.eNetJ);
         }
 
         sheet.createFreezePane(0, 1);
 
-        for (int column = 0; column < 10; column++) {
+        for (int column = 0; column < 14; column++) {
+            sheet.autoSizeColumn(column);
+        }
+    }
+
+    private static void writeSystemWorkbook(
+            List<LongTableRow> rows,
+            ResultMetadata metadata,
+            Path outputPath
+    ) throws IOException {
+        Map<Double, SystemResult> results = collectSystemResults(rows);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            writeMetadataSheet(workbook, metadata);
+            Sheet sheet = workbook.createSheet("Power and energy balance");
+            writeSystemSheet(sheet, results);
+
+            Files.createDirectories(outputPath.getParent());
+            try (OutputStream out = Files.newOutputStream(outputPath)) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private static Map<Double, SystemResult> collectSystemResults(
+            List<LongTableRow> rows
+    ) {
+        Map<Double, SystemResult> result = new LinkedHashMap<>();
+
+        for (LongTableRow row : rows) {
+            if (!"SYSTEM".equals(row.objectType)
+                    || !"DC".equals(row.objectId)
+                    || row.timeS == null
+                    || !"RESULT".equals(row.stage)) {
+                continue;
+            }
+
+            SystemResult system = result.computeIfAbsent(
+                    row.timeS,
+                    ignored -> new SystemResult()
+            );
+
+            Double value = parseDouble(row.value);
+            switch (row.signal) {
+                case "p_substations_W" -> system.pSubstationsW = value;
+                case "p_trains_W" -> system.pTrainsW = value;
+                case "p_fixed_loads_W" -> system.pFixedLoadsW = value;
+                case "p_losses_W" -> system.pLossesW = value;
+                case "p_balance_W" -> system.pBalanceW = value;
+                case "e_substations_supplied_J" -> system.eSubstationsSuppliedJ = value;
+                case "e_substations_absorbed_J" -> system.eSubstationsAbsorbedJ = value;
+                case "e_substations_net_J" -> system.eSubstationsNetJ = value;
+                case "e_trains_consumed_J" -> system.eTrainsConsumedJ = value;
+                case "e_trains_regenerated_J" -> system.eTrainsRegeneratedJ = value;
+                case "e_trains_net_J" -> system.eTrainsNetJ = value;
+                case "e_fixed_loads_consumed_J" -> system.eFixedLoadsConsumedJ = value;
+                case "e_losses_J" -> system.eLossesJ = value;
+                case "e_balance_J" -> system.eBalanceJ = value;
+                default -> {
+                    // Ignore static system parameters and other signals.
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static void writeSystemSheet(
+            Sheet sheet,
+            Map<Double, SystemResult> results
+    ) {
+        String[] headers = {
+                "time_s",
+                "p_substations_W",
+                "p_trains_W",
+                "p_fixed_loads_W",
+                "p_losses_W",
+                "p_balance_W",
+                "e_substations_supplied_J",
+                "e_substations_absorbed_J",
+                "e_substations_net_J",
+                "e_trains_consumed_J",
+                "e_trains_regenerated_J",
+                "e_trains_net_J",
+                "e_fixed_loads_consumed_J",
+                "e_losses_J",
+                "e_balance_J"
+        };
+
+        Row header = sheet.createRow(0);
+        for (int column = 0; column < headers.length; column++) {
+            header.createCell(column).setCellValue(headers[column]);
+        }
+
+        int rowIndex = 1;
+        for (Map.Entry<Double, SystemResult> entry : results.entrySet()) {
+            Row row = sheet.createRow(rowIndex++);
+            SystemResult value = entry.getValue();
+            row.createCell(0).setCellValue(entry.getKey());
+            setNumericCell(row, 1, value.pSubstationsW);
+            setNumericCell(row, 2, value.pTrainsW);
+            setNumericCell(row, 3, value.pFixedLoadsW);
+            setNumericCell(row, 4, value.pLossesW);
+            setNumericCell(row, 5, value.pBalanceW);
+            setNumericCell(row, 6, value.eSubstationsSuppliedJ);
+            setNumericCell(row, 7, value.eSubstationsAbsorbedJ);
+            setNumericCell(row, 8, value.eSubstationsNetJ);
+            setNumericCell(row, 9, value.eTrainsConsumedJ);
+            setNumericCell(row, 10, value.eTrainsRegeneratedJ);
+            setNumericCell(row, 11, value.eTrainsNetJ);
+            setNumericCell(row, 12, value.eFixedLoadsConsumedJ);
+            setNumericCell(row, 13, value.eLossesJ);
+            setNumericCell(row, 14, value.eBalanceJ);
+        }
+
+        sheet.createFreezePane(0, 1);
+        for (int column = 0; column < headers.length; column++) {
+            sheet.autoSizeColumn(column);
+        }
+    }
+
+    private static void writeLineWorkbook(
+            List<LongTableRow> rows,
+            ResultMetadata metadata,
+            Path outputPath
+    ) throws IOException {
+        Map<String, Map<Double, LineResult>> results =
+                collectLineResults(rows);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            writeMetadataSheet(workbook, metadata);
+
+            for (Map.Entry<String, Map<Double, LineResult>> lineEntry
+                    : results.entrySet()) {
+                String lineId = lineEntry.getKey();
+                Sheet sheet = workbook.createSheet(safeSheetName(lineId));
+                writeLineSheet(sheet, lineId, lineEntry.getValue());
+            }
+
+            Files.createDirectories(outputPath.getParent());
+            try (OutputStream out = Files.newOutputStream(outputPath)) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private static Map<String, Map<Double, LineResult>> collectLineResults(
+            List<LongTableRow> rows
+    ) {
+        Map<String, Map<Double, LineResult>> result = new LinkedHashMap<>();
+
+        for (LongTableRow row : rows) {
+            if (!"LINE".equals(row.objectType)
+                    || row.timeS == null
+                    || !"RESULT".equals(row.stage)) {
+                continue;
+            }
+
+            Map<Double, LineResult> byTime =
+                    result.computeIfAbsent(
+                            row.objectId,
+                            ignored -> new LinkedHashMap<>()
+                    );
+            LineResult lineResult =
+                    byTime.computeIfAbsent(
+                            row.timeS,
+                            ignored -> new LineResult()
+                    );
+
+            switch (row.signal) {
+                case "p_losses_W" ->
+                        lineResult.pLossesW = parseDouble(row.value);
+                case "e_losses_J" ->
+                        lineResult.eLossesJ = parseDouble(row.value);
+                default -> {
+                    // Ignore other signals.
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static void writeLineSheet(
+            Sheet sheet,
+            String lineId,
+            Map<Double, LineResult> results
+    ) {
+        Row header = sheet.createRow(0);
+        header.createCell(0).setCellValue(lineId + ".time_s");
+        header.createCell(1).setCellValue(lineId + ".p_losses_W");
+        header.createCell(2).setCellValue(lineId + ".e_losses_J");
+
+        int rowIndex = 1;
+        for (Map.Entry<Double, LineResult> entry : results.entrySet()) {
+            Row row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(entry.getKey());
+            setNumericCell(row, 1, entry.getValue().pLossesW);
+            setNumericCell(row, 2, entry.getValue().eLossesJ);
+        }
+
+        sheet.createFreezePane(0, 1);
+        for (int column = 0; column < 3; column++) {
             sheet.autoSizeColumn(column);
         }
     }
@@ -248,7 +491,7 @@ public final class DcReporter {
         try (Workbook workbook = new XSSFWorkbook()) {
 
             writeMetadataSheet(workbook, metadata);
-            
+
             for (Map.Entry<String, Map<Double, InstallationResult>> installationEntry
                     : results.entrySet()) {
 
@@ -336,6 +579,13 @@ public final class DcReporter {
         header.createCell(5)
                 .setCellValue(installationId + ".state");
 
+        header.createCell(6)
+                .setCellValue(installationId + ".e_supplied_J");
+        header.createCell(7)
+                .setCellValue(installationId + ".e_absorbed_J");
+        header.createCell(8)
+                .setCellValue(installationId + ".e_net_J");
+
         int rowIndex = 1;
 
         for (Map.Entry<Double, InstallationResult> entry
@@ -387,11 +637,15 @@ public final class DcReporter {
                 row.createCell(5)
                         .setCellValue(result.state);
             }
+
+            setNumericCell(row, 6, result.eSuppliedJ);
+            setNumericCell(row, 7, result.eAbsorbedJ);
+            setNumericCell(row, 8, result.eNetJ);
         }
 
         sheet.createFreezePane(0, 1);
 
-        for (int column = 0; column < 6; column++) {
+        for (int column = 0; column < 9; column++) {
             sheet.autoSizeColumn(column);
         }
     }
@@ -405,7 +659,7 @@ public final class DcReporter {
 
         for (LongTableRow row : rows) {
 
-            if (!"DIODE_SUBSTATION".equals(row.objectType)) {
+            if (!isSubstation(row.objectType)) {
                 continue;
             }
 
@@ -447,6 +701,15 @@ public final class DcReporter {
                         installationResult.state =
                                 row.value;
 
+                case "e_supplied_J" ->
+                        installationResult.eSuppliedJ = parseDouble(row.value);
+
+                case "e_absorbed_J" ->
+                        installationResult.eAbsorbedJ = parseDouble(row.value);
+
+                case "e_net_J" ->
+                        installationResult.eNetJ = parseDouble(row.value);
+
                 default -> {
                     // Ignore other signals.
                 }
@@ -464,7 +727,7 @@ public final class DcReporter {
 
         for (LongTableRow row : rows) {
 
-            if (!"DIODE_SUBSTATION".equals(row.objectType)) {
+            if (!isSubstation(row.objectType)) {
                 continue;
             }
 
@@ -484,6 +747,11 @@ public final class DcReporter {
         }
 
         return result;
+    }
+
+    private static boolean isSubstation(String objectType) {
+        return "DIODE_SUBSTATION".equals(objectType)
+                || "THYRISTOR_SUBSTATION".equals(objectType);
     }
 
     private static List<LongTableRow> readLongTable(
@@ -669,6 +937,9 @@ public final class DcReporter {
         private Double iA;
         private Double pW;
         private String state;
+        private Double eSuppliedJ;
+        private Double eAbsorbedJ;
+        private Double eNetJ;
     }
 
     private static final class TrainResult {
@@ -681,6 +952,32 @@ public final class DcReporter {
         private Double iA;
         private Double pReqW;
         private Double pW;
+        private Double pDeltaW;
+        private Double eConsumedJ;
+        private Double eRegeneratedJ;
+        private Double eNetJ;
+    }
+
+    private static final class LineResult {
+        private Double pLossesW;
+        private Double eLossesJ;
+    }
+
+    private static final class SystemResult {
+        private Double pSubstationsW;
+        private Double pTrainsW;
+        private Double pFixedLoadsW;
+        private Double pLossesW;
+        private Double pBalanceW;
+        private Double eSubstationsSuppliedJ;
+        private Double eSubstationsAbsorbedJ;
+        private Double eSubstationsNetJ;
+        private Double eTrainsConsumedJ;
+        private Double eTrainsRegeneratedJ;
+        private Double eTrainsNetJ;
+        private Double eFixedLoadsConsumedJ;
+        private Double eLossesJ;
+        private Double eBalanceJ;
     }
 
     private static void setTextCell(

@@ -18,10 +18,13 @@ import org.supply.solver.electrical.LinearSystemSolver;
 import org.supply.solver.electrical.SingleTimestepSolver;
 import org.supply.solver.io.LongTableWriter;
 import org.supply.solver.model.CalculationNetwork;
+import org.supply.solver.model.CalculationBranch;
 import org.supply.solver.model.CalculationTrainPosition;
 import org.supply.solver.model.DiodeSubstationElement;
 import org.supply.solver.model.ElectricalElement;
+import org.supply.solver.model.FixedLoadElement;
 import org.supply.solver.model.TrainLoadElement;
+import org.supply.solver.model.ThyristorSubstationElement;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
 import org.supply.track.TrackConfigLoader;
@@ -88,7 +91,8 @@ public final class DcSolver {
                     baseNetwork,
                     writer,
                     runCsv,
-                    routes
+                    routes,
+                    resultIntervalSec(solverContext.dcsim())
             );
         }
 
@@ -141,7 +145,8 @@ public final class DcSolver {
             CalculationNetwork baseNetwork,
             LongTableWriter writer,
             Path runCsv,
-            List<Route> routes
+            List<Route> routes,
+            double resultIntervalSec
     ) throws Exception {
 
         List<RunSample> samples =
@@ -162,8 +167,18 @@ public final class DcSolver {
                         ));
 
         Map<String, Real> previousVoltages = Map.of();
+        EnergyState energyState = new EnergyState();
+        Double previousTimeSec = null;
 
         for (List<RunSample> timestepSamples : samplesByTime.values()) {
+
+            double timeSec = timestepSamples.get(0).timeS();
+            double intervalSec = previousTimeSec == null
+                    ? resultIntervalSec
+                    : Math.min(
+                            Math.max(timeSec - previousTimeSec, 0.0),
+                            resultIntervalSec
+                    );
 
             SingleTimestepSolver.NetworkResult result =
                     solveTimestep(
@@ -173,11 +188,29 @@ public final class DcSolver {
                             trainPositionFactory,
                             trainNodeInserter,
                             writer,
-                            previousVoltages
+                            previousVoltages,
+                            energyState,
+                            intervalSec
                     );
 
             previousVoltages = result.voltages();
+            previousTimeSec = timeSec;
         }
+    }
+
+    private static double resultIntervalSec(Config dcsim) {
+        double tickDurationSec =
+                dcsim.getDouble("simulationControl.tickDurationSec");
+
+        if (dcsim.hasPath("export.exportResolution_s")) {
+            double exportResolutionSec =
+                    dcsim.getDouble("export.exportResolution_s");
+            if (exportResolutionSec > 0.0) {
+                return exportResolutionSec;
+            }
+        }
+
+        return tickDurationSec;
     }
 
     private static boolean isAcceptable(
@@ -229,7 +262,9 @@ public final class DcSolver {
             TrainPositionFactory trainPositionFactory,
             TrainNodeInserter trainNodeInserter,
             LongTableWriter writer,
-            Map<String, Real> previousVoltages
+            Map<String, Real> previousVoltages,
+            EnergyState energyState,
+            double intervalSec
     ) {
 
         List<CalculationTrainPosition> trainPositions =
@@ -271,7 +306,9 @@ public final class DcSolver {
                 timestepNetwork,
                 voltages,
                 solveResult.allocatedPowersW(),
-                writer
+                writer,
+                energyState,
+                intervalSec
         );
 
         if (DEBUG_ALL_NODE_VOLTAGES) {
@@ -288,7 +325,9 @@ public final class DcSolver {
             CalculationNetwork timestepNetwork,
             Map<String, Real> voltages,
             Map<String, Double> allocatedPowersW,
-            LongTableWriter writer
+            LongTableWriter writer,
+            EnergyState energyState,
+            double intervalSec
     ) {
         double timeSec = timestepSamples.get(0).timeS();
 
@@ -300,21 +339,130 @@ public final class DcSolver {
                 timeSec
         );
 
-        saveNetworkResults(
-                systemParameters,
+        PowerSnapshot powers = powerSnapshot(
                 timestepNetwork,
                 voltages,
                 allocatedPowersW,
+                systemParameters
+        );
+
+        accumulateEnergy(energyState, powers, intervalSec);
+
+        saveNetworkResults(
+                timestepNetwork,
+                voltages,
+                powers,
+                energyState,
                 writer,
                 timeSec
         );
+
+        saveLineResults(
+                powers.lineLossesW(),
+                energyState.lineLossesJ,
+                writer,
+                timeSec
+        );
+
+        saveSystemResults(powers, energyState, writer, timeSec);
+    }
+
+    private static void saveLineResults(
+            Map<String, Double> lossesByLineW,
+            Map<String, Double> energyByLineJ,
+            LongTableWriter writer,
+            double timeSec
+    ) {
+        for (Map.Entry<String, Double> entry : lossesByLineW.entrySet()) {
+            String lineId = entry.getKey();
+
+            writer.signalRow(
+                    timeSec,
+                    "LINE",
+                    lineId,
+                    "p_losses_W",
+                    entry.getValue(),
+                    "W",
+                    "RESULT",
+                    null,
+                    ""
+            );
+
+            writer.signalRow(
+                    timeSec,
+                    "LINE",
+                    lineId,
+                    "e_losses_J",
+                    energyByLineJ.get(lineId),
+                    "J",
+                    "RESULT",
+                    null,
+                    ""
+            );
+        }
+    }
+
+    static Map<String, Double> lineLossesW(
+            CalculationNetwork network,
+            Map<String, Real> voltages
+    ) {
+        Map<String, Double> result = new LinkedHashMap<>();
+
+        for (CalculationBranch branch : network.branches()) {
+            if (branch.sourceId().startsWith("internal_")) {
+                continue;
+            }
+
+            Real fromVoltage = voltages.get(branch.fromNodeId());
+            Real toVoltage = voltages.get(branch.toNodeId());
+            if (fromVoltage == null || toVoltage == null) {
+                throw new IllegalStateException(
+                        "Missing voltage for line branch " + branch.id()
+                );
+            }
+
+            double resistanceOhm = branch.resistanceOhm().asDouble();
+            if (!(resistanceOhm > 0.0)) {
+                throw new IllegalArgumentException(
+                        "Branch resistance must be positive: " + branch.id()
+                );
+            }
+
+            double voltageDifferenceV =
+                    fromVoltage.asDouble() - toVoltage.asDouble();
+            double lossW =
+                    voltageDifferenceV * voltageDifferenceV
+                            / resistanceOhm;
+
+            result.merge(branch.sourceId(), lossW, Double::sum);
+        }
+
+        return result;
+    }
+
+    static void accumulateLineLossEnergyJ(
+            Map<String, Double> energyByLineJ,
+            Map<String, Double> lossesByLineW,
+            double intervalSec
+    ) {
+        if (intervalSec < 0.0) {
+            throw new IllegalArgumentException("intervalSec must be >= 0");
+        }
+
+        for (Map.Entry<String, Double> entry : lossesByLineW.entrySet()) {
+            energyByLineJ.merge(
+                    entry.getKey(),
+                    entry.getValue() * intervalSec,
+                    Double::sum
+            );
+        }
     }
 
     private static void saveNetworkResults(
-            SystemParameters systemParameters,
             CalculationNetwork timestepNetwork,
             Map<String, Real> voltages,
-            Map<String, Double> allocatedPowersW,
+            PowerSnapshot powers,
+            EnergyState energyState,
             LongTableWriter writer,
             double timeSec
     ) {
@@ -323,18 +471,47 @@ public final class DcSolver {
             if (element instanceof DiodeSubstationElement dse) {
                 saveSubstationResults(
                         voltages,
+                        powers.substationPowersW().get(dse.id()),
+                        energyState.substationsSuppliedJ.get(dse.id()),
+                        energyState.substationsAbsorbedJ.get(dse.id()),
+                        energyState.substationsNetJ.get(dse.id()),
                         writer,
                         timeSec,
                         dse
                 );
             }
 
+            if (element instanceof ThyristorSubstationElement tse) {
+                saveThyristorSubstationResults(
+                        voltages,
+                        powers.substationPowersW().get(tse.id()),
+                        energyState.substationsSuppliedJ.get(tse.id()),
+                        energyState.substationsAbsorbedJ.get(tse.id()),
+                        energyState.substationsNetJ.get(tse.id()),
+                        writer,
+                        timeSec,
+                        tse
+                );
+            }
+
+            if (element instanceof FixedLoadElement fixedLoad) {
+                saveFixedLoadResults(
+                        powers.fixedLoadPowersW().get(fixedLoad.id()),
+                        energyState.fixedLoadsConsumedJ.get(fixedLoad.id()),
+                        writer,
+                        timeSec,
+                        fixedLoad
+                );
+            }
+
             if (element instanceof TrainLoadElement trainLoad) {
                 saveTrainResult(
-                        systemParameters,
                         trainLoad,
                         voltages,
-                        allocatedPowersW,
+                        powers.trainPowersW().get(trainLoad.trainId()),
+                        energyState.trainsConsumedJ.get(trainLoad.trainId()),
+                        energyState.trainsRegeneratedJ.get(trainLoad.trainId()),
+                        energyState.trainsNetJ.get(trainLoad.trainId()),
                         writer,
                         timeSec
                 );
@@ -343,10 +520,12 @@ public final class DcSolver {
     }
 
     private static void saveTrainResult(
-            SystemParameters systemParameters,
             TrainLoadElement trainLoad,
             Map<String, Real> voltages,
-            Map<String, Double> allocatedPowersW,
+            double powerW,
+            Double consumedEnergyJ,
+            Double regeneratedEnergyJ,
+            Double netEnergyJ,
             LongTableWriter writer,
             double timeSec
     ) {
@@ -359,21 +538,7 @@ public final class DcSolver {
         double terminalVoltageV =
                 feedingVoltageV - returnVoltageV;
 
-        double allocatedPowerW =
-                allocatedPowersW.getOrDefault(
-                        trainLoad.trainId(),
-                        0.0
-                );
-
-        double currentA =
-                trainCurrentA(
-                        systemParameters,
-                        allocatedPowerW,
-                        terminalVoltageV
-                );
-
-        double powerW =
-                terminalVoltageV * currentA;
+        double currentA = powerW / terminalVoltageV;
 
         writer.signalRow(
                 timeSec,
@@ -387,6 +552,13 @@ public final class DcSolver {
                 ""
         );
 
+        writeEnergySignal(writer, timeSec, "TRAIN", trainLoad.trainId(),
+                "e_consumed_J", consumedEnergyJ);
+        writeEnergySignal(writer, timeSec, "TRAIN", trainLoad.trainId(),
+                "e_regenerated_J", regeneratedEnergyJ);
+        writeEnergySignal(writer, timeSec, "TRAIN", trainLoad.trainId(),
+                "e_net_J", netEnergyJ);
+
         writer.signalRow(
                 timeSec,
                 "TRAIN",
@@ -398,9 +570,37 @@ public final class DcSolver {
                 null,
                 ""
         );
+
+        writer.signalRow(
+                timeSec,
+                "TRAIN",
+                trainLoad.trainId(),
+                "p_delta_W",
+                trainPowerDeltaW(trainLoad.requestedPowerW(), powerW),
+                "W",
+                "RESULT",
+                null,
+                ""
+        );
     }
 
-    private static void saveSubstationResults(Map<String, Real> voltages, LongTableWriter writer, double timeSec, DiodeSubstationElement dse) {
+    static double trainPowerDeltaW(
+            double requestedPowerW,
+            double actualPowerW
+    ) {
+        return requestedPowerW - actualPowerW;
+    }
+
+    private static void saveSubstationResults(
+            Map<String, Real> voltages,
+            double powerW,
+            Double suppliedEnergyJ,
+            Double absorbedEnergyJ,
+            Double netEnergyJ,
+            LongTableWriter writer,
+            double timeSec,
+            DiodeSubstationElement dse
+    ) {
         double feedingVoltageV =
                 voltages.get(dse.feedingNodeId()).asDouble();
 
@@ -412,16 +612,9 @@ public final class DcSolver {
 
         boolean conducting =
                 dse.enabled()
-                        && terminalVoltageV <= dse.emfV().asDouble();
+                        && terminalVoltageV <= dse.emfV().asDouble() + 1e-3;
 
-        double currentA =
-                conducting
-                        ? (dse.emfV().asDouble() - terminalVoltageV)
-                        / dse.internalResistanceOhm().asDouble()
-                        : 0.0;
-
-        double powerW =
-                terminalVoltageV * currentA;
+        double currentA = powerW / terminalVoltageV;
 
         String state =
                 !dse.enabled()
@@ -441,6 +634,13 @@ public final class DcSolver {
                 null,
                 ""
         );
+
+        writeEnergySignal(writer, timeSec, "DIODE_SUBSTATION", dse.id(),
+                "e_supplied_J", suppliedEnergyJ);
+        writeEnergySignal(writer, timeSec, "DIODE_SUBSTATION", dse.id(),
+                "e_absorbed_J", absorbedEnergyJ);
+        writeEnergySignal(writer, timeSec, "DIODE_SUBSTATION", dse.id(),
+                "e_net_J", netEnergyJ);
 
         writer.signalRow(
                 timeSec,
@@ -477,6 +677,331 @@ public final class DcSolver {
                 null,
                 ""
         );
+    }
+
+    private static PowerSnapshot powerSnapshot(
+            CalculationNetwork network,
+            Map<String, Real> voltages,
+            Map<String, Double> allocatedPowersW,
+            SystemParameters systemParameters
+    ) {
+        Map<String, Double> trainPowersW = new LinkedHashMap<>();
+        Map<String, Double> substationPowersW = new LinkedHashMap<>();
+        Map<String, Double> fixedLoadPowersW = new LinkedHashMap<>();
+
+        for (ElectricalElement element : network.elements()) {
+            if (element instanceof TrainLoadElement train) {
+                double voltageV = terminalVoltageV(
+                        voltages,
+                        train.feedingNodeId(),
+                        train.returnNodeId()
+                );
+                double allocatedPowerW = allocatedPowersW.getOrDefault(
+                        train.trainId(),
+                        0.0
+                );
+                double actualPowerW = voltageV * trainCurrentA(
+                        systemParameters,
+                        allocatedPowerW,
+                        voltageV
+                );
+                trainPowersW.put(train.trainId(), actualPowerW);
+            } else if (element instanceof DiodeSubstationElement substation) {
+                double voltageV = terminalVoltageV(
+                        voltages,
+                        substation.feedingNodeId(),
+                        substation.returnNodeId()
+                );
+                boolean conducting = substation.enabled()
+                        && voltageV <= substation.emfV().asDouble() + 1e-3;
+                double currentA = conducting
+                        ? (substation.emfV().asDouble() - voltageV)
+                        / substation.internalResistanceOhm().asDouble()
+                        : 0.0;
+                substationPowersW.put(substation.id(), voltageV * currentA);
+            } else if (element instanceof ThyristorSubstationElement substation) {
+                double voltageV = terminalVoltageV(
+                        voltages,
+                        substation.feedingNodeId(),
+                        substation.returnNodeId()
+                );
+                double currentA = substation.enabled()
+                        ? (substation.emfV().asDouble() - voltageV)
+                        / substation.internalResistanceOhm().asDouble()
+                        : 0.0;
+                substationPowersW.put(substation.id(), voltageV * currentA);
+            } else if (element instanceof FixedLoadElement fixedLoad) {
+                fixedLoadPowersW.put(fixedLoad.id(), fixedLoad.powerW());
+            }
+        }
+
+        Map<String, Double> lineLossesW = lineLossesW(network, voltages);
+        double substationsW = sum(substationPowersW);
+        double trainsW = sum(trainPowersW);
+        double fixedLoadsW = sum(fixedLoadPowersW);
+        double lossesW = sum(lineLossesW);
+
+        return new PowerSnapshot(
+                trainPowersW,
+                substationPowersW,
+                fixedLoadPowersW,
+                lineLossesW,
+                substationsW,
+                trainsW,
+                fixedLoadsW,
+                lossesW,
+                systemBalanceW(substationsW, trainsW, fixedLoadsW, lossesW)
+        );
+    }
+
+    static double systemBalanceW(
+            double substationsW,
+            double trainsW,
+            double fixedLoadsW,
+            double lossesW
+    ) {
+        return substationsW - trainsW - fixedLoadsW - lossesW;
+    }
+
+    private static void accumulateEnergy(
+            EnergyState energy,
+            PowerSnapshot powers,
+            double intervalSec
+    ) {
+        accumulateSplit(
+                energy.trainsConsumedJ,
+                energy.trainsRegeneratedJ,
+                energy.trainsNetJ,
+                powers.trainPowersW(),
+                intervalSec
+        );
+        accumulateSplit(
+                energy.substationsSuppliedJ,
+                energy.substationsAbsorbedJ,
+                energy.substationsNetJ,
+                powers.substationPowersW(),
+                intervalSec
+        );
+        accumulate(energy.fixedLoadsConsumedJ,
+                powers.fixedLoadPowersW(), intervalSec);
+        accumulateLineLossEnergyJ(
+                energy.lineLossesJ,
+                powers.lineLossesW(),
+                intervalSec
+        );
+
+        energy.substationsSuppliedJTotal += consumedPowerW(
+                powers.substationPowersW()) * intervalSec;
+        energy.substationsAbsorbedJTotal += regeneratedPowerW(
+                powers.substationPowersW()) * intervalSec;
+        energy.substationsNetJTotal += powers.substationsW() * intervalSec;
+        energy.trainsConsumedJTotal += consumedPowerW(
+                powers.trainPowersW()) * intervalSec;
+        energy.trainsRegeneratedJTotal += regeneratedPowerW(
+                powers.trainPowersW()) * intervalSec;
+        energy.trainsNetJTotal += powers.trainsW() * intervalSec;
+        energy.fixedLoadsConsumedJTotal += powers.fixedLoadsW() * intervalSec;
+        energy.lossesJTotal += powers.lossesW() * intervalSec;
+        energy.balanceJTotal += powers.balanceW() * intervalSec;
+    }
+
+    private static void accumulate(
+            Map<String, Double> energyJ,
+            Map<String, Double> powerW,
+            double intervalSec
+    ) {
+        for (Map.Entry<String, Double> entry : powerW.entrySet()) {
+            energyJ.merge(
+                    entry.getKey(),
+                    entry.getValue() * intervalSec,
+                    Double::sum
+            );
+        }
+    }
+
+    private static void accumulateSplit(
+            Map<String, Double> consumedJ,
+            Map<String, Double> regeneratedJ,
+            Map<String, Double> netJ,
+            Map<String, Double> powerW,
+            double intervalSec
+    ) {
+        for (Map.Entry<String, Double> entry : powerW.entrySet()) {
+            String id = entry.getKey();
+            double power = entry.getValue();
+            consumedJ.merge(id, positive(power) * intervalSec, Double::sum);
+            regeneratedJ.merge(id, negativeMagnitude(power) * intervalSec, Double::sum);
+            netJ.merge(id, power * intervalSec, Double::sum);
+        }
+    }
+
+    private static double positive(double value) {
+        return Math.max(value, 0.0);
+    }
+
+    private static double negativeMagnitude(double value) {
+        return Math.max(-value, 0.0);
+    }
+
+    static double consumedPowerW(Map<String, Double> values) {
+        return values.values().stream()
+                .mapToDouble(DcSolver::positive)
+                .sum();
+    }
+
+    static double regeneratedPowerW(Map<String, Double> values) {
+        return values.values().stream()
+                .mapToDouble(DcSolver::negativeMagnitude)
+                .sum();
+    }
+
+    private static void saveSystemResults(
+            PowerSnapshot powers,
+            EnergyState energy,
+            LongTableWriter writer,
+            double timeSec
+    ) {
+        writePowerSignal(writer, timeSec, "p_substations_W", powers.substationsW());
+        writePowerSignal(writer, timeSec, "p_trains_W", powers.trainsW());
+        writePowerSignal(writer, timeSec, "p_fixed_loads_W", powers.fixedLoadsW());
+        writePowerSignal(writer, timeSec, "p_losses_W", powers.lossesW());
+        writePowerSignal(writer, timeSec, "p_balance_W", powers.balanceW());
+
+        writeEnergySignal(writer, timeSec, "SYSTEM", "DC",
+                "e_substations_supplied_J", energy.substationsSuppliedJTotal);
+        writeEnergySignal(writer, timeSec, "SYSTEM", "DC",
+                "e_substations_absorbed_J", energy.substationsAbsorbedJTotal);
+        writeEnergySignal(writer, timeSec, "SYSTEM", "DC",
+                "e_substations_net_J", energy.substationsNetJTotal);
+        writeEnergySignal(writer, timeSec, "SYSTEM", "DC",
+                "e_trains_consumed_J", energy.trainsConsumedJTotal);
+        writeEnergySignal(writer, timeSec, "SYSTEM", "DC",
+                "e_trains_regenerated_J", energy.trainsRegeneratedJTotal);
+        writeEnergySignal(writer, timeSec, "SYSTEM", "DC",
+                "e_trains_net_J", energy.trainsNetJTotal);
+        writeEnergySignal(writer, timeSec, "SYSTEM", "DC",
+                "e_fixed_loads_consumed_J", energy.fixedLoadsConsumedJTotal);
+        writeEnergySignal(writer, timeSec, "SYSTEM", "DC",
+                "e_losses_J", energy.lossesJTotal);
+        writeEnergySignal(writer, timeSec, "SYSTEM", "DC",
+                "e_balance_J", energy.balanceJTotal);
+    }
+
+    private static void writePowerSignal(
+            LongTableWriter writer,
+            double timeSec,
+            String signal,
+            double value
+    ) {
+        writer.signalRow(timeSec, "SYSTEM", "DC", signal, value,
+                "W", "RESULT", null, "");
+    }
+
+    private static void writeEnergySignal(
+            LongTableWriter writer,
+            double timeSec,
+            String objectType,
+            String objectId,
+            String signal,
+            Double value
+    ) {
+        if (value != null) {
+            writer.signalRow(timeSec, objectType, objectId, signal, value,
+                    "J", "RESULT", null, "");
+        }
+    }
+
+    private static void saveThyristorSubstationResults(
+            Map<String, Real> voltages,
+            double powerW,
+            Double suppliedEnergyJ,
+            Double absorbedEnergyJ,
+            Double netEnergyJ,
+            LongTableWriter writer,
+            double timeSec,
+            ThyristorSubstationElement substation
+    ) {
+        double voltageV = terminalVoltageV(
+                voltages,
+                substation.feedingNodeId(),
+                substation.returnNodeId()
+        );
+        double currentA = powerW / voltageV;
+
+        writer.signalRow(timeSec, "THYRISTOR_SUBSTATION", substation.id(),
+                "u_V", voltageV, "V", "RESULT", null, "");
+        writer.signalRow(timeSec, "THYRISTOR_SUBSTATION", substation.id(),
+                "i_A", currentA, "A", "RESULT", null, "");
+        writer.signalRow(timeSec, "THYRISTOR_SUBSTATION", substation.id(),
+                "p_W", powerW, "W", "RESULT", null, "");
+        writeEnergySignal(writer, timeSec, "THYRISTOR_SUBSTATION",
+                substation.id(), "e_supplied_J", suppliedEnergyJ);
+        writeEnergySignal(writer, timeSec, "THYRISTOR_SUBSTATION",
+                substation.id(), "e_absorbed_J", absorbedEnergyJ);
+        writeEnergySignal(writer, timeSec, "THYRISTOR_SUBSTATION",
+                substation.id(), "e_net_J", netEnergyJ);
+        writer.signalRow(timeSec, "THYRISTOR_SUBSTATION", substation.id(),
+                "state", substation.enabled() ? "ENABLED" : "DISABLED",
+                "", "RESULT", null, "");
+    }
+
+    private static void saveFixedLoadResults(
+            double powerW,
+            Double consumedEnergyJ,
+            LongTableWriter writer,
+            double timeSec,
+            FixedLoadElement fixedLoad
+    ) {
+        writer.signalRow(timeSec, "FIXED_LOAD", fixedLoad.id(),
+                "p_W", powerW, "W", "RESULT", null, "");
+        writeEnergySignal(writer, timeSec, "FIXED_LOAD", fixedLoad.id(),
+                "e_consumed_J", consumedEnergyJ);
+    }
+
+    private static double terminalVoltageV(
+            Map<String, Real> voltages,
+            String feedingNodeId,
+            String returnNodeId
+    ) {
+        return voltages.get(feedingNodeId).asDouble()
+                - voltages.get(returnNodeId).asDouble();
+    }
+
+    private static double sum(Map<String, Double> values) {
+        return values.values().stream().mapToDouble(Double::doubleValue).sum();
+    }
+
+    private record PowerSnapshot(
+            Map<String, Double> trainPowersW,
+            Map<String, Double> substationPowersW,
+            Map<String, Double> fixedLoadPowersW,
+            Map<String, Double> lineLossesW,
+            double substationsW,
+            double trainsW,
+            double fixedLoadsW,
+            double lossesW,
+            double balanceW
+    ) {
+    }
+
+    private static final class EnergyState {
+        private final Map<String, Double> trainsConsumedJ = new LinkedHashMap<>();
+        private final Map<String, Double> trainsRegeneratedJ = new LinkedHashMap<>();
+        private final Map<String, Double> trainsNetJ = new LinkedHashMap<>();
+        private final Map<String, Double> substationsSuppliedJ = new LinkedHashMap<>();
+        private final Map<String, Double> substationsAbsorbedJ = new LinkedHashMap<>();
+        private final Map<String, Double> substationsNetJ = new LinkedHashMap<>();
+        private final Map<String, Double> fixedLoadsConsumedJ = new LinkedHashMap<>();
+        private final Map<String, Double> lineLossesJ = new LinkedHashMap<>();
+        private double substationsSuppliedJTotal;
+        private double substationsAbsorbedJTotal;
+        private double substationsNetJTotal;
+        private double trainsConsumedJTotal;
+        private double trainsRegeneratedJTotal;
+        private double trainsNetJTotal;
+        private double fixedLoadsConsumedJTotal;
+        private double lossesJTotal;
+        private double balanceJTotal;
     }
 
     private static void saveTrainPositions(List<CalculationTrainPosition> trainPositions, CalculationNetwork timestepNetwork, Map<String, Real> voltages, LongTableWriter writer, double timeSec) {
