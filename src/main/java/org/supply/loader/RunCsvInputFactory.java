@@ -22,6 +22,8 @@ public final class RunCsvInputFactory {
         List<String> sectionIds = new ArrayList<>();
         List<Integer> departureTimes = new ArrayList<>();
         List<Integer> relativeLegDepartureTimes = new ArrayList<>();
+        List<Boolean> motoringAndAuxiliariesInSameModel = new ArrayList<>();
+        List<Double> auxiliaryPowersW = new ArrayList<>();
 
         if (!dcsim.hasPath("traffic.timetable.trains")) {
             throw new IllegalArgumentException(
@@ -149,12 +151,37 @@ public final class RunCsvInputFactory {
                             )
                                     : null;
 
+                    boolean sameModel = getOptionalBoolean(
+                            leg,
+                            templateConfig,
+                            "motoring_and_auxiliaries_in_same_model",
+                            true
+                    );
+                    double auxiliaryPowerW = getOptionalDouble(
+                            leg,
+                            templateConfig,
+                            "auxiliary_power_W",
+                            0.0
+                    );
+                    if (auxiliaryPowerW < 0.0) {
+                        throw new IllegalArgumentException(
+                                "auxiliary_power_W must be >= 0 for train "
+                                        + expandedTrainId
+                                        + ", template "
+                                        + templateId
+                                        + ", leg "
+                                        + (legIndex + 1)
+                        );
+                    }
+
                     trainIds.add(expandedTrainId);
                     sectionIds.add(getOptionalString(leg, train, "sectionId"));
                     trackIds.add(getOptionalString(leg, train, "trackId"));
                     routeIds.add(routeId);
                     departureTimes.add(expandedDepartureSec);
                     relativeLegDepartureTimes.add(relativeLegDepartureSec);
+                    motoringAndAuxiliariesInSameModel.add(sameModel);
+                    auxiliaryPowersW.add(auxiliaryPowerW);
                     runExcels.add(runExcel);
                     runExcelSheets.add(runExcelSheet);
                 }
@@ -194,6 +221,8 @@ public final class RunCsvInputFactory {
                 routeIds,
                 departureTimes,
                 relativeLegDepartureTimes,
+                motoringAndAuxiliariesInSameModel,
+                auxiliaryPowersW,
                 simulationStartSec,
                 simulationEndSec,
                 exportResolutionS
@@ -256,6 +285,36 @@ public final class RunCsvInputFactory {
             return fallback.getString(path);
         }
         return "";
+    }
+
+    private static boolean getOptionalBoolean(
+            Config preferred,
+            Config fallback,
+            String path,
+            boolean defaultValue
+    ) {
+        if (preferred.hasPath(path)) {
+            return preferred.getBoolean(path);
+        }
+        if (fallback.hasPath(path)) {
+            return fallback.getBoolean(path);
+        }
+        return defaultValue;
+    }
+
+    private static double getOptionalDouble(
+            Config preferred,
+            Config fallback,
+            String path,
+            double defaultValue
+    ) {
+        if (preferred.hasPath(path)) {
+            return preferred.getDouble(path);
+        }
+        if (fallback.hasPath(path)) {
+            return fallback.getDouble(path);
+        }
+        return defaultValue;
     }
 
 }

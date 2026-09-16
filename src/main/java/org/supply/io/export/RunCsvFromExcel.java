@@ -40,6 +40,16 @@ public final class RunCsvFromExcel {
     private record RunPoint(double timeS, double positionM, double pReqW) {
     }
 
+    private record LegEndState(
+            double timeS,
+            double positionM,
+            String sectionId,
+            String trackId,
+            String routeId,
+            double auxiliaryPowerW
+    ) {
+    }
+
     private record RunExcelData(
             List<Map<String, String>> rows,
             Double relativeDepartureS
@@ -72,6 +82,25 @@ public final class RunCsvFromExcel {
             ));
         }
         return shifted;
+    }
+
+    private static List<RunPoint> addAuxiliaryPower(
+            List<RunPoint> source,
+            double auxiliaryPowerW
+    ) {
+        if (auxiliaryPowerW == 0.0) {
+            return source;
+        }
+
+        List<RunPoint> result = new ArrayList<>(source.size());
+        for (RunPoint point : source) {
+            result.add(new RunPoint(
+                    point.timeS(),
+                    point.positionM(),
+                    point.pReqW() + auxiliaryPowerW
+            ));
+        }
+        return result;
     }
 
     private static List<RunPoint> clipRunPoints(
@@ -546,6 +575,12 @@ public final class RunCsvFromExcel {
                 excelXlsxs == null
                         ? null
                         : Collections.nCopies(excelXlsxs.size(), null),
+                excelXlsxs == null
+                        ? null
+                        : Collections.nCopies(excelXlsxs.size(), true),
+                excelXlsxs == null
+                        ? null
+                        : Collections.nCopies(excelXlsxs.size(), 0.0),
                 simulationStartSec,
                 simulationEndSec,
                 exportResolutionS
@@ -566,6 +601,44 @@ public final class RunCsvFromExcel {
             int simulationEndSec,
             double exportResolutionS
     ) throws Exception {
+        writeRunCsv(
+                excelXlsxs,
+                runExcelSheets,
+                trainIds,
+                sectionIds,
+                trackIds,
+                routeIds,
+                outRunCsv,
+                departureTimes,
+                relativeLegDepartureTimes,
+                excelXlsxs == null
+                        ? null
+                        : Collections.nCopies(excelXlsxs.size(), true),
+                excelXlsxs == null
+                        ? null
+                        : Collections.nCopies(excelXlsxs.size(), 0.0),
+                simulationStartSec,
+                simulationEndSec,
+                exportResolutionS
+        );
+    }
+
+    public static void writeRunCsv(
+            List<Path> excelXlsxs,
+            List<String> runExcelSheets,
+            List<String> trainIds,
+            List<String> sectionIds,
+            List<String> trackIds,
+            List<String> routeIds,
+            Path outRunCsv,
+            List<Integer> departureTimes,
+            List<Integer> relativeLegDepartureTimes,
+            List<Boolean> motoringAndAuxiliariesInSameModel,
+            List<Double> auxiliaryPowersW,
+            int simulationStartSec,
+            int simulationEndSec,
+            double exportResolutionS
+    ) throws Exception {
         if (excelXlsxs == null
                 || runExcelSheets == null
                 || trainIds == null
@@ -573,7 +646,9 @@ public final class RunCsvFromExcel {
                 || trackIds == null
                 || routeIds == null
                 || departureTimes == null
-                || relativeLegDepartureTimes == null) {
+                || relativeLegDepartureTimes == null
+                || motoringAndAuxiliariesInSameModel == null
+                || auxiliaryPowersW == null) {
             throw new IllegalArgumentException(
                     "Run CSV input lists must not be null"
             );
@@ -586,7 +661,9 @@ public final class RunCsvFromExcel {
                 || trackIds.size() != inputSize
                 || routeIds.size() != inputSize
                 || departureTimes.size() != inputSize
-                || relativeLegDepartureTimes.size() != inputSize) {
+                || relativeLegDepartureTimes.size() != inputSize
+                || motoringAndAuxiliariesInSameModel.size() != inputSize
+                || auxiliaryPowersW.size() != inputSize) {
             throw new IllegalArgumentException(
                     "Run CSV input lists must have the same size"
             );
@@ -603,8 +680,7 @@ public final class RunCsvFromExcel {
         }
 
         List<Map<String, String>> allRows = new ArrayList<>();
-        Map<String, Double> previousLegEndTimes = new HashMap<>();
-        Map<String, Double> previousLegEndPositions = new HashMap<>();
+        Map<String, LegEndState> previousLegEnds = new HashMap<>();
 
         for (int i = 0; i < excelXlsxs.size(); i++) {
             Path runExcel = excelXlsxs.get(i);
@@ -630,6 +706,17 @@ public final class RunCsvFromExcel {
             List<RunPoint> points =
                     toRunPoints(rows);
 
+            boolean sameModel = motoringAndAuxiliariesInSameModel.get(i);
+            double auxiliaryPowerW = auxiliaryPowersW.get(i);
+            if (auxiliaryPowerW < 0.0) {
+                throw new IllegalArgumentException(
+                        "auxiliaryPowerW must be >= 0 for train " + trainId
+                );
+            }
+            if (!sameModel) {
+                points = addAuxiliaryPower(points, auxiliaryPowerW);
+            }
+
             double runExcelStartS = points.get(0).timeS();
             Integer configuredRelativeDepartureS =
                     relativeLegDepartureTimes.get(i);
@@ -642,27 +729,25 @@ public final class RunCsvFromExcel {
             double absoluteLegStartS =
                     departureTimes.get(i) + relativeDepartureS;
 
-            Double previousLegEndS = previousLegEndTimes.get(trainId);
-            if (previousLegEndS != null
-                    && absoluteLegStartS < previousLegEndS - 1e-9) {
+            LegEndState previousLegEnd = previousLegEnds.get(trainId);
+            if (previousLegEnd != null
+                    && absoluteLegStartS < previousLegEnd.timeS() - 1e-9) {
                 throw new IllegalArgumentException(
                         "Leg for train "
                                 + trainId
                                 + " starts at "
                                 + absoluteLegStartS
                                 + " s, before previous leg ends at "
-                                + previousLegEndS
+                                + previousLegEnd.timeS()
                                 + " s: "
                                 + runExcel
                 );
             }
 
-            Double previousLegEndPositionM =
-                    previousLegEndPositions.get(trainId);
             double positionShiftM =
-                    previousLegEndPositionM == null
+                    previousLegEnd == null
                             ? 0.0
-                            : previousLegEndPositionM
+                            : previousLegEnd.positionM()
                             - points.get(0).positionM();
 
             points = shiftRunPoints(
@@ -671,9 +756,53 @@ public final class RunCsvFromExcel {
                     positionShiftM
             );
 
+            if (previousLegEnd != null
+                    && absoluteLegStartS > previousLegEnd.timeS() + 1e-9) {
+                List<RunPoint> dwellPoints = List.of(
+                        new RunPoint(
+                                previousLegEnd.timeS(),
+                                previousLegEnd.positionM(),
+                                previousLegEnd.auxiliaryPowerW()
+                        ),
+                        new RunPoint(
+                                absoluteLegStartS,
+                                previousLegEnd.positionM(),
+                                previousLegEnd.auxiliaryPowerW()
+                        )
+                );
+
+                dwellPoints = clipRunPoints(
+                        dwellPoints,
+                        simulationStartSec,
+                        simulationEndSec
+                );
+                if (!dwellPoints.isEmpty() && exportResolutionS > 0.0) {
+                    dwellPoints = resampleRunPoints(
+                            dwellPoints,
+                            exportResolutionS,
+                            simulationStartSec
+                    );
+                }
+                if (!dwellPoints.isEmpty()) {
+                    allRows.addAll(fromRunPoints(
+                            dwellPoints,
+                            trainId,
+                            previousLegEnd.sectionId(),
+                            previousLegEnd.trackId(),
+                            previousLegEnd.routeId()
+                    ));
+                }
+            }
+
             RunPoint fullLegEnd = points.get(points.size() - 1);
-            previousLegEndTimes.put(trainId, fullLegEnd.timeS());
-            previousLegEndPositions.put(trainId, fullLegEnd.positionM());
+            previousLegEnds.put(trainId, new LegEndState(
+                    fullLegEnd.timeS(),
+                    fullLegEnd.positionM(),
+                    sectionId,
+                    trackId,
+                    routeId,
+                    auxiliaryPowerW
+            ));
 
             points = clipRunPoints(
                     points,

@@ -219,16 +219,22 @@ public final class RunCsvInputFactoryTest {
                     }
                   ]
 
-                  templates.ABC.legs = [
-                    {
-                      run_excel = "A-B.xlsx"
-                      run_excel_sheet = "+0sek"
-                    },
-                    {
-                      run_excel = "B-C.xlsx"
-                      departure = "00:15:00"
-                    }
-                  ]
+                  templates.ABC {
+                    motoring_and_auxiliaries_in_same_model = false
+                    auxiliary_power_W = 100000
+                    legs = [
+                      {
+                        run_excel = "A-B.xlsx"
+                        run_excel_sheet = "+0sek"
+                      },
+                      {
+                        run_excel = "B-C.xlsx"
+                        departure = "00:15:00"
+                        motoring_and_auxiliaries_in_same_model = true
+                        auxiliary_power_W = 200000
+                      }
+                    ]
+                  }
                 }
                 """);
 
@@ -261,6 +267,14 @@ public final class RunCsvInputFactoryTest {
         assertEquals(
                 java.util.List.of("+0sek", "run", "+0sek", "run"),
                 input.runExcelSheets()
+        );
+        assertEquals(
+                java.util.List.of(false, true, false, true),
+                input.motoringAndAuxiliariesInSameModel()
+        );
+        assertEquals(
+                java.util.List.of(100000.0, 200000.0, 100000.0, 200000.0),
+                input.auxiliaryPowersW()
         );
     }
 }

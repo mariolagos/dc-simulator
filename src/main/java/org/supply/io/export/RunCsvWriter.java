@@ -28,6 +28,8 @@ public final class RunCsvWriter {
                 runCsvFile,
                 input.departureTimes(),
                 input.relativeLegDepartureTimes(),
+                input.motoringAndAuxiliariesInSameModel(),
+                input.auxiliaryPowersW(),
                 input.simulationStartSec(),
                 input.simulationEndSec(),
                 input.exportResolutionS()

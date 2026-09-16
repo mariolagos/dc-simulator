@@ -221,6 +221,47 @@ public final class RunCsvFromExcelTest {
     }
 
     @Test
+    public void appliesAuxiliaryPowerToLegAndFollowingDwell()
+            throws Exception {
+        Path tempDir = Files.createTempDirectory("run-csv-auxiliary-test");
+        Path firstLeg = tempDir.resolve("A-B.xlsx");
+        Path secondLeg = tempDir.resolve("B-C.xlsx");
+        Path runCsv = tempDir.resolve("run.csv");
+
+        writeWorkbookWithTimes(firstLeg, 0.0, 10.0);
+        writeWorkbookWithTimes(secondLeg, 0.0, 10.0);
+
+        RunCsvFromExcel.writeRunCsv(
+                List.of(firstLeg, secondLeg),
+                List.of("+0sek", "+0sek"),
+                List.of("T1", "T1"),
+                List.of("", ""),
+                List.of("", ""),
+                List.of("A-C", "A-C"),
+                runCsv,
+                List.of(36000, 36000),
+                java.util.Arrays.asList(null, 15),
+                List.of(false, true),
+                List.of(100000.0, 200000.0),
+                36000,
+                36100,
+                0.0
+        );
+
+        List<String> lines = Files.readAllLines(runCsv);
+        assertEquals(5, lines.size());
+
+        assertEquals(36000.0, time(lines.get(1)), 1e-9);
+        assertEquals(120000.0, csvPower(lines.get(1)), 1e-9);
+
+        assertEquals(36010.0, time(lines.get(2)), 1e-9);
+        assertEquals(100000.0, csvPower(lines.get(2)), 1e-9);
+
+        assertEquals(36015.0, time(lines.get(3)), 1e-9);
+        assertEquals(20000.0, csvPower(lines.get(3)), 1e-9);
+    }
+
+    @Test
     public void rejectsNextLegStartingBeforePreviousLegEnds()
             throws Exception {
         Path tempDir = Files.createTempDirectory("run-csv-overlapping-legs-test");
@@ -259,6 +300,10 @@ public final class RunCsvFromExcelTest {
 
     private static double csvPosition(String csvLine) {
         return Double.parseDouble(csvLine.split(",", -1)[5]);
+    }
+
+    private static double csvPower(String csvLine) {
+        return Double.parseDouble(csvLine.split(",", -1)[6]);
     }
 
     private static double position(
