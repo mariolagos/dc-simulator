@@ -41,7 +41,7 @@ public final class RouteViewExcelReaderTest {
             List<PathSample> samples =
                     route.getSamples();
 
-            assertEquals(4, samples.size());
+            assertEquals(10, samples.size());
 
             assertSample(
                     samples.get(0),
@@ -51,8 +51,18 @@ public final class RouteViewExcelReaderTest {
                     12_400
             );
 
+            for (int km = 13; km <= 18; km++) {
+                assertSample(
+                        samples.get(km - 12),
+                        km * 1000 - 12_400,
+                        "101",
+                        "U",
+                        km * 1000
+                );
+            }
+
             assertSample(
-                    samples.get(1),
+                    samples.get(7),
                     6_349,
                     "101",
                     "U",
@@ -60,7 +70,7 @@ public final class RouteViewExcelReaderTest {
             );
 
             assertSample(
-                    samples.get(2),
+                    samples.get(8),
                     6_350,
                     "200",
                     "U1",
@@ -68,7 +78,7 @@ public final class RouteViewExcelReaderTest {
             );
 
             assertSample(
-                    samples.get(3),
+                    samples.get(9),
                     12_550,
                     "102",
                     "U",
@@ -104,9 +114,24 @@ public final class RouteViewExcelReaderTest {
                     "RED-WE"
             );
 
+            // This fixture uses metre-for-metre mapping within section 101.
+            // Include every crossed full kilometre, as required by the reader.
+            for (int km = 13; km <= 18; km++) {
+                writeRow(
+                        sheet,
+                        km - 11,
+                        km * 1000 - 12_400,
+                        101,
+                        "U",
+                        km,
+                        0,
+                        "RED-WE"
+                );
+            }
+
             writeRow(
                     sheet,
-                    2,
+                    8,
                     6_349,
                     101,
                     "U",
@@ -117,7 +142,7 @@ public final class RouteViewExcelReaderTest {
 
             writeRow(
                     sheet,
-                    3,
+                    9,
                     6_350,
                     200,
                     "U1",
@@ -128,7 +153,7 @@ public final class RouteViewExcelReaderTest {
 
             writeRow(
                     sheet,
-                    4,
+                    10,
                     12_550,
                     102,
                     "U",

@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 public final class RouteViewExcelReader {
 
@@ -58,12 +61,13 @@ public final class RouteViewExcelReader {
 
             int cPath = required(columns, "position [m]");
             int cSection = required(columns, "trackSection");
-            int cTrack = required(columns, "trackNumber");
+            Integer cTrack = columns.get("trackNumber");
             int cKm = required(columns, "bisKm");
             int cMeter = required(columns, "bisMeter");
-            int cRoute = required(columns, "trackInformation");
+            Integer cRoute = columns.get("trackInformation");
 
             List<PathSample> samples = new ArrayList<>();
+            List<KmRow> kmRows = new ArrayList<>();
 
             for (int rowIndex = header.getRowNum() + 1;
                  rowIndex <= sheet.getLastRowNum();
@@ -81,7 +85,10 @@ public final class RouteViewExcelReader {
                         identifier(row.getCell(cSection));
 
                 String trackId =
-                        text(row.getCell(cTrack));
+                        cTrack == null ? "" : text(row.getCell(cTrack));
+                if (trackId.isBlank()) {
+                    trackId = null;
+                }
 
                 int bisKm =
                         integer(row.getCell(cKm), "bisKm", rowIndex);
@@ -90,9 +97,11 @@ public final class RouteViewExcelReader {
                         integer(row.getCell(cMeter), "bisMeter", rowIndex);
 
                 String rowRouteId =
-                        text(row.getCell(cRoute));
+                        cRoute == null ? "" : text(row.getCell(cRoute));
 
-                if (!routeId.equals(rowRouteId)) {
+                // The configured route ID is authoritative. Retain validation
+                // for an explicitly supplied, nonblank route ID.
+                if (!rowRouteId.isBlank() && !routeId.equals(rowRouteId)) {
                     throw new IllegalArgumentException(
                             "Unexpected trackInformation at row "
                                     + rowIndex
@@ -105,6 +114,8 @@ public final class RouteViewExcelReader {
 
                 int railwayPositionM =
                         bisKm * 1000 + bisMeter;
+                kmRows.add(new KmRow(sectionId, trackId, railwayPositionM,
+                        bisMeter == 0, rowIndex + 1));
 
                 samples.add(new PathSample(
                         pathPositionM,
@@ -117,11 +128,56 @@ public final class RouteViewExcelReader {
                 ));
             }
 
+            validateKilometerBoards(kmRows, sheetName);
             return new RouteView(
                     routeId,
                     sheetName,
                     samples
             );
+        }
+    }
+
+    private record KmRow(String section, String track, int positionM,
+                         boolean board, int excelRow) { }
+
+    /** Check each contiguous section/track interval, not unrelated visits. */
+    private static void validateKilometerBoards(List<KmRow> rows, String sheet) {
+        List<String> missing = new ArrayList<>();
+        int start = 0;
+        while (start < rows.size()) {
+            KmRow first = rows.get(start);
+            int end = start;
+            int min = first.positionM();
+            int max = min;
+            Set<Integer> boards = new HashSet<>();
+            while (end < rows.size()) {
+                KmRow row = rows.get(end);
+                if (!Objects.equals(first.section(), row.section())
+                        || !Objects.equals(first.track(), row.track())) {
+                    break;
+                }
+                min = Math.min(min, row.positionM());
+                max = Math.max(max, row.positionM());
+                if (row.board()) {
+                    boards.add(Math.floorDiv(row.positionM(), 1000));
+                }
+                end++;
+            }
+            long firstKm = -Math.floorDiv(-(long) min, 1000L);
+            long lastKm = Math.floorDiv((long) max, 1000L);
+            for (long km = firstKm; km <= lastKm; km++) {
+                if (!boards.contains((int) km)) {
+                    missing.add(first.section() + " " + km + "+000"
+                            + (first.track() == null ? "" : " " + first.track())
+                            + " (Excel rows " + first.excelRow() + "-"
+                            + rows.get(end - 1).excelRow() + ")");
+                }
+            }
+            start = end;
+        }
+        if (!missing.isEmpty()) {
+            throw new IllegalArgumentException("Missing km+000 rows in sheet '"
+                    + sheet + "': " + String.join(", ", missing));
         }
     }
 

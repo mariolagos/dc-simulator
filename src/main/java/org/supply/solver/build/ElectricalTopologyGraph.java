@@ -122,6 +122,11 @@ public final class ElectricalTopologyGraph {
     public static void write(CalculationNetwork network, List<Route> routes, String selected,
                              Path directory, StringBuilder report, List<String> warnings,
                              Map<String,Double> ohmPerM) throws IOException {
+        write(network,routes,selected,directory,report,warnings,ohmPerM,RouteSchematic.Context.empty());
+    }
+    public static void write(CalculationNetwork network,List<Route> routes,String selected,
+                             Path directory,StringBuilder report,List<String> warnings,
+                             Map<String,Double> ohmPerM,RouteSchematic.Context context) throws IOException {
         Files.createDirectories(directory);
         List<Route> ordered = new ArrayList<>(routes);
         ordered.sort(Comparator.comparing(Route::id));
@@ -136,7 +141,7 @@ public final class ElectricalTopologyGraph {
             Files.deleteIfExists(svg);
             report.append("Topology DOT: ").append(dot).append('\n');
             try {
-                Files.writeString(svg, RouteSchematic.svg(network, route, ohmPerM), StandardCharsets.UTF_8);
+                Files.writeString(svg, RouteSchematic.svg(network, route, ohmPerM,context), StandardCharsets.UTF_8);
                 report.append("Topology SVG: ").append(svg).append('\n');
             } catch (IllegalArgumentException | IOException failure) {
                 Files.deleteIfExists(svg);
@@ -147,11 +152,11 @@ public final class ElectricalTopologyGraph {
             Path combined = directory.resolve("routes_combined.svg");
             Files.deleteIfExists(combined);
             try {
-                Files.writeString(combined, RouteSchematic.combinedSvg(network, routes, ohmPerM), StandardCharsets.UTF_8);
-                report.append("Combined U/D topology SVG: ").append(combined).append('\n');
+                Files.writeString(combined, RouteSchematic.combinedSvg(network, routes, ohmPerM,context), StandardCharsets.UTF_8);
+                report.append("Combined route topology SVG: ").append(combined).append('\n');
             } catch (IllegalArgumentException | IOException failure) {
                 Files.deleteIfExists(combined);
-                warnings.add("Combined U/D schematic not generated: " + failure.getMessage());
+                warnings.add("Combined route schematic not generated: " + failure.getMessage());
             }
         }
     }

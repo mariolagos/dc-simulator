@@ -54,10 +54,19 @@ public final class TrackConfigLoader {
                         confFile
                 );
 
+        List<Station> excelStations=new ArrayList<>();
+        if(track.hasPath("route_data_excel")&&track.hasPath("route_views")) {
+            Path workbook=resolveRelativeToConfig(confFile,track.getString("route_data_excel"));
+            TrackStationExcelReader stationReader=new TrackStationExcelReader();
+            for(Config view:track.getConfigList("route_views")) {
+                excelStations.addAll(stationReader.read(workbook,view.getString("sheet")));
+            }
+        }
+
         return new LoadedTrackModel(
                 sectionModel.getSectionsById(),
                 sectionModel.getJunctions(),
-                sectionModel.getStations(),
+                TrackStationExcelReader.merge(sectionModel.getStations(),excelStations),
                 routeViews
         );    }
 

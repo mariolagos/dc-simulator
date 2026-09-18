@@ -108,6 +108,44 @@ public final class DcCheck {
         } else {
             detail.append("SKIP Calculation network: grid or track input failed\n");
         }
+        if (track != null) {
+            List<org.supply.track.TrackRouteDiagram.ObjectPoint> objects = new ArrayList<>();
+            if (network != null) {
+                for (var element : network.elements()) {
+                    String id, nodeId;
+                    if (element instanceof org.supply.solver.model.DiodeSubstationElement sub) {
+                        id = sub.id(); nodeId = sub.feedingNodeId();
+                    } else if (element instanceof org.supply.solver.model.ThyristorSubstationElement sub) {
+                        id = sub.id(); nodeId = sub.feedingNodeId();
+                    } else { continue; }
+                    Set<String> terminals = new HashSet<>(List.of(nodeId));
+                    boolean changed;
+                    do {
+                        changed = false;
+                        for (var branch : network.branches()) {
+                            if (!branch.id().startsWith("internal_")) { continue; }
+                            if (terminals.contains(branch.fromNodeId())) changed |= terminals.add(branch.toNodeId());
+                            if (terminals.contains(branch.toNodeId())) changed |= terminals.add(branch.fromNodeId());
+                        }
+                    } while (changed);
+                    // Diagram coordinates must be railway coordinates from input, not model metres.
+                    for (var node : grid.getNodes()) {
+                        if (terminals.contains(node.getNodeId())) {
+                            objects.add(new org.supply.track.TrackRouteDiagram.ObjectPoint("substation", id,
+                                    org.supply.track.RwyCoordinateParser.parse(node.getPositionRwy())));
+                        }
+                    }
+                }
+            } else {
+                warnings.add("Track band diagrams omit substations: calculation network unavailable");
+            }
+            try {
+                org.supply.track.TrackRouteDiagram.write(track, selectedRouteId,
+                        context.exportDirectory().getParent().resolve("checks"), detail, warnings, objects);
+            } catch (IOException failure) {
+                warnings.add("Track route diagram export failed: " + failure.getMessage());
+            }
+        }
         if (network != null && routes != null) {
             ElectricalRouteCheck.Result routeCheck =
                     ElectricalRouteCheck.inspect(network, routes, selectedRouteId);
@@ -121,8 +159,15 @@ public final class DcCheck {
                 for (var line : context.dcsim().getConfigList("grid.lines")) {
                     ohmPerM.put(line.getString("line_id"), line.getDouble("resistance_ohm_per_m"));
                 }
+                Map<String,org.supply.track.RwyCoordinate> railwayPositions=new LinkedHashMap<>();
+                for(var node:grid.getNodes()) {
+                    railwayPositions.put(node.getNodeId(),
+                            org.supply.track.RwyCoordinateParser.parse(node.getPositionRwy()));
+                }
+                var schematicContext=new org.supply.solver.build.RouteSchematic.Context(
+                        railwayPositions,track.getJunctions());
                 ElectricalTopologyGraph.write(network, routes, selectedRouteId,
-                        context.exportDirectory().getParent().resolve("checks"), detail, warnings, ohmPerM);
+                        context.exportDirectory().getParent().resolve("checks"), detail, warnings, ohmPerM,schematicContext);
             } catch (IOException failure) {
                 warnings.add("Topology graph export failed: " + failure.getMessage());
             }
