@@ -8,6 +8,8 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.supply.track.TrackInterpolationPoint;
+import org.supply.domain.RunSource;
+import org.supply.domain.RunSourceType;
 
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -21,11 +23,52 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class RunCsvFromExcel {
+/**
+ * Imports one or more BA RunExcel calculations and writes the normalized
+ * {@code run.csv} consumed by the DC solver.
+ *
+ * <p>A BA workbook contains time, route position and separate motoring and
+ * braking powers. Power is normalized to watts and braking remains negative.
+ * This class also owns the BA-specific orchestration rules: joining legs,
+ * inserting stationary samples between legs and, when configured, adding
+ * auxiliary power that was not part of the traction calculation.</p>
+ *
+ * <p>The {@link RunDataReader} method exposes only source normalization. It is
+ * shared with measured-log readers; BA-specific auxiliary and dwell policies
+ * are intentionally not part of that interface.</p>
+ */
+public final class RunCsvFromExcel implements RunDataReader {
 
     static final boolean DEBUG_VERBOSITY = false;
 
-    private RunCsvFromExcel() {
+    public RunCsvFromExcel() {
+    }
+
+    /** Reads a single BA workbook as source-independent SI samples. */
+    @Override
+    public RunReadResult read(RunSource source) throws Exception {
+        if (source.type() != RunSourceType.EXCEL) {
+            throw new IllegalArgumentException(
+                    "RunCsvFromExcel requires an EXCEL source"
+            );
+        }
+        RunExcelData data = readRunExcel(
+                source.file(),
+                source.sheet(),
+                "", "", "", "", 0
+        );
+        List<RunSample> samples = new ArrayList<>(data.rows().size());
+        for (Map<String, String> row : data.rows()) {
+            samples.add(new RunSample(
+                    Double.parseDouble(row.get(K_TIME)),
+                    Double.parseDouble(row.get(K_POS)),
+                    Double.parseDouble(row.get(K_P)),
+                    null,
+                    null,
+                    null
+            ));
+        }
+        return new RunReadResult(samples, data.relativeDepartureS());
     }
 
     // Required output keys for RunCsvWriter schema (headers):
@@ -530,6 +573,10 @@ public final class RunCsvFromExcel {
         }
     }
 
+    /**
+     * Reads one complete BA run without clipping or resampling.
+     * Existing callers may continue using this compatibility API.
+     */
     public static List<Map<String, String>> readFullRunRows(
             Path excelXlsx,
             String runExcelSheet,
@@ -550,6 +597,9 @@ public final class RunCsvFromExcel {
         ).rows();
     }
 
+    /**
+     * Writes BA runs using default leg and auxiliary settings.
+     */
     public static void writeRunCsv(
             List<Path> excelXlsxs,
             List<String> runExcelSheets,
@@ -587,6 +637,7 @@ public final class RunCsvFromExcel {
         );
     }
 
+    /** Writes BA runs with explicit relative leg departure times. */
     public static void writeRunCsv(
             List<Path> excelXlsxs,
             List<String> runExcelSheets,
@@ -623,6 +674,10 @@ public final class RunCsvFromExcel {
         );
     }
 
+    /**
+     * Writes BA runs, joins consecutive legs and applies BA-specific auxiliary
+     * power rules before clipping and resampling the result.
+     */
     public static void writeRunCsv(
             List<Path> excelXlsxs,
             List<String> runExcelSheets,
@@ -639,8 +694,46 @@ public final class RunCsvFromExcel {
             int simulationEndSec,
             double exportResolutionS
     ) throws Exception {
-        if (excelXlsxs == null
-                || runExcelSheets == null
+        if (excelXlsxs == null || runExcelSheets == null) {
+            throw new IllegalArgumentException("Run Excel inputs must not be null");
+        }
+        if (excelXlsxs.size() != runExcelSheets.size()) {
+            throw new IllegalArgumentException(
+                    "Run Excel files and sheet names must have the same size"
+            );
+        }
+        List<RunSource> sources = new ArrayList<>(excelXlsxs.size());
+        for (int i = 0; i < excelXlsxs.size(); i++) {
+            sources.add(RunSource.excel(excelXlsxs.get(i), runExcelSheets.get(i)));
+        }
+        writeRunCsv(
+                sources, trainIds, sectionIds, trackIds, routeIds, outRunCsv,
+                departureTimes, relativeLegDepartureTimes,
+                motoringAndAuxiliariesInSameModel, auxiliaryPowersW,
+                simulationStartSec, simulationEndSec, exportResolutionS
+        );
+    }
+
+    /**
+     * Writes normalized runs from either BA workbooks or measured logs.
+     * Auxiliary completion and synthetic dwell are applied only to BA sources.
+     */
+    public static void writeRunCsv(
+            List<RunSource> sources,
+            List<String> trainIds,
+            List<String> sectionIds,
+            List<String> trackIds,
+            List<String> routeIds,
+            Path outRunCsv,
+            List<Integer> departureTimes,
+            List<Integer> relativeLegDepartureTimes,
+            List<Boolean> motoringAndAuxiliariesInSameModel,
+            List<Double> auxiliaryPowersW,
+            int simulationStartSec,
+            int simulationEndSec,
+            double exportResolutionS
+    ) throws Exception {
+        if (sources == null
                 || trainIds == null
                 || sectionIds == null
                 || trackIds == null
@@ -654,9 +747,8 @@ public final class RunCsvFromExcel {
             );
         }
 
-        int inputSize = excelXlsxs.size();
-        if (runExcelSheets.size() != inputSize
-                || trainIds.size() != inputSize
+        int inputSize = sources.size();
+        if (trainIds.size() != inputSize
                 || sectionIds.size() != inputSize
                 || trackIds.size() != inputSize
                 || routeIds.size() != inputSize
@@ -682,29 +774,22 @@ public final class RunCsvFromExcel {
         List<Map<String, String>> allRows = new ArrayList<>();
         Map<String, LegEndState> previousLegEnds = new HashMap<>();
 
-        for (int i = 0; i < excelXlsxs.size(); i++) {
-            Path runExcel = excelXlsxs.get(i);
-            String runExcelSheet = runExcelSheets.get(i);
+        for (int i = 0; i < sources.size(); i++) {
+            RunSource source = sources.get(i);
             String trainId = trainIds.get(i);
             String sectionId = sectionIds.get(i);
             String trackId = trackIds.get(i);
             String routeId = routeIds.get(i);
 
-            RunExcelData runExcelData =
-                    readRunExcel(
-                            runExcel,
-                            runExcelSheet,
-                            trainId,
-                            sectionId,
-                            trackId,
-                            routeId,
-                            0
-                    );
-
-            List<Map<String, String>> rows = runExcelData.rows();
-
-            List<RunPoint> points =
-                    toRunPoints(rows);
+            RunDataReader reader = source.type() == RunSourceType.EXCEL
+                    ? new RunCsvFromExcel() : new RunCsvFromLog();
+            RunReadResult readResult = reader.read(source);
+            List<RunPoint> points = new ArrayList<>(readResult.samples().size());
+            for (RunSample sample : readResult.samples()) {
+                points.add(new RunPoint(
+                        sample.timeS(), sample.positionM(), sample.powerW()
+                ));
+            }
 
             boolean sameModel = motoringAndAuxiliariesInSameModel.get(i);
             double auxiliaryPowerW = auxiliaryPowersW.get(i);
@@ -713,8 +798,15 @@ public final class RunCsvFromExcel {
                         "auxiliaryPowerW must be >= 0 for train " + trainId
                 );
             }
-            if (!sameModel) {
+            if (source.type() == RunSourceType.EXCEL && !sameModel) {
                 points = addAuxiliaryPower(points, auxiliaryPowerW);
+            }
+            if (source.type() == RunSourceType.LOG
+                    && (!sameModel || auxiliaryPowerW != 0.0)) {
+                throw new IllegalArgumentException(
+                        "Auxiliary completion is not valid for measured log "
+                                + source.file()
+                );
             }
 
             double runExcelStartS = points.get(0).timeS();
@@ -723,8 +815,8 @@ public final class RunCsvFromExcel {
             double relativeDepartureS =
                     configuredRelativeDepartureS != null
                             ? configuredRelativeDepartureS
-                            : runExcelData.relativeDepartureS() != null
-                            ? runExcelData.relativeDepartureS()
+                            : readResult.relativeDepartureS() != null
+                            ? readResult.relativeDepartureS()
                             : runExcelStartS;
             double absoluteLegStartS =
                     departureTimes.get(i) + relativeDepartureS;
@@ -740,7 +832,7 @@ public final class RunCsvFromExcel {
                                 + " s, before previous leg ends at "
                                 + previousLegEnd.timeS()
                                 + " s: "
-                                + runExcel
+                                + source.file()
                 );
             }
 
@@ -756,7 +848,8 @@ public final class RunCsvFromExcel {
                     positionShiftM
             );
 
-            if (previousLegEnd != null
+            if (source.type() == RunSourceType.EXCEL
+                    && previousLegEnd != null
                     && absoluteLegStartS > previousLegEnd.timeS() + 1e-9) {
                 List<RunPoint> dwellPoints = List.of(
                         new RunPoint(
@@ -822,7 +915,7 @@ public final class RunCsvFromExcel {
                 );
             }
 
-            rows = fromRunPoints(
+            List<Map<String, String>> rows = fromRunPoints(
                     points,
                     trainId,
                     sectionId,

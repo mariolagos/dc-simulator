@@ -19,8 +19,7 @@ public final class RunCsvWriter {
         createParent(runCsvFile);
 
         RunCsvFromExcel.writeRunCsv(
-                input.runExcels(),
-                input.runExcelSheets(),
+                input.runSources(),
                 input.trainIds(),
                 input.sectionIds(),
                 input.trackIds(),

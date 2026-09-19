@@ -2,6 +2,9 @@ package org.supply.loader;
 
 import com.typesafe.config.Config;
 import org.supply.domain.RunCsvInput;
+import org.supply.domain.RunColumn;
+import org.supply.domain.RunLogFormat;
+import org.supply.domain.RunSource;
 import org.supply.utils.TimeUtils;
 
 import java.nio.file.Files;
@@ -24,6 +27,7 @@ public final class RunCsvInputFactory {
         List<Integer> relativeLegDepartureTimes = new ArrayList<>();
         List<Boolean> motoringAndAuxiliariesInSameModel = new ArrayList<>();
         List<Double> auxiliaryPowersW = new ArrayList<>();
+        List<RunSource> runSources = new ArrayList<>();
 
         if (!dcsim.hasPath("traffic.timetable.trains")) {
             throw new IllegalArgumentException(
@@ -123,24 +127,38 @@ public final class RunCsvInputFactory {
                 for (int legIndex = 0; legIndex < legs.size(); legIndex++) {
                     Config leg = legs.get(legIndex);
 
-                    String runExcelText = leg.getString("run_excel");
-                    String runExcelSheet =
-                            leg.hasPath("run_excel_sheet")
-                                    ? leg.getString("run_excel_sheet")
-                                    : "run";
-
-                    Path runExcel = resolveRunExcel(confFile, runExcelText);
-
-                    if (!Files.exists(runExcel)) {
+                    boolean logSource = leg.hasPath("run_log");
+                    if (logSource == leg.hasPath("run_excel")) {
                         throw new IllegalArgumentException(
-                                "Run Excel not found for train "
+                                "Exactly one of run_excel and run_log is required for template "
+                                        + templateId + ", leg " + (legIndex + 1)
+                        );
+                    }
+
+                    String runExcelSheet = "";
+                    Path runFile;
+                    RunSource runSource;
+                    if (logSource) {
+                        Config log = leg.getConfig("run_log");
+                        runFile = resolveRunFile(confFile, log.getString("file"));
+                        runSource = RunSource.log(runFile, readLogFormat(log));
+                    } else {
+                        runExcelSheet = leg.hasPath("run_excel_sheet")
+                                ? leg.getString("run_excel_sheet") : "run";
+                        runFile = resolveRunFile(confFile, leg.getString("run_excel"));
+                        runSource = RunSource.excel(runFile, runExcelSheet);
+                    }
+
+                    if (!Files.exists(runFile)) {
+                        throw new IllegalArgumentException(
+                                "Run source not found for train "
                                         + expandedTrainId
                                         + ", template "
                                         + templateId
                                         + ", leg "
                                         + (legIndex + 1)
                                         + ": "
-                                        + runExcel
+                                        + runFile
                         );
                     }
 
@@ -151,18 +169,23 @@ public final class RunCsvInputFactory {
                             )
                                     : null;
 
-                    boolean sameModel = getOptionalBoolean(
-                            leg,
-                            templateConfig,
-                            "motoring_and_auxiliaries_in_same_model",
-                            true
+                    boolean sameModel = logSource ? true : getOptionalBoolean(
+                            leg, templateConfig,
+                            "motoring_and_auxiliaries_in_same_model", true
                     );
-                    double auxiliaryPowerW = getOptionalDouble(
-                            leg,
-                            templateConfig,
-                            "auxiliary_power_W",
-                            0.0
+                    double auxiliaryPowerW = logSource ? 0.0 : getOptionalDouble(
+                            leg, templateConfig, "auxiliary_power_W", 0.0
                     );
+                    if (logSource && (leg.hasPath("auxiliary_power_W")
+                            || leg.hasPath("motoring_and_auxiliaries_in_same_model")
+                            || templateConfig.hasPath("auxiliary_power_W")
+                            || templateConfig.hasPath(
+                            "motoring_and_auxiliaries_in_same_model"))) {
+                        throw new IllegalArgumentException(
+                                "Auxiliary-power options are not valid for measured run_log "
+                                        + runFile
+                        );
+                    }
                     if (auxiliaryPowerW < 0.0) {
                         throw new IllegalArgumentException(
                                 "auxiliary_power_W must be >= 0 for train "
@@ -182,8 +205,9 @@ public final class RunCsvInputFactory {
                     relativeLegDepartureTimes.add(relativeLegDepartureSec);
                     motoringAndAuxiliariesInSameModel.add(sameModel);
                     auxiliaryPowersW.add(auxiliaryPowerW);
-                    runExcels.add(runExcel);
+                    runExcels.add(runFile);
                     runExcelSheets.add(runExcelSheet);
+                    runSources.add(runSource);
                 }
             }
         }
@@ -225,7 +249,8 @@ public final class RunCsvInputFactory {
                 auxiliaryPowersW,
                 simulationStartSec,
                 simulationEndSec,
-                exportResolutionS
+                exportResolutionS,
+                runSources
         );
     }
 
@@ -250,8 +275,8 @@ public final class RunCsvInputFactory {
         return confDir.resolve(folder).normalize();
     }
 
-    private static Path resolveRunExcel(Path confFile, String runExcelText) {
-        Path raw = Paths.get(runExcelText);
+    private static Path resolveRunFile(Path confFile, String fileText) {
+        Path raw = Paths.get(fileText);
 
         if (raw.isAbsolute()) {
             return raw.normalize();
@@ -259,6 +284,60 @@ public final class RunCsvInputFactory {
 
         Path confDir = confFile.toAbsolutePath().normalize().getParent();
         return confDir.resolve(raw).normalize();
+    }
+
+    private static RunLogFormat readLogFormat(Config log) {
+        Config columns = log.getConfig("columns");
+        String delimiterText = log.hasPath("delimiter")
+                ? log.getString("delimiter") : ";";
+        char delimiter = "\\t".equals(delimiterText)
+                ? '\t' : singleCharacter(delimiterText, "delimiter");
+        String sign = log.hasPath("power_sign")
+                ? log.getString("power_sign") : "consumption_positive";
+        if (!sign.equals("consumption_positive")
+                && !sign.equals("regeneration_positive")) {
+            throw new IllegalArgumentException(
+                    "power_sign must be consumption_positive or regeneration_positive"
+            );
+        }
+        return new RunLogFormat(
+                delimiter,
+                readColumn(columns, "time", true),
+                readColumn(columns, "position", false),
+                readColumn(columns, "speed", false),
+                readColumn(columns, "power", false),
+                readColumn(columns, "voltage", false),
+                readColumn(columns, "current", false),
+                sign.equals("consumption_positive")
+        );
+    }
+
+    private static RunColumn readColumn(
+            Config columns,
+            String quantity,
+            boolean required
+    ) {
+        if (!columns.hasPath(quantity)) {
+            if (required) {
+                throw new IllegalArgumentException(
+                        "Missing required log column mapping: " + quantity
+                );
+            }
+            return null;
+        }
+        Config column = columns.getConfig(quantity);
+        return new RunColumn(
+                column.getString("name"),
+                column.hasPath("unit") ? column.getString("unit") : "",
+                column.hasPath("format") ? column.getString("format") : ""
+        );
+    }
+
+    private static char singleCharacter(String text, String field) {
+        if (text.length() != 1) {
+            throw new IllegalArgumentException(field + " must contain one character");
+        }
+        return text.charAt(0);
     }
 
     private static String getString(Config config, String preferred, String legacy) {

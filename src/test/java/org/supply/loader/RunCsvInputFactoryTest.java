@@ -13,6 +13,48 @@ import static org.junit.Assert.assertEquals;
 public final class RunCsvInputFactoryTest {
 
     @Test
+    public void buildsConfiguredMeasuredLogSource() throws Exception {
+        Path tempDir = Files.createTempDirectory("run-log-input-factory-test");
+        Path log = tempDir.resolve("train.csv");
+        Files.createFile(log);
+        Path confFile = tempDir.resolve("application.conf");
+
+        Config dcsim = ConfigFactory.parseString("""
+                simulationControl {
+                  simulationStart = "10:00:00"
+                  simulationEnd = "11:00:00"
+                }
+                traffic {
+                  timetable.trains = [{
+                    id = "T1", template_id = "measured", departure = "10:00:00",
+                    count = 1, routeId = "F-M"
+                  }]
+                  templates.measured {
+                    run_log {
+                      file = "train.csv"
+                      delimiter = ";"
+                      columns {
+                        time = { name = "Date", format = "yyyy-MM-dd HH:mm:ss.SSS" }
+                        speed = { name = "Speed", unit = "m/s" }
+                        power = { name = "Power", unit = "kW" }
+                      }
+                    }
+                  }
+                }
+                """);
+
+        RunCsvInput input = new RunCsvInputFactory().build(dcsim, confFile);
+
+        assertEquals(1, input.runSources().size());
+        assertEquals(org.supply.domain.RunSourceType.LOG,
+                input.runSources().get(0).type());
+        assertEquals(log, input.runSources().get(0).file());
+        assertEquals(java.util.List.of(true),
+                input.motoringAndAuxiliariesInSameModel());
+        assertEquals(java.util.List.of(0.0), input.auxiliaryPowersW());
+    }
+
+    @Test
     public void expandsTrainCountUsingHeadway() throws Exception {
         Path tempDir =
                 Files.createTempDirectory("run-csv-input-factory-test");
