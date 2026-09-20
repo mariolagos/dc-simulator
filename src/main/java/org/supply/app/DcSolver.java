@@ -288,13 +288,44 @@ public final class DcSolver {
             TopologyPrinter.print(timestepNetwork);
         }
 
-        SolveResult solveResult =
-                solveWithFallback(
-                        systemParameters,
-                        timestepNetwork,
-                        requestedPowersW,
-                        previousVoltages
-                );
+        SolveResult solveResult;
+
+        try {
+            solveResult = solveWithFallback(
+                    systemParameters,
+                    timestepNetwork,
+                    requestedPowersW,
+                    previousVoltages
+            );
+        } catch (IllegalStateException e) {
+            double motoringPowerW = requestedPowersW.values().stream()
+                    .filter(powerW -> powerW > 0.0)
+                    .mapToDouble(Double::doubleValue)
+                    .sum();
+
+            double regenerativePowerW = requestedPowersW.values().stream()
+                    .filter(powerW -> powerW < 0.0)
+                    .mapToDouble(Double::doubleValue)
+                    .sum();
+
+            double failureTimeS =
+                    timestepSamples.isEmpty()
+                            ? Double.NaN
+                            : timestepSamples.get(0).timeS();
+
+            TopologyPrinter.print(timestepNetwork);
+
+            throw new IllegalStateException(
+                    "DC solution failed at t=" + timestepSamples + " s"
+                            + "; input samples=" + timestepSamples.size()
+                            + "; electrical train loads="
+                            + timestepNetwork.trainLoads().size()
+                            + "; motoring=" + motoringPowerW + " W"
+                            + "; regenerative=" + regenerativePowerW + " W"
+                            + "; requestedPowers=" + requestedPowersW,
+                    e
+            );
+        }
 
         Map<String, Real> voltages =
                 solveResult.networkResult().voltages();
@@ -1291,16 +1322,20 @@ public final class DcSolver {
                         previousVoltages
                 );
 
-        if (!result.converged() && !previousVoltages.isEmpty()) {
-            result =
-                    timestepSolver.solve(
-                            timestepNetwork,
-                            systemParameters.referenceNodeId(),
-                            powersW,
-                            200,
-                            1e-3,
-                            Map.of()
-                    );
+        if (!isAcceptable(
+                systemParameters,
+                timestepNetwork,
+                result
+        ) && !previousVoltages.isEmpty()) {
+
+            result = timestepSolver.solve(
+                    timestepNetwork,
+                    systemParameters.referenceNodeId(),
+                    powersW,
+                    200,
+                    1e-3,
+                    Map.of()
+            );
         }
 
         return result;
