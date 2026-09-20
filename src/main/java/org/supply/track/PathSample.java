@@ -22,4 +22,22 @@ public final class PathSample {
     public RwyCoordinate getRailwayCoordinate() {
         return railwayCoordinate;
     }
+
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (!(object instanceof PathSample other)) {
+            return false;
+        }
+
+        return Double.compare(pathPositionM, other.pathPositionM) == 0
+                && Objects.equals(railwayCoordinate, other.railwayCoordinate);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(pathPositionM, railwayCoordinate);
+    }
 }

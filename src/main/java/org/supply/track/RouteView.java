@@ -30,6 +30,7 @@ public final class RouteView {
         }
 
         double previous = Double.NEGATIVE_INFINITY;
+        PathSample previousSample = null;
 
         for (PathSample sample : this.samples) {
             double positionM = sample.getPathPositionM();
@@ -40,15 +41,28 @@ public final class RouteView {
                 );
             }
 
-            if (positionM <= previous) {
-                throw new IllegalArgumentException(
-                        "Route path positions must be strictly increasing"
-                );
+            if (previousSample != null) {
+                double previousPositionM = previousSample.getPathPositionM();
+                int positionComparison =
+                        Double.compare(positionM, previousPositionM);
+
+                if (positionComparison < 0) {
+                    throw new IllegalArgumentException(
+                            "Route path positions must be non-decreasing"
+                    );
+                }
+
+                if (positionComparison == 0
+                        && !sample.equals(previousSample)) {
+                    throw new IllegalArgumentException(
+                            "Samples at the same route path position must be identical: "
+                                    + positionM
+                    );
+                }
             }
 
-            previous = positionM;
-        }
-    }
+            previousSample = sample;
+        }    }
 
     public String getRouteId() {
         return routeId;

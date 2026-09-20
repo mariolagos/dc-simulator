@@ -158,12 +158,13 @@ public final class ScenarioHelpers {
             int bisKm = (int) requireNumericCell(km, "bisKm", r.getRowNum());
             double bisMeter = requireNumericCell(m, "bisMeter", r.getRowNum());
 
-            if (bisMeter < 0.0 || bisMeter >= 1000.0) {
+            if (!Double.isFinite(bisMeter)) {
                 throw new IllegalArgumentException(
-                        "Invalid bisMeter at row " + r.getRowNum() + ": " + bisMeter + " (expected 0 <= bisMeter < 1000)"
+                        "Invalid bisMeter at row " + r.getRowNum()
+                                + ": " + bisMeter
+                                + " (expected a finite value)"
                 );
             }
-
             pts.add(new TrackPoint(posM, bisKm, bisMeter));
         }
 

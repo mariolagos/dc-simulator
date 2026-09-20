@@ -56,4 +56,29 @@ public final class RwyCoordinate {
                 : sectionId + " " + kmTextShort + " " + trackId;
     }
 
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (!(object instanceof RwyCoordinate other)) {
+            return false;
+        }
+
+        return positionM == other.positionM
+                && sectionId.equals(other.sectionId)
+                && positionText.equals(other.positionText)
+                && Objects.equals(trackId, other.trackId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                sectionId,
+                positionText,
+                positionM,
+                trackId
+        );
+    }
+
 }

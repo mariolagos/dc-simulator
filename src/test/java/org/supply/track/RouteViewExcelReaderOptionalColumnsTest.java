@@ -84,8 +84,22 @@ public class RouteViewExcelReaderOptionalColumnsTest {
                         {2003,21,1,0},{2004,21,1,1}}),"21 1+000");
     }
 
-    @Test public void stillRejectsNonIncreasingRouteDistance() throws Exception {
-        expectFailure(workbook(false,null,null,new int[][]{{0,21,0,0},{0,21,1,0}}),"strictly increasing");
+    @Test
+    public void rejectsDifferentRowsAtSameRouteDistance()
+            throws Exception {
+
+        expectFailure(
+                workbook(
+                        false,
+                        null,
+                        null,
+                        new int[][]{
+                                {0, 21, 0, 0},
+                                {0, 21, 1, 0}
+                        }
+                ),
+                "must be identical"
+        );
     }
 
     private void expectFailure(Path path, String message) throws Exception {
@@ -95,5 +109,42 @@ public class RouteViewExcelReaderOptionalColumnsTest {
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage(),expected.getMessage().contains(message));
         }
+    }
+
+    @Test
+    public void acceptsIdenticalRowsAtSameRouteDistance()
+            throws Exception {
+
+        new RouteViewExcelReader().read(
+                workbook(
+                        false,
+                        null,
+                        null,
+                        new int[][]{
+                                {0, 21, 0, 0},
+                                {0, 21, 0, 0}
+                        }
+                ),
+                "test",
+                "F-M"
+        );
+    }
+
+    @Test
+    public void rejectsDecreasingRouteDistance()
+            throws Exception {
+
+        expectFailure(
+                workbook(
+                        false,
+                        null,
+                        null,
+                        new int[][]{
+                                {1, 21, 0, 0},
+                                {0, 21, 0, 1}
+                        }
+                ),
+                "non-decreasing"
+        );
     }
 }

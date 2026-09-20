@@ -60,15 +60,14 @@ public final class ScenarioHelpers {
             int bisKm = (int) requireNumericCell(km, "bisKm", r.getRowNum());
             double bisMeter = requireNumericCell(m, "bisMeter", r.getRowNum());
 
-            if (bisMeter < 0) {
+            if (!Double.isFinite(bisMeter)) {
                 throw new IllegalArgumentException(
-                        "Invalid bisMeter at row "
-                                + r.getRowNum()
-                                + ": "
-                                + bisMeter
-                                + " (expected bisMeter >= 0)"
+                        "Invalid bisMeter at row " + r.getRowNum()
+                                + ": " + bisMeter
+                                + " (expected a finite value)"
                 );
             }
+
             TrackInterpolationPoint point =
                     new TrackInterpolationPoint(
                             posM,
@@ -168,25 +167,52 @@ public final class ScenarioHelpers {
         }
 
         double prev = Double.NEGATIVE_INFINITY;
+        TrackInterpolationPoint previousPoint = null;
+
         for (int i = 0; i < TrackInterpolationPoints.size(); i++) {
             TrackInterpolationPoint tp = TrackInterpolationPoints.get(i);
 
-            if (Double.isNaN(tp.positionM) || Double.isInfinite(tp.positionM)) {
-                throw new IllegalArgumentException("Invalid track position at index " + i + ": " + tp.positionM);
-            }
-            if (tp.bisMeter < 0.0) {
+            if (!Double.isFinite(tp.positionM)) {
                 throw new IllegalArgumentException(
-                        "Invalid bisMeter at index " + i + ": " + tp.bisMeter + " (expected bisMeter >= 0)"
+                        "Invalid track position at index "
+                                + i + ": " + tp.positionM
                 );
             }
-            if (i > 0 && tp.positionM <= prev) {
+
+            if (!Double.isFinite(tp.bisMeter)) {
                 throw new IllegalArgumentException(
-                        "track position must be strictly increasing; found " + prev + " then " + tp.positionM
+                        "Invalid bisMeter at index "
+                                + i + ": " + tp.bisMeter
+                                + " (expected a finite value)"
                 );
             }
-            prev = tp.positionM;
-        }
-    }
+
+            if (previousPoint != null) {
+                int comparison = Double.compare(
+                        tp.positionM,
+                        previousPoint.positionM
+                );
+
+                if (comparison < 0) {
+                    throw new IllegalArgumentException(
+                            "Track positions must be non-decreasing; found "
+                                    + previousPoint.positionM
+                                    + " then "
+                                    + tp.positionM
+                    );
+                }
+
+                if (comparison == 0 && !tp.equals(previousPoint)) {
+                    throw new IllegalArgumentException(
+                            "Track points at position "
+                                    + tp.positionM
+                                    + " must be identical"
+                    );
+                }
+            }
+
+            previousPoint = tp;
+        }    }
 
     public static int parseHmsToSeconds(String s) {
         String[] p = s.trim().split(":");
