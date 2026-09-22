@@ -20,12 +20,10 @@ public final class TrackSectionMapper {
 
         for (RouteSegment segment : section.getSegments()) {
             if (isWithinSegment(segment, railwayCoordinate)) {
-                int offsetInSegment = Math.abs(railwayCoordinate.getPositionM() - segment.getStartRwy().getPositionM());
-                int modelPositionM = segment.getStartModelM() + offsetInSegment;
                 return new ModelCoordinate(
                         section.getSectionId(),
                         railwayCoordinate.getTrackId(),
-                        modelPositionM
+                        interpolateModelPosition(segment, railwayCoordinate)
                 );
             }
         }
@@ -45,6 +43,31 @@ public final class TrackSectionMapper {
                         + " -> "
                         + last.getEndRwy()
         );
+    }
+
+    private int interpolateModelPosition(
+            RouteSegment segment,
+            RwyCoordinate coordinate) {
+        int startRwyM = segment.getStartRwy().getPositionM();
+        int endRwyM = segment.getEndRwy().getPositionM();
+        int railwaySpanM = Math.abs(endRwyM - startRwyM);
+
+        if (railwaySpanM == 0) {
+            if (segment.getLengthM() == 0) {
+                return segment.getStartModelM();
+            }
+            throw new IllegalArgumentException(
+                    "Cannot map a non-zero model segment from identical railway coordinates: "
+                            + segment.getStartRwy()
+                            + " -> "
+                            + segment.getEndRwy()
+            );
+        }
+
+        int railwayOffsetM = Math.abs(coordinate.getPositionM() - startRwyM);
+        double fraction = (double) railwayOffsetM / railwaySpanM;
+        return segment.getStartModelM()
+                + (int) Math.round(fraction * segment.getLengthM());
     }
 
     private boolean isWithinSegment(RouteSegment segment, RwyCoordinate coordinate) {
