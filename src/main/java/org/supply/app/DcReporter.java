@@ -1,5 +1,6 @@
 package org.supply.app;
 
+import com.typesafe.config.Config;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -12,11 +13,24 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class DcReporter {
+
+    private static final double MIN_TRAIN_VOLTAGE_V =
+            Double.parseDouble(System.getProperty(
+                    "dcsim.report.minTrainVoltageV", "600.0"));
+    private static final double MIN_POWER_DEFICIT_W =
+            Double.parseDouble(System.getProperty(
+                    "dcsim.report.minPowerDeficitW", "1000.0"));
+    private static final double MAX_EVENT_GAP_S =
+            Double.parseDouble(System.getProperty(
+                    "dcsim.report.maxEventGapS", "1.01"));
 
     public static void main(String[] args) throws Exception {
         DcStudyContext context =
@@ -43,6 +57,9 @@ public final class DcReporter {
         ResultMetadata metadata =
                 extractMetadata(rows);
 
+        BaseRoutePositionMapper baseRoutePositionMapper =
+                loadBaseRoutePositionMapper(context);
+
         writeInstallationWorkbook(
                 rows,
                 metadata,
@@ -56,6 +73,7 @@ public final class DcReporter {
         writeTrainWorkbook(
                 rows,
                 metadata,
+                baseRoutePositionMapper,
                 resultsTrain
         );
 
@@ -74,15 +92,25 @@ public final class DcReporter {
                         .resolve(context.studyId() + "_results_system.xlsx");
 
         writeSystemWorkbook(rows, metadata, resultsSystem);
+
+        Path deviations =
+                context.resultDirectory()
+                        .resolve(context.studyId() + "_deviations.xlsx");
+
+        writeDeviationWorkbook(rows, metadata, deviations);
     }
 
     private static void writeTrainWorkbook(
             List<LongTableRow> rows,
-            ResultMetadata metadata, Path outputPath
+            ResultMetadata metadata,
+            BaseRoutePositionMapper baseRoutePositionMapper,
+            Path outputPath
     ) throws IOException {
 
         Map<String, Map<Double, TrainResult>> results =
                 collectTrainResults(rows);
+
+        populateBaseRoutePositions(results, baseRoutePositionMapper);
 
         try (Workbook workbook = new XSSFWorkbook()) {
 
@@ -205,6 +233,20 @@ public final class DcReporter {
         return result;
     }
 
+    private static void populateBaseRoutePositions(
+            Map<String, Map<Double, TrainResult>> trains,
+            BaseRoutePositionMapper mapper
+    ) {
+        for (Map<Double, TrainResult> byTime : trains.values()) {
+            for (TrainResult train : byTime.values()) {
+                train.baseRoutePositionM = mapper.map(
+                        train.sectionId,
+                        train.positionM
+                );
+            }
+        }
+    }
+
     private static void writeTrainSheet(
             Sheet sheet,
             String trainId,
@@ -225,20 +267,22 @@ public final class DcReporter {
         header.createCell(5)
                 .setCellValue(trainId + ".position_m");
         header.createCell(6)
-                .setCellValue(trainId + ".u_V");
+                .setCellValue(trainId + ".base_route_position_m");
         header.createCell(7)
-                .setCellValue(trainId + ".i_A");
+                .setCellValue(trainId + ".u_V");
         header.createCell(8)
-                .setCellValue(trainId + ".p_req_W");
+                .setCellValue(trainId + ".i_A");
         header.createCell(9)
-                .setCellValue(trainId + ".p_W");
+                .setCellValue(trainId + ".p_req_W");
         header.createCell(10)
-                .setCellValue(trainId + ".p_delta_W");
+                .setCellValue(trainId + ".p_W");
         header.createCell(11)
-                .setCellValue(trainId + ".e_consumed_J");
+                .setCellValue(trainId + ".p_delta_W");
         header.createCell(12)
-                .setCellValue(trainId + ".e_regenerated_J");
+                .setCellValue(trainId + ".e_consumed_J");
         header.createCell(13)
+                .setCellValue(trainId + ".e_regenerated_J");
+        header.createCell(14)
                 .setCellValue(trainId + ".e_net_J");
 
         int rowIndex = 1;
@@ -258,21 +302,283 @@ public final class DcReporter {
             setTextCell(row, 3, result.sectionId);
             setTextCell(row, 4, result.trackId);
             setNumericCell(row, 5, result.positionM);
-            setNumericCell(row, 6, result.uV);
-            setNumericCell(row, 7, result.iA);
-            setNumericCell(row, 8, result.pReqW);
-            setNumericCell(row, 9, result.pW);
-            setNumericCell(row, 10, result.pDeltaW);
-            setNumericCell(row, 11, result.eConsumedJ);
-            setNumericCell(row, 12, result.eRegeneratedJ);
-            setNumericCell(row, 13, result.eNetJ);
+            setNumericCell(row, 6, result.baseRoutePositionM);
+            setNumericCell(row, 7, result.uV);
+            setNumericCell(row, 8, result.iA);
+            setNumericCell(row, 9, result.pReqW);
+            setNumericCell(row, 10, result.pW);
+            setNumericCell(row, 11, result.pDeltaW);
+            setNumericCell(row, 12, result.eConsumedJ);
+            setNumericCell(row, 13, result.eRegeneratedJ);
+            setNumericCell(row, 14, result.eNetJ);
         }
 
         sheet.createFreezePane(0, 1);
 
-        for (int column = 0; column < 14; column++) {
+        for (int column = 0; column < 15; column++) {
             sheet.autoSizeColumn(column);
         }
+    }
+
+    private static BaseRoutePositionMapper loadBaseRoutePositionMapper(
+            DcStudyContext context
+    ) throws IOException {
+        String configPath = "report.graphical-timetable";
+        Config scenario = context.scenario();
+
+        if (!scenario.hasPath(configPath)) {
+            return BaseRoutePositionMapper.disabled();
+        }
+
+        Config graphicalTimetable = scenario.getConfig(configPath);
+        if (graphicalTimetable.hasPath("enabled")
+                && !graphicalTimetable.getBoolean("enabled")) {
+            return BaseRoutePositionMapper.disabled();
+        }
+
+        if (!graphicalTimetable.hasPath("base-route.sections")) {
+            throw new IllegalArgumentException(
+                    "Missing configuration: " + configPath
+                            + ".base-route.sections"
+            );
+        }
+
+        List<String> sections =
+                graphicalTimetable.getStringList("base-route.sections");
+
+        Path trackSegments =
+                context.exportDirectory().resolve("track_segments.csv");
+
+        return BaseRoutePositionMapper.load(trackSegments, sections);
+    }
+
+    private static void writeDeviationWorkbook(
+            List<LongTableRow> rows,
+            ResultMetadata metadata,
+            Path outputPath
+    ) throws IOException {
+        Map<String, Map<Double, TrainResult>> trains =
+                collectTrainResults(rows);
+        List<DeviationPeriod> periods =
+                collectDeviationPeriods(trains);
+        Map<String, SectorSummary> sectors =
+                summarizeSectors(periods);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            writeMetadataSheet(workbook, metadata);
+            writeThresholdSheet(workbook);
+            writeDeviationPeriodsSheet(
+                    workbook.createSheet("Deviation periods"), periods);
+            writeSectorSummarySheet(
+                    workbook.createSheet("Weak sectors"), sectors);
+
+            Files.createDirectories(outputPath.getParent());
+            try (OutputStream out = Files.newOutputStream(outputPath)) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private static List<DeviationPeriod> collectDeviationPeriods(
+            Map<String, Map<Double, TrainResult>> trains
+    ) {
+        List<RawDeviation> deviations = new ArrayList<>();
+
+        for (Map.Entry<String, Map<Double, TrainResult>> trainEntry
+                : trains.entrySet()) {
+            String trainId = trainEntry.getKey();
+            for (Map.Entry<Double, TrainResult> timeEntry
+                    : trainEntry.getValue().entrySet()) {
+                double timeS = timeEntry.getKey();
+                TrainResult train = timeEntry.getValue();
+
+                if (train.uV != null && train.uV < MIN_TRAIN_VOLTAGE_V) {
+                    deviations.add(new RawDeviation(
+                            DeviationType.UNDER_VOLTAGE,
+                            trainId,
+                            timeS,
+                            train,
+                            train.uV,
+                            null
+                    ));
+                }
+
+                if (train.pDeltaW != null
+                        && train.pDeltaW > MIN_POWER_DEFICIT_W) {
+                    deviations.add(new RawDeviation(
+                            DeviationType.POWER_DEFICIT,
+                            trainId,
+                            timeS,
+                            train,
+                            train.uV,
+                            train.pDeltaW
+                    ));
+                }
+            }
+        }
+
+        deviations.sort(Comparator
+                .comparing((RawDeviation d) -> d.trainId)
+                .thenComparing(d -> d.type)
+                .thenComparingDouble(d -> d.timeS));
+
+        List<DeviationPeriod> periods = new ArrayList<>();
+        DeviationPeriod current = null;
+        for (RawDeviation deviation : deviations) {
+            if (current == null || !current.canAppend(deviation)) {
+                current = new DeviationPeriod(deviation);
+                periods.add(current);
+            } else {
+                current.append(deviation);
+            }
+        }
+
+        periods.sort(Comparator
+                .comparingDouble((DeviationPeriod p) -> p.startTimeS)
+                .thenComparing(p -> p.trainId)
+                .thenComparing(p -> p.type));
+        return periods;
+    }
+
+    private static Map<String, SectorSummary> summarizeSectors(
+            List<DeviationPeriod> periods
+    ) {
+        Map<String, SectorSummary> result = new LinkedHashMap<>();
+        for (DeviationPeriod period : periods) {
+            String section = valueOrUnknown(period.sectionId);
+            String track = valueOrUnknown(period.trackId);
+            String key = section + " / " + track;
+            result.computeIfAbsent(
+                    key,
+                    ignored -> new SectorSummary(section, track)
+            ).add(period);
+        }
+        return result;
+    }
+
+    private static void writeThresholdSheet(Workbook workbook) {
+        Sheet sheet = workbook.createSheet("Thresholds");
+        writeThresholdRow(sheet, 0, "min_train_voltage_V",
+                MIN_TRAIN_VOLTAGE_V,
+                "UNDER_VOLTAGE when u_V is below this value");
+        writeThresholdRow(sheet, 1, "min_power_deficit_W",
+                MIN_POWER_DEFICIT_W,
+                "POWER_DEFICIT when p_delta_W is above this value");
+        writeThresholdRow(sheet, 2, "max_event_gap_s",
+                MAX_EVENT_GAP_S,
+                "Largest time gap merged into one deviation period");
+        sheet.autoSizeColumn(0);
+        sheet.autoSizeColumn(1);
+        sheet.autoSizeColumn(2);
+    }
+
+    private static void writeThresholdRow(
+            Sheet sheet,
+            int rowIndex,
+            String name,
+            double value,
+            String description
+    ) {
+        Row row = sheet.createRow(rowIndex);
+        row.createCell(0).setCellValue(name);
+        row.createCell(1).setCellValue(value);
+        row.createCell(2).setCellValue(description);
+    }
+
+    private static void writeDeviationPeriodsSheet(
+            Sheet sheet,
+            List<DeviationPeriod> periods
+    ) {
+        String[] headers = {
+                "type", "train_id", "section_id", "track_id",
+                "start_time_s", "end_time_s", "duration_s",
+                "start_position_m", "end_position_m",
+                "start_route_position_m", "end_route_position_m",
+                "min_voltage_V", "max_power_deficit_W", "sample_count"
+        };
+        writeHeader(sheet, headers);
+
+        int rowIndex = 1;
+        for (DeviationPeriod period : periods) {
+            Row row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(period.type.name());
+            row.createCell(1).setCellValue(period.trainId);
+            setTextCell(row, 2, period.sectionId);
+            setTextCell(row, 3, period.trackId);
+            row.createCell(4).setCellValue(period.startTimeS);
+            row.createCell(5).setCellValue(period.endTimeS);
+            row.createCell(6).setCellValue(period.endTimeS - period.startTimeS);
+            setNumericCell(row, 7, period.startPositionM);
+            setNumericCell(row, 8, period.endPositionM);
+            setNumericCell(row, 9, period.startRoutePositionM);
+            setNumericCell(row, 10, period.endRoutePositionM);
+            setNumericCell(row, 11, period.minVoltageV);
+            setNumericCell(row, 12, period.maxPowerDeficitW);
+            row.createCell(13).setCellValue(period.sampleCount);
+        }
+
+        sheet.createFreezePane(0, 1);
+        autoSize(sheet, headers.length);
+    }
+
+    private static void writeSectorSummarySheet(
+            Sheet sheet,
+            Map<String, SectorSummary> sectors
+    ) {
+        String[] headers = {
+                "section_id", "track_id", "period_count",
+                "total_duration_s", "min_voltage_V",
+                "max_power_deficit_W", "affected_trains"
+        };
+        writeHeader(sheet, headers);
+
+        List<SectorSummary> sorted = new ArrayList<>(sectors.values());
+        sorted.sort(Comparator
+                .comparingDouble((SectorSummary s) -> s.totalDurationS)
+                .reversed()
+                .thenComparing(
+                        Comparator.comparingInt(
+                                        (SectorSummary s) -> s.periodCount)
+                                .reversed())
+                .thenComparing(
+                        s -> s.minVoltageV,
+                        Comparator.nullsLast(Double::compareTo))
+                .thenComparing(
+                        s -> s.maxPowerDeficitW,
+                        Comparator.nullsLast(
+                                Comparator.reverseOrder())));
+
+        int rowIndex = 1;
+        for (SectorSummary sector : sorted) {
+            Row row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(sector.sectionId);
+            row.createCell(1).setCellValue(sector.trackId);
+            row.createCell(2).setCellValue(sector.periodCount);
+            row.createCell(3).setCellValue(sector.totalDurationS);
+            setNumericCell(row, 4, sector.minVoltageV);
+            setNumericCell(row, 5, sector.maxPowerDeficitW);
+            row.createCell(6).setCellValue(String.join(", ", sector.trainIds));
+        }
+
+        sheet.createFreezePane(0, 1);
+        autoSize(sheet, headers.length);
+    }
+
+    private static void writeHeader(Sheet sheet, String[] headers) {
+        Row header = sheet.createRow(0);
+        for (int column = 0; column < headers.length; column++) {
+            header.createCell(column).setCellValue(headers[column]);
+        }
+    }
+
+    private static void autoSize(Sheet sheet, int columnCount) {
+        for (int column = 0; column < columnCount; column++) {
+            sheet.autoSizeColumn(column);
+        }
+    }
+
+    private static String valueOrUnknown(String value) {
+        return value == null || value.isBlank() ? "UNKNOWN" : value;
     }
 
     private static void writeSystemWorkbook(
@@ -948,6 +1254,7 @@ public final class DcReporter {
         private String sectionId;
         private String trackId;
         private Double positionM;
+        private Double baseRoutePositionM;
         private Double uV;
         private Double iA;
         private Double pReqW;
@@ -956,6 +1263,134 @@ public final class DcReporter {
         private Double eConsumedJ;
         private Double eRegeneratedJ;
         private Double eNetJ;
+    }
+
+    private static final class BaseRoutePositionMapper {
+        private final Map<String, Double> sectionOffsetsM;
+
+        private BaseRoutePositionMapper(
+                Map<String, Double> sectionOffsetsM
+        ) {
+            this.sectionOffsetsM = sectionOffsetsM;
+        }
+
+        private static BaseRoutePositionMapper disabled() {
+            return new BaseRoutePositionMapper(Map.of());
+        }
+
+        private static BaseRoutePositionMapper load(
+                Path trackSegmentsPath,
+                List<String> baseRouteSections
+        ) throws IOException {
+            if (baseRouteSections.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Base route must contain at least one section"
+                );
+            }
+
+            Map<String, Double> sectionLengthsM =
+                    readSectionLengths(trackSegmentsPath);
+            Map<String, Double> offsetsM = new LinkedHashMap<>();
+            Set<String> seen = new HashSet<>();
+            double offsetM = 0.0;
+
+            for (String section : baseRouteSections) {
+                if (!seen.add(section)) {
+                    throw new IllegalArgumentException(
+                            "Duplicate section in base route: " + section
+                    );
+                }
+
+                Double lengthM = sectionLengthsM.get(section);
+                if (lengthM == null) {
+                    throw new IllegalArgumentException(
+                            "Base-route section " + section
+                                    + " is missing from "
+                                    + trackSegmentsPath
+                    );
+                }
+
+                offsetsM.put(section, offsetM);
+                offsetM += lengthM;
+            }
+
+            return new BaseRoutePositionMapper(offsetsM);
+        }
+
+        private Double map(String sectionId, Double positionM) {
+            if (sectionId == null || positionM == null) {
+                return null;
+            }
+
+            Double offsetM = sectionOffsetsM.get(sectionId);
+            return offsetM == null ? null : offsetM + positionM;
+        }
+
+        private static Map<String, Double> readSectionLengths(
+                Path trackSegmentsPath
+        ) throws IOException {
+            if (!Files.exists(trackSegmentsPath)) {
+                throw new IllegalArgumentException(
+                        "Track-segment export not found: "
+                                + trackSegmentsPath
+                );
+            }
+
+            Map<String, Double> lengthsM = new LinkedHashMap<>();
+
+            try (BufferedReader reader =
+                         Files.newBufferedReader(trackSegmentsPath)) {
+                String header = reader.readLine();
+                if (!"section,from_rwy,to_rwy,start_model_m,length_m"
+                        .equals(header)) {
+                    throw new IllegalArgumentException(
+                            "Unexpected track_segments.csv header in "
+                                    + trackSegmentsPath + ": " + header
+                    );
+                }
+
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.isBlank()) {
+                        continue;
+                    }
+
+                    String[] fields = line.split(",", -1);
+                    if (fields.length != 5) {
+                        throw new IllegalArgumentException(
+                                "Invalid track-segment row: " + line
+                        );
+                    }
+
+                    String section = fields[0];
+                    double startModelM;
+                    double lengthM;
+                    try {
+                        startModelM = Double.parseDouble(fields[3]);
+                        lengthM = Double.parseDouble(fields[4]);
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException(
+                                "Invalid track-segment coordinate in row: "
+                                        + line,
+                                e
+                        );
+                    }
+
+                    if (startModelM < 0.0 || !(lengthM > 0.0)) {
+                        throw new IllegalArgumentException(
+                                "Track-segment start must be non-negative "
+                                        + "and length must be positive: "
+                                        + line
+                        );
+                    }
+
+                    double sectionEndM = startModelM + lengthM;
+                    lengthsM.merge(section, sectionEndM, Math::max);
+                }
+            }
+
+            return lengthsM;
+        }
     }
 
     private static final class LineResult {
@@ -978,6 +1413,144 @@ public final class DcReporter {
         private Double eFixedLoadsConsumedJ;
         private Double eLossesJ;
         private Double eBalanceJ;
+    }
+
+    private enum DeviationType {
+        UNDER_VOLTAGE,
+        POWER_DEFICIT
+    }
+
+    private static final class RawDeviation {
+        private final DeviationType type;
+        private final String trainId;
+        private final double timeS;
+        private final String sectionId;
+        private final String trackId;
+        private final Double positionM;
+        private final Double routePositionM;
+        private final Double voltageV;
+        private final Double powerDeficitW;
+
+        private RawDeviation(
+                DeviationType type,
+                String trainId,
+                double timeS,
+                TrainResult train,
+                Double voltageV,
+                Double powerDeficitW
+        ) {
+            this.type = type;
+            this.trainId = trainId;
+            this.timeS = timeS;
+            this.sectionId = train.sectionId;
+            this.trackId = train.trackId;
+            this.positionM = train.positionM;
+            this.routePositionM = train.electricRoutePositionM;
+            this.voltageV = voltageV;
+            this.powerDeficitW = powerDeficitW;
+        }
+    }
+
+    private static final class DeviationPeriod {
+        private final DeviationType type;
+        private final String trainId;
+        private final String sectionId;
+        private final String trackId;
+        private final double startTimeS;
+        private double endTimeS;
+        private final Double startPositionM;
+        private Double endPositionM;
+        private final Double startRoutePositionM;
+        private Double endRoutePositionM;
+        private Double minVoltageV;
+        private Double maxPowerDeficitW;
+        private int sampleCount;
+
+        private DeviationPeriod(RawDeviation deviation) {
+            this.type = deviation.type;
+            this.trainId = deviation.trainId;
+            this.sectionId = deviation.sectionId;
+            this.trackId = deviation.trackId;
+            this.startTimeS = deviation.timeS;
+            this.endTimeS = deviation.timeS;
+            this.startPositionM = deviation.positionM;
+            this.endPositionM = deviation.positionM;
+            this.startRoutePositionM = deviation.routePositionM;
+            this.endRoutePositionM = deviation.routePositionM;
+            this.minVoltageV = deviation.voltageV;
+            this.maxPowerDeficitW = deviation.powerDeficitW;
+            this.sampleCount = 1;
+        }
+
+        private boolean canAppend(RawDeviation deviation) {
+            return type == deviation.type
+                    && trainId.equals(deviation.trainId)
+                    && same(sectionId, deviation.sectionId)
+                    && same(trackId, deviation.trackId)
+                    && deviation.timeS >= endTimeS
+                    && deviation.timeS - endTimeS <= MAX_EVENT_GAP_S;
+        }
+
+        private void append(RawDeviation deviation) {
+            endTimeS = deviation.timeS;
+            endPositionM = deviation.positionM;
+            endRoutePositionM = deviation.routePositionM;
+            minVoltageV = minimum(minVoltageV, deviation.voltageV);
+            maxPowerDeficitW = maximum(
+                    maxPowerDeficitW, deviation.powerDeficitW);
+            sampleCount++;
+        }
+    }
+
+    private static final class SectorSummary {
+        private final String sectionId;
+        private final String trackId;
+        private int periodCount;
+        private double totalDurationS;
+        private Double minVoltageV;
+        private Double maxPowerDeficitW;
+        private final List<String> trainIds = new ArrayList<>();
+
+        private SectorSummary(String sectionId, String trackId) {
+            this.sectionId = sectionId;
+            this.trackId = trackId;
+        }
+
+        private void add(DeviationPeriod period) {
+            periodCount++;
+            totalDurationS += period.endTimeS - period.startTimeS;
+            minVoltageV = minimum(minVoltageV, period.minVoltageV);
+            maxPowerDeficitW = maximum(
+                    maxPowerDeficitW, period.maxPowerDeficitW);
+            if (!trainIds.contains(period.trainId)) {
+                trainIds.add(period.trainId);
+            }
+        }
+
+    }
+
+    private static boolean same(String left, String right) {
+        return left == null ? right == null : left.equals(right);
+    }
+
+    private static Double minimum(Double left, Double right) {
+        if (left == null) {
+            return right;
+        }
+        if (right == null) {
+            return left;
+        }
+        return Math.min(left, right);
+    }
+
+    private static Double maximum(Double left, Double right) {
+        if (left == null) {
+            return right;
+        }
+        if (right == null) {
+            return left;
+        }
+        return Math.max(left, right);
     }
 
     private static void setTextCell(

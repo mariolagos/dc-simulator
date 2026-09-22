@@ -75,11 +75,34 @@ public class DcReporterTest {
         assertTrue(Files.exists(trainWorkbook));
         try (Workbook workbook = new XSSFWorkbook(Files.newInputStream(trainWorkbook))) {
             Sheet sheet = workbook.getSheet("T1");
-            assertEquals("T1.p_delta_W", sheet.getRow(0).getCell(10).getStringCellValue());
-            assertEquals(125.0, sheet.getRow(1).getCell(10).getNumericCellValue(), 1e-9);
-            assertEquals(300.0, sheet.getRow(1).getCell(11).getNumericCellValue(), 1e-9);
-            assertEquals(50.0, sheet.getRow(1).getCell(12).getNumericCellValue(), 1e-9);
-            assertEquals(250.0, sheet.getRow(1).getCell(13).getNumericCellValue(), 1e-9);
+            assertEquals(
+                    "T1.base_route_position_m",
+                    sheet.getRow(0).getCell(6).getStringCellValue()
+            );
+            assertEquals(
+                    "T1.p_delta_W",
+                    sheet.getRow(0).getCell(11).getStringCellValue()
+            );
+            assertEquals(
+                    125.0,
+                    sheet.getRow(1).getCell(11).getNumericCellValue(),
+                    1e-9
+            );
+            assertEquals(
+                    300.0,
+                    sheet.getRow(1).getCell(12).getNumericCellValue(),
+                    1e-9
+            );
+            assertEquals(
+                    50.0,
+                    sheet.getRow(1).getCell(13).getNumericCellValue(),
+                    1e-9
+            );
+            assertEquals(
+                    250.0,
+                    sheet.getRow(1).getCell(14).getNumericCellValue(),
+                    1e-9
+            );
         }
 
 
