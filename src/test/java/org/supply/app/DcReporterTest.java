@@ -13,6 +13,7 @@ import org.supply.solver.io.LongTableWriter;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -138,5 +139,131 @@ public class DcReporterTest {
             assertEquals(0.5, sheet.getRow(1).getCell(5).getNumericCellValue(), 1e-9);
             assertEquals(1.0, sheet.getRow(1).getCell(14).getNumericCellValue(), 1e-9);
         }
+    }
+
+    @Test
+    public void exportsGraphicalTimetableInputOnConfiguredBaseRoute()
+            throws Exception {
+        Path resultDirectory =
+                temporaryFolder.newFolder("graphical-results").toPath();
+        Path exportDirectory =
+                temporaryFolder.newFolder("graphical-exports").toPath();
+        String studyId = "graphical-report-test";
+        Path longTable =
+                resultDirectory.resolve(studyId + "_longtable.csv");
+
+        try (LongTableWriter writer = new LongTableWriter(
+                longTable.toString(),
+                true,
+                "project",
+                "scenario",
+                "hash"
+        )) {
+            writeTrainPosition(writer, 1.0, "T1", "200", 25.0, 125.0);
+            writeTrainPosition(writer, 2.0, "T1", "200", 35.0, -250.0);
+            writeTrainPosition(writer, 3.0, "T1", "999", 5.0, 0.0);
+        }
+
+        Files.writeString(
+                exportDirectory.resolve("track_segments.csv"),
+                "section,from_rwy,to_rwy,start_model_m,length_m\n"
+                        + "101,101 10+0,101 10+600,0,600\n"
+                        + "200,200 0+0,200 1+0,0,1000\n"
+        );
+        Files.writeString(
+                exportDirectory.resolve("track_stations.csv"),
+                "name,position_rwy,model_position_m\n"
+                        + "W,101 0+0 U,0\n"
+                        + "W,101 0+600 D,600\n"
+                        + "\"Central, upper\",200 0+100 U1,100\n"
+                        + "\"Central, upper\",200 0+300 D1,300\n"
+                        + "Outside,999 0+50 U,50\n"
+        );
+        Config scenario = ConfigFactory.parseString(
+                "report.graphical-timetable {"
+                        + "\n enabled = true"
+                        + "\n base-route.sections = [\"101\", \"200\"]"
+                        + "\n"
+                        + " }\n"
+                        + "dcsim.grid {\n"
+                        + " nodes = [\n"
+                        + "  { node_id=F_SS0, position_rwy=\"101 10+300 U\" },\n"
+                        + "  { node_id=F_SS1, position_rwy=\"200 0+400 U1\" },\n"
+                        + "  { node_id=R_SS1, position_rwy=\"200 0+400 D1\" },\n"
+                        + "  { node_id=F_U_SS2_LEFT, position_rwy=\"200 0+700 U1\" },\n"
+                        + "  { node_id=F_D_SS2_RIGHT, position_rwy=\"200 0+700 D1\" }\n"
+                        + " ]\n"
+                        + " power_installations = [\n"
+                        + "  { installation_id=SS0, installation_category=SUBSTATION, enabled=true },\n"
+                        + "  { installation_id=SS1, installation_category=SUBSTATION, enabled=true },\n"
+                        + "  { installation_id=SS2, installation_category=SUBSTATION, enabled=true,"
+                        + " terminals { NORTH=F_U_SS2_LEFT, SOUTH=F_D_SS2_RIGHT } }\n"
+                        + " ]\n"
+                        + " installation_connections = [\n"
+                        + "  { installation_id=SS0, node_id=F_SS0, connection_type=FEEDING },\n"
+                        + "  { installation_id=SS1, node_id=F_SS1, connection_type=FEEDING },\n"
+                        + "  { installation_id=SS1, node_id=R_SS1, connection_type=RETURN }\n"
+                        + " ]\n"
+                        + "}\n"
+        );
+        Config empty = ConfigFactory.empty();
+        DcStudyContext context = new DcStudyContext(
+                resultDirectory.resolve("study.conf"),
+                resultDirectory,
+                scenario,
+                empty,
+                studyId,
+                studyId,
+                "",
+                exportDirectory,
+                resultDirectory
+        );
+
+        DcReporter.run(context);
+
+        Path graphicalTimetable = resultDirectory.resolve(
+                studyId + "_graphical_timetable.csv"
+        );
+        assertEquals(
+                List.of(
+                        "time_s,train_id,base_route_position_m,p_delta_W",
+                        "1.0,T1,625.0,125.0",
+                        "2.0,T1,635.0,-250.0",
+                        "3.0,T1,,0.0"
+                ),
+                Files.readAllLines(graphicalTimetable)
+        );
+
+        Path markers = resultDirectory.resolve(
+                studyId + "_graphical_timetable_markers.csv"
+        );
+        assertEquals(
+                List.of(
+                        "name,base_route_position_m,kind",
+                        "W,300.0,STATION",
+                        "\"Central, upper\",800.0,STATION",
+                        "SS0,300.0,SUPPLY_POINT",
+                        "SS1,1000.0,SUPPLY_POINT",
+                        "SS2,1300.0,SUPPLY_POINT",
+                        "101/200,600.0,SECTION_BOUNDARY"
+                ),
+                Files.readAllLines(markers)
+        );
+    }
+
+    private static void writeTrainPosition(
+            LongTableWriter writer,
+            double timeS,
+            String trainId,
+            String sectionId,
+            double positionM,
+            double powerDeltaW
+    ) throws Exception {
+        writer.signalRow(timeS, "TRAIN", trainId, "section_id",
+                sectionId, "", "INPUT", null, "");
+        writer.signalRow(timeS, "TRAIN", trainId, "position_m",
+                positionM, "m", "INPUT", null, "");
+        writer.signalRow(timeS, "TRAIN", trainId, "p_delta_W",
+                powerDeltaW, "W", "RESULT", null, "");
     }
 }

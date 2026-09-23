@@ -8,6 +8,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.supply.solver.io.ResultMetadata;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -76,6 +77,31 @@ public final class DcReporter {
                 baseRoutePositionMapper,
                 resultsTrain
         );
+
+        if (baseRoutePositionMapper.isEnabled()) {
+            Path graphicalTimetableInput =
+                    context.resultDirectory().resolve(
+                            context.studyId()
+                                    + "_graphical_timetable.csv"
+                    );
+
+            writeGraphicalTimetableInput(
+                    rows,
+                    baseRoutePositionMapper,
+                    graphicalTimetableInput
+            );
+
+            Path graphicalTimetableMarkers =
+                    context.resultDirectory().resolve(
+                            context.studyId()
+                                    + "_graphical_timetable_markers.csv"
+                    );
+            writeGraphicalTimetableMarkers(
+                    context,
+                    baseRoutePositionMapper,
+                    graphicalTimetableMarkers
+            );
+        }
 
         Path resultsLine =
                 context.resultDirectory()
@@ -245,6 +271,272 @@ public final class DcReporter {
                 );
             }
         }
+    }
+
+    private static void writeGraphicalTimetableInput(
+            List<LongTableRow> rows,
+            BaseRoutePositionMapper mapper,
+            Path outputPath
+    ) throws IOException {
+        Map<String, Map<Double, TrainResult>> trains =
+                collectTrainResults(rows);
+
+        populateBaseRoutePositions(trains, mapper);
+        Files.createDirectories(outputPath.getParent());
+
+        try (BufferedWriter writer = Files.newBufferedWriter(outputPath)) {
+            writer.write(
+                    "time_s,train_id,base_route_position_m,p_delta_W"
+            );
+            writer.newLine();
+
+            for (Map.Entry<String, Map<Double, TrainResult>> trainEntry
+                    : trains.entrySet()) {
+                String trainId = trainEntry.getKey();
+
+                for (Map.Entry<Double, TrainResult> timeEntry
+                        : trainEntry.getValue().entrySet()) {
+                    TrainResult train = timeEntry.getValue();
+
+                    if (train.pDeltaW == null) {
+                        continue;
+                    }
+
+                    writer.write(Double.toString(timeEntry.getKey()));
+                    writer.write(',');
+                    writer.write(csv(trainId));
+                    writer.write(',');
+                    if (train.baseRoutePositionM != null) {
+                        writer.write(Double.toString(
+                                train.baseRoutePositionM
+                        ));
+                    }
+                    writer.write(',');
+                    writer.write(Double.toString(train.pDeltaW));
+                    writer.newLine();
+                }
+            }
+        }
+    }
+
+    private static String csv(String value) {
+        if (value.indexOf(',') < 0
+                && value.indexOf('"') < 0
+                && value.indexOf('\n') < 0
+                && value.indexOf('\r') < 0) {
+            return value;
+        }
+
+        return '"' + value.replace("\"", "\"\"") + '"';
+    }
+
+    private static void writeGraphicalTimetableMarkers(
+            DcStudyContext context,
+            BaseRoutePositionMapper mapper,
+            Path outputPath
+    ) throws IOException {
+        Path trackStationsPath = context.exportDirectory()
+                .resolve("track_stations.csv");
+        if (!Files.exists(trackStationsPath)) {
+            throw new IllegalArgumentException(
+                    "Track-station export not found: " + trackStationsPath
+            );
+        }
+
+        Map<String, StationRange> stations = new LinkedHashMap<>();
+        try (BufferedReader reader =
+                     Files.newBufferedReader(trackStationsPath)) {
+            String header = reader.readLine();
+            if (!"name,position_rwy,model_position_m".equals(header)) {
+                throw new IllegalArgumentException(
+                        "Unexpected track_stations.csv header in "
+                                + trackStationsPath + ": " + header
+                );
+            }
+
+            String line;
+            int lineNumber = 1;
+            while ((line = reader.readLine()) != null) {
+                lineNumber++;
+                if (line.isBlank()) {
+                    continue;
+                }
+                List<String> fields = csvFields(line, lineNumber);
+                if (fields.size() != 3) {
+                    throw new IllegalArgumentException(
+                            "Expected three fields at " + trackStationsPath
+                                    + ":" + lineNumber
+                    );
+                }
+                String name = fields.get(0).trim();
+                String railwayPosition = fields.get(1).trim();
+                int separator = railwayPosition.indexOf(' ');
+                if (name.isEmpty() || separator <= 0) {
+                    throw new IllegalArgumentException(
+                            "Invalid station row at " + trackStationsPath
+                                    + ":" + lineNumber
+                    );
+                }
+                String sectionId =
+                        railwayPosition.substring(0, separator);
+                double modelPositionM =
+                        parseDouble(fields.get(2).trim());
+                Double baseRoutePositionM =
+                        mapper.map(sectionId, modelPositionM);
+                if (baseRoutePositionM != null) {
+                    stations.computeIfAbsent(
+                            name, ignored -> new StationRange()
+                    ).include(baseRoutePositionM);
+                }
+            }
+        }
+
+        Files.createDirectories(outputPath.getParent());
+        try (BufferedWriter writer = Files.newBufferedWriter(outputPath)) {
+            writer.write("name,base_route_position_m,kind");
+            writer.newLine();
+            for (Map.Entry<String, StationRange> station
+                    : stations.entrySet()) {
+                writeMarker(writer, station.getKey(),
+                        station.getValue().centre(), "STATION");
+            }
+            writeSupplyPointMarkers(writer, context, mapper);
+            writeSectionBoundaryMarkers(writer, mapper);
+        }
+    }
+
+    private static void writeSupplyPointMarkers(
+            BufferedWriter writer,
+            DcStudyContext context,
+            BaseRoutePositionMapper mapper
+    ) throws IOException {
+        Config scenario = context.scenario();
+        String gridPath = "dcsim.grid";
+        if (!scenario.hasPath(gridPath + ".nodes")
+                || !scenario.hasPath(gridPath + ".power_installations")) {
+            return;
+        }
+
+        Map<String, String> nodeRailwayPositions = new LinkedHashMap<>();
+        for (Config node : scenario.getConfigList(gridPath + ".nodes")) {
+            String railwayPosition = node.getString("position_rwy").trim();
+            nodeRailwayPositions.put(
+                    node.getString("node_id"), railwayPosition
+            );
+        }
+
+        Map<String, Set<String>> connectionNodes = new LinkedHashMap<>();
+        if (scenario.hasPath(gridPath + ".installation_connections")) {
+            for (Config connection : scenario.getConfigList(
+                    gridPath + ".installation_connections")) {
+                connectionNodes.computeIfAbsent(
+                        connection.getString("installation_id"),
+                        ignored -> new HashSet<>()
+                ).add(connection.getString("node_id"));
+            }
+        }
+
+        for (Config installation : scenario.getConfigList(
+                gridPath + ".power_installations")) {
+            if (!"SUBSTATION".equals(
+                    installation.getString("installation_category"))) {
+                continue;
+            }
+            if (installation.hasPath("enabled")
+                    && !installation.getBoolean("enabled")) {
+                continue;
+            }
+
+            String installationId =
+                    installation.getString("installation_id");
+            Set<String> installationNodes = new HashSet<>();
+            Set<String> connected = connectionNodes.get(installationId);
+            if (connected != null) {
+                installationNodes.addAll(connected);
+            }
+            if (installation.hasPath("terminals")) {
+                for (Object value : installation.getConfig("terminals")
+                        .root().unwrapped().values()) {
+                    installationNodes.add(String.valueOf(value));
+                }
+            }
+
+            StationRange positions = new StationRange();
+            for (String nodeId : installationNodes) {
+                Double basePositionM = mapper.mapRailwayPosition(
+                        nodeRailwayPositions.get(nodeId)
+                );
+                if (basePositionM != null) {
+                    positions.include(basePositionM);
+                }
+            }
+            if (!positions.isEmpty()) {
+                writeMarker(writer, installationId,
+                        positions.centre(), "SUPPLY_POINT");
+            }
+        }
+    }
+
+    private static void writeSectionBoundaryMarkers(
+            BufferedWriter writer,
+            BaseRoutePositionMapper mapper
+    ) throws IOException {
+        String previousSection = null;
+        for (Map.Entry<String, Double> section
+                : mapper.sectionOffsetsM.entrySet()) {
+            if (previousSection != null) {
+                writeMarker(writer,
+                        previousSection + "/" + section.getKey(),
+                        section.getValue(), "SECTION_BOUNDARY");
+            }
+            previousSection = section.getKey();
+        }
+    }
+
+    private static void writeMarker(
+            BufferedWriter writer,
+            String name,
+            double positionM,
+            String kind
+    ) throws IOException {
+        writer.write(csv(name));
+        writer.write(',');
+        writer.write(Double.toString(positionM));
+        writer.write(',');
+        writer.write(kind);
+        writer.newLine();
+    }
+
+    private static List<String> csvFields(
+            String line, int lineNumber
+    ) {
+        List<String> fields = new ArrayList<>();
+        StringBuilder field = new StringBuilder();
+        boolean quoted = false;
+        for (int i = 0; i < line.length(); i++) {
+            char current = line.charAt(i);
+            if (current == '"') {
+                if (quoted && i + 1 < line.length()
+                        && line.charAt(i + 1) == '"') {
+                    field.append('"');
+                    i++;
+                } else {
+                    quoted = !quoted;
+                }
+            } else if (current == ',' && !quoted) {
+                fields.add(field.toString());
+                field.setLength(0);
+            } else {
+                field.append(current);
+            }
+        }
+        if (quoted) {
+            throw new IllegalArgumentException(
+                    "Unclosed quoted field at CSV line " + lineNumber
+            );
+        }
+        fields.add(field.toString());
+        return fields;
     }
 
     private static void writeTrainSheet(
@@ -1265,17 +1557,42 @@ public final class DcReporter {
         private Double eNetJ;
     }
 
+    private static final class StationRange {
+        private double minimumM = Double.POSITIVE_INFINITY;
+        private double maximumM = Double.NEGATIVE_INFINITY;
+
+        private void include(double positionM) {
+            minimumM = Math.min(minimumM, positionM);
+            maximumM = Math.max(maximumM, positionM);
+        }
+
+        private double centre() {
+            return (minimumM + maximumM) / 2.0;
+        }
+
+        private boolean isEmpty() {
+            return minimumM == Double.POSITIVE_INFINITY;
+        }
+    }
+
     private static final class BaseRoutePositionMapper {
         private final Map<String, Double> sectionOffsetsM;
+        private final Map<String, List<RailwaySegment>> segmentsBySection;
 
         private BaseRoutePositionMapper(
-                Map<String, Double> sectionOffsetsM
+                Map<String, Double> sectionOffsetsM,
+                Map<String, List<RailwaySegment>> segmentsBySection
         ) {
             this.sectionOffsetsM = sectionOffsetsM;
+            this.segmentsBySection = segmentsBySection;
         }
 
         private static BaseRoutePositionMapper disabled() {
-            return new BaseRoutePositionMapper(Map.of());
+            return new BaseRoutePositionMapper(Map.of(), Map.of());
+        }
+
+        private boolean isEnabled() {
+            return !sectionOffsetsM.isEmpty();
         }
 
         private static BaseRoutePositionMapper load(
@@ -1290,6 +1607,8 @@ public final class DcReporter {
 
             Map<String, Double> sectionLengthsM =
                     readSectionLengths(trackSegmentsPath);
+            Map<String, List<RailwaySegment>> segmentsBySection =
+                    readRailwaySegments(trackSegmentsPath);
             Map<String, Double> offsetsM = new LinkedHashMap<>();
             Set<String> seen = new HashSet<>();
             double offsetM = 0.0;
@@ -1314,7 +1633,9 @@ public final class DcReporter {
                 offsetM += lengthM;
             }
 
-            return new BaseRoutePositionMapper(offsetsM);
+            return new BaseRoutePositionMapper(
+                    offsetsM, segmentsBySection
+            );
         }
 
         private Double map(String sectionId, Double positionM) {
@@ -1324,6 +1645,98 @@ public final class DcReporter {
 
             Double offsetM = sectionOffsetsM.get(sectionId);
             return offsetM == null ? null : offsetM + positionM;
+        }
+
+        private Double mapRailwayPosition(String railwayPosition) {
+            if (railwayPosition == null) {
+                return null;
+            }
+            String[] parts = railwayPosition.trim().split("\\s+");
+            if (parts.length < 2) {
+                throw new IllegalArgumentException(
+                        "Invalid railway position: " + railwayPosition
+                );
+            }
+            String sectionId = parts[0];
+            Double sectionOffsetM = sectionOffsetsM.get(sectionId);
+            if (sectionOffsetM == null) {
+                return null;
+            }
+            double railwayPositionM = railwayMetres(parts[1]);
+            List<RailwaySegment> segments =
+                    segmentsBySection.get(sectionId);
+            if (segments == null) {
+                return null;
+            }
+            for (RailwaySegment segment : segments) {
+                if (segment.contains(railwayPositionM)) {
+                    return sectionOffsetM
+                            + segment.modelPositionM(railwayPositionM);
+                }
+            }
+            throw new IllegalArgumentException(
+                    "Railway position is outside section " + sectionId
+                            + ": " + railwayPosition
+            );
+        }
+
+        private static double railwayMetres(String value) {
+            int plus = value.indexOf('+');
+            if (plus <= 0 || plus == value.length() - 1) {
+                throw new IllegalArgumentException(
+                        "Invalid railway coordinate: " + value
+                );
+            }
+            return Double.parseDouble(value.substring(0, plus)) * 1000.0
+                    + Double.parseDouble(value.substring(plus + 1));
+        }
+
+        private static Map<String, List<RailwaySegment>>
+        readRailwaySegments(Path trackSegmentsPath) throws IOException {
+            Map<String, List<RailwaySegment>> result =
+                    new LinkedHashMap<>();
+            try (BufferedReader reader =
+                         Files.newBufferedReader(trackSegmentsPath)) {
+                String header = reader.readLine();
+                if (!"section,from_rwy,to_rwy,start_model_m,length_m"
+                        .equals(header)) {
+                    throw new IllegalArgumentException(
+                            "Unexpected track_segments.csv header in "
+                                    + trackSegmentsPath + ": " + header
+                    );
+                }
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.isBlank()) {
+                        continue;
+                    }
+                    String[] fields = line.split(",", -1);
+                    if (fields.length != 5) {
+                        throw new IllegalArgumentException(
+                                "Invalid track segment row: " + line
+                        );
+                    }
+                    result.computeIfAbsent(
+                            fields[0], ignored -> new ArrayList<>()
+                    ).add(new RailwaySegment(
+                            railwayCoordinateMetres(fields[1]),
+                            railwayCoordinateMetres(fields[2]),
+                            Double.parseDouble(fields[3]),
+                            Double.parseDouble(fields[4])
+                    ));
+                }
+            }
+            return result;
+        }
+
+        private static double railwayCoordinateMetres(String value) {
+            String[] parts = value.trim().split("\\s+");
+            if (parts.length < 2) {
+                throw new IllegalArgumentException(
+                        "Invalid railway position: " + value
+                );
+            }
+            return railwayMetres(parts[1]);
         }
 
         private static Map<String, Double> readSectionLengths(
@@ -1390,6 +1803,40 @@ public final class DcReporter {
             }
 
             return lengthsM;
+        }
+    }
+
+    private static final class RailwaySegment {
+        private final double fromRailwayM;
+        private final double toRailwayM;
+        private final double startModelM;
+        private final double lengthM;
+
+        private RailwaySegment(
+                double fromRailwayM,
+                double toRailwayM,
+                double startModelM,
+                double lengthM
+        ) {
+            this.fromRailwayM = fromRailwayM;
+            this.toRailwayM = toRailwayM;
+            this.startModelM = startModelM;
+            this.lengthM = lengthM;
+        }
+
+        private boolean contains(double positionM) {
+            return positionM >= Math.min(fromRailwayM, toRailwayM)
+                    && positionM <= Math.max(fromRailwayM, toRailwayM);
+        }
+
+        private double modelPositionM(double railwayPositionM) {
+            double railwayLengthM = toRailwayM - fromRailwayM;
+            if (railwayLengthM == 0.0) {
+                return startModelM;
+            }
+            double fraction =
+                    (railwayPositionM - fromRailwayM) / railwayLengthM;
+            return startModelM + fraction * lengthM;
         }
     }
 
