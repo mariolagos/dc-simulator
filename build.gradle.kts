@@ -156,6 +156,87 @@ tasks.register("dcStudy") {
     )
 }
 
+tasks.register<Exec>("dcStudyGt") {
+    group = "application"
+    description = "Run dcStudy and generate the graphical timetable SVG"
+    dependsOn("dcStudy")
+
+    val configFile = providers.gradleProperty("args")
+    val configuredStudyId = providers.gradleProperty("studyId")
+    val splotProjectDir = providers.gradleProperty("splotProjectDir")
+        .orElse(providers.environmentVariable("SPLOT_PROJECT_DIR"))
+
+    doFirst {
+        if (!configFile.isPresent) {
+            throw GradleException("dcStudyGt requires -Pargs=<study.conf>")
+        }
+        if (!splotProjectDir.isPresent) {
+            throw GradleException(
+                "dcStudyGt requires -PsplotProjectDir=<allProjects> " +
+                    "or environment variable SPLOT_PROJECT_DIR"
+            )
+        }
+
+        val configuration = file(configFile.get())
+        val studyId = configuredStudyId.orNull
+            ?: Regex(
+                """(?s)\bstudy\s*\{.*?\bid\s*=\s*\"([^\"]+)\""""
+            ).find(configuration.readText())?.groupValues?.get(1)
+            ?: throw GradleException(
+                "Cannot read study.id from $configuration; " +
+                    "use -PstudyId=<id> when study is defined in an include"
+            )
+        val resultsDirectory = file(studyWorkingDir.get())
+            .resolve("dc")
+            .resolve(studyId)
+            .resolve("results")
+        val timetableInput = resultsDirectory.resolve(
+            "${studyId}_graphical_timetable.csv"
+        )
+        val markerInput = resultsDirectory.resolve(
+            "${studyId}_graphical_timetable_markers.csv"
+        )
+        val svgOutput = resultsDirectory.resolve(
+            "${studyId}_graphical_timetable.svg"
+        )
+        val splotDirectory = file(splotProjectDir.get())
+        val windows = System.getProperty("os.name")
+            .lowercase().contains("windows")
+        val wrapper = splotDirectory.resolve(
+            if (windows) "gradlew.bat" else "gradlew"
+        )
+
+        if (!timetableInput.isFile) {
+            throw GradleException(
+                "Graphical timetable input not found: $timetableInput"
+            )
+        }
+        if (!markerInput.isFile) {
+            throw GradleException(
+                "Graphical timetable markers not found: $markerInput"
+            )
+        }
+        if (!wrapper.isFile) {
+            throw GradleException("SPlot Gradle wrapper not found: $wrapper")
+        }
+
+        workingDir(splotDirectory)
+        val splotArguments = listOf(
+            wrapper.absolutePath,
+            ":tools:splot:splotCsv",
+            "-Pinput=${timetableInput.absolutePath}",
+            "-Pmarkers=${markerInput.absolutePath}",
+            "-Poutput=${svgOutput.absolutePath}",
+            "-Ptitle=$studyId"
+        )
+        if (windows) {
+            commandLine(listOf("cmd", "/c") + splotArguments)
+        } else {
+            commandLine(splotArguments)
+        }
+    }
+}
+
 //
 // ===== NEW: Track Debug =====
 //
