@@ -34,6 +34,12 @@ public class RouteSchematicJunctionTest {
         assertTrue(svg.contains("23 3+576"));assertTrue(svg.contains("21 3+576"));
         assertTrue(svg.contains("junction connectors omitted: 1"));
         assertEquals(4,network.nodes().size());assertEquals(3,network.branches().size());
+        String practicalConnector=RouteSchematic.svg(
+                network,route,Map.of("first",0.000015,"bridge",1e-9,"last",0.000015),context);
+        var practical=DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .parse(new InputSource(new StringReader(practicalConnector)));
+        assertEquals(2,practical.getElementsByTagName("line").getLength());
+        assertTrue(practicalConnector.contains("junction connectors omitted: 1"));
         String unconfigured=RouteSchematic.svg(network,route,resistance,new RouteSchematic.Context(positions,List.of()));
         var ungrouped=DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new InputSource(new StringReader(unconfigured)));
         assertEquals(3,ungrouped.getElementsByTagName("line").getLength());

@@ -180,8 +180,8 @@ public final class RouteSchematic {
                 // Use the active same-side terminal to respect reversed route layout.
                 String peer=id.endsWith("_C")?id.substring(0,id.length()-1)+"A":
                         id.endsWith("_D")?id.substring(0,id.length()-1)+"B":
-                        id.endsWith("_A")?id.substring(0,id.length()-1)+"C":
-                        id.endsWith("_B")?id.substring(0,id.length()-1)+"D":null;
+                                id.endsWith("_A")?id.substring(0,id.length()-1)+"C":
+                                        id.endsWith("_B")?id.substring(0,id.length()-1)+"D":null;
                 int side=id.endsWith("LEFT")?-1:1, terminalY=y;
                 if(peer!=null && routeNodes.contains(peer)) {
                     for(String lineId:selected) for(var b:byLine.getOrDefault(lineId,List.of())) {
@@ -250,13 +250,13 @@ public final class RouteSchematic {
             for(var b:branches) {
                 if(!selected.contains(b.sourceId())) continue;
                 Double r=ohmPerM.get(b.sourceId());
-                if(r==null||r>1e-12||r<=0||b.resistanceOhm().asDouble()>1e-8) continue;
+                if(r==null||r>1e-8||r<=0||b.resistanceOhm().asDouble()>1e-8) continue;
                 var from=context.railwayPositions().get(b.fromNodeId());
                 var to=context.railwayPositions().get(b.toNodeId());
                 if(from==null||to==null) continue;
                 boolean explicit=context.junctions().stream().anyMatch(j->
                         (sameCoordinate(from,j.getFrom())&&sameCoordinate(to,j.getTo()))||
-                        (sameCoordinate(to,j.getFrom())&&sameCoordinate(from,j.getTo())));
+                                (sameCoordinate(to,j.getFrom())&&sameCoordinate(from,j.getTo())));
                 if(!explicit) continue;
                 String a=place(nodes.get(b.fromNodeId())),z=place(nodes.get(b.toNodeId()));
                 if(!a.equals(z)) parent.put(z,a);
