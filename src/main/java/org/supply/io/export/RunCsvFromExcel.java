@@ -59,12 +59,16 @@ public final class RunCsvFromExcel implements RunDataReader {
                 "", "", "", "", 0
         );
         List<RunSample> samples = new ArrayList<>(data.rows().size());
-        for (Map<String, String> row : data.rows()) {
+        for (int i = 0; i < data.rows().size(); i++) {
+            Map<String, String> row = data.rows().get(i);
+            Double sourceSpeedMps = optionalDouble(row.get(K_SPEED));
             samples.add(new RunSample(
                     Double.parseDouble(row.get(K_TIME)),
                     Double.parseDouble(row.get(K_POS)),
                     Double.parseDouble(row.get(K_P)),
-                    null,
+                    sourceSpeedMps != null
+                            ? sourceSpeedMps
+                            : derivedSpeedMps(data.rows(), i),
                     null,
                     null
             ));
@@ -80,8 +84,11 @@ public final class RunCsvFromExcel implements RunDataReader {
     private static final String K_ROUTE = "route_id";
     private static final String K_POS = "position_m";
     private static final String K_P = "p_req_W";
+    private static final String K_SPEED = "speed_mps";
 
-    private record RunPoint(double timeS, double positionM, double pReqW) {
+    private record RunPoint(
+            double timeS, double positionM, double pReqW, Double speedMps
+    ) {
     }
 
     private record LegEndState(
@@ -106,7 +113,8 @@ public final class RunCsvFromExcel implements RunDataReader {
             pts.add(new RunPoint(
                     Double.parseDouble(r.get(K_TIME)),
                     Double.parseDouble(r.get(K_POS)),
-                    Double.parseDouble(r.get(K_P))
+                    Double.parseDouble(r.get(K_P)),
+                    optionalDouble(r.get(K_SPEED))
             ));
         }
         return pts;
@@ -122,7 +130,8 @@ public final class RunCsvFromExcel implements RunDataReader {
             shifted.add(new RunPoint(
                     point.timeS() + timeShiftS,
                     point.positionM() + positionShiftM,
-                    point.pReqW()
+                    point.pReqW(),
+                    point.speedMps()
             ));
         }
         return shifted;
@@ -141,7 +150,8 @@ public final class RunCsvFromExcel implements RunDataReader {
             result.add(new RunPoint(
                     point.timeS(),
                     point.positionM(),
-                    point.pReqW() + auxiliaryPowerW
+                    point.pReqW() + auxiliaryPowerW,
+                    point.speedMps()
             ));
         }
         return result;
@@ -179,7 +189,8 @@ public final class RunCsvFromExcel implements RunDataReader {
         clipped.add(new RunPoint(
                 overlapStartS,
                 interpolatePositionAt(source, overlapStartS),
-                powerAt(source, overlapStartS)
+                powerAt(source, overlapStartS),
+                speedAt(source, overlapStartS)
         ));
 
         for (RunPoint point : source) {
@@ -193,7 +204,8 @@ public final class RunCsvFromExcel implements RunDataReader {
             clipped.add(new RunPoint(
                     overlapEndS,
                     interpolatePositionAt(source, overlapEndS),
-                    powerAt(source, overlapEndS)
+                    powerAt(source, overlapEndS),
+                    speedAt(source, overlapEndS)
             ));
         }
 
@@ -228,7 +240,7 @@ public final class RunCsvFromExcel implements RunDataReader {
             double pos = interpolatePositionAt(src, t0);
             double pAvg = averagePowerOver(src, t0, t1);
 
-            out.add(new RunPoint(t0, pos, pAvg));
+            out.add(new RunPoint(t0, pos, pAvg, speedAt(src, t0)));
 
             if (t1 >= tEnd) {
                 break;
@@ -312,6 +324,25 @@ public final class RunCsvFromExcel implements RunDataReader {
         return src.get(src.size() - 1).pReqW();
     }
 
+    private static Double speedAt(List<RunPoint> src, double t) {
+        if (src.isEmpty()) return null;
+        if (t <= src.get(0).timeS()) return src.get(0).speedMps();
+        for (int i = 0; i < src.size() - 1; i++) {
+            RunPoint a = src.get(i);
+            RunPoint b = src.get(i + 1);
+            if (t >= a.timeS() && t < b.timeS()) {
+                if (a.speedMps() == null || b.speedMps() == null) {
+                    return a.speedMps();
+                }
+                double span = b.timeS() - a.timeS();
+                if (span <= 0.0) return a.speedMps();
+                double alpha = (t - a.timeS()) / span;
+                return a.speedMps() + alpha * (b.speedMps() - a.speedMps());
+            }
+        }
+        return src.get(src.size() - 1).speedMps();
+    }
+
     private static List<Map<String, String>> fromRunPoints(
             List<RunPoint> pts,
             String trainId,
@@ -329,6 +360,7 @@ public final class RunCsvFromExcel implements RunDataReader {
             row.put(K_ROUTE, routeId);
             row.put(K_POS, fmt(p.positionM()));
             row.put(K_P, fmt(p.pReqW()));
+            row.put(K_SPEED, p.speedMps() == null ? "" : fmt(p.speedMps()));
             out.add(row);
         }
 
@@ -337,6 +369,24 @@ public final class RunCsvFromExcel implements RunDataReader {
 
     private static String fmt(double v) {
         return Double.toString(v);
+    }
+
+    private static Double optionalDouble(String value) {
+        return value == null || value.isBlank() ? null : Double.parseDouble(value);
+    }
+
+    private static double derivedSpeedMps(
+            List<Map<String, String>> rows, int index
+    ) {
+        if (rows.size() < 2) return 0.0;
+        int a = index == rows.size() - 1 ? index - 1 : index;
+        int b = a + 1;
+        double dt = Double.parseDouble(rows.get(b).get(K_TIME))
+                - Double.parseDouble(rows.get(a).get(K_TIME));
+        if (dt <= 0.0) return 0.0;
+        double dp = Double.parseDouble(rows.get(b).get(K_POS))
+                - Double.parseDouble(rows.get(a).get(K_POS));
+        return Math.abs(dp / dt);
     }
 
     private static List<Map<String, String>> removeDuplicateTrainTimes(
@@ -381,6 +431,7 @@ public final class RunCsvFromExcel implements RunDataReader {
         int cPos = requireCol(col, "position [m]");
         int cMot = requireCol(col, "primaryMotoringPower [kW]");
         int cBrk = requireCol(col, "primaryMotorBrakingPower [kW]");
+        Integer cSpeed = col.get("speed [m/s]");
 
         List<Map<String, String>> out = new ArrayList<>();
         while (it.hasNext()) {
@@ -410,6 +461,13 @@ public final class RunCsvFromExcel implements RunDataReader {
             row.put(K_TRACK, trackId);
             row.put(K_POS, fmt(posM));
             row.put(K_P, fmt(pReqW));
+            if (cSpeed != null) {
+                Cell speedCell = r.getCell(cSpeed);
+                if (speedCell != null
+                        && speedCell.getCellType() == CellType.NUMERIC) {
+                    row.put(K_SPEED, fmt(speedCell.getNumericCellValue()));
+                }
+            }
             out.add(row);
         }
 
@@ -788,7 +846,8 @@ public final class RunCsvFromExcel implements RunDataReader {
             List<RunPoint> points = new ArrayList<>(readResult.samples().size());
             for (RunSample sample : readResult.samples()) {
                 points.add(new RunPoint(
-                        sample.timeS(), sample.positionM(), sample.powerW()
+                        sample.timeS(), sample.positionM(), sample.powerW(),
+                        sample.speedMps()
                 ));
             }
 
@@ -856,12 +915,14 @@ public final class RunCsvFromExcel implements RunDataReader {
                         new RunPoint(
                                 previousLegEnd.timeS(),
                                 previousLegEnd.positionM(),
-                                previousLegEnd.auxiliaryPowerW()
+                                previousLegEnd.auxiliaryPowerW(),
+                                0.0
                         ),
                         new RunPoint(
                                 absoluteLegStartS,
                                 previousLegEnd.positionM(),
-                                previousLegEnd.auxiliaryPowerW()
+                                previousLegEnd.auxiliaryPowerW(),
+                                0.0
                         )
                 );
 

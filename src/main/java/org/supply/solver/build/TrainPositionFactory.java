@@ -41,7 +41,8 @@ public final class TrainPositionFactory {
                     sample.routeId(),
                     sample.positionM(),               // routePositionM
                     modelCoordinate.getPositionM(),   // positionM inom sektionen
-                    Real.fromDouble(sample.pReqW())
+                    Real.fromDouble(sample.pReqW()),
+                    sample.speedMps()
             ));
         }
 

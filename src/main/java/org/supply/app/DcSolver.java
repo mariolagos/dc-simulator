@@ -1121,6 +1121,12 @@ public final class DcSolver {
                     null
             );
 
+            if (train.speedMps() != null) {
+                writer.signalRow(timeSec, "TRAIN", train.trainId(),
+                        "speed_mps", train.speedMps(), "m/s", "INPUT",
+                        null, null);
+            }
+
             writer.signalRow(
                     timeSec,
                     "TRAIN",

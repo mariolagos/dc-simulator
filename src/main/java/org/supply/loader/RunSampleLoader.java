@@ -8,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public final class RunSampleLoader {
 
@@ -25,6 +27,13 @@ public final class RunSampleLoader {
                 );
             }
 
+            String[] headerParts = header.split(",", -1);
+            Map<String, Integer> columns = new HashMap<>();
+            for (int i = 0; i < headerParts.length; i++) {
+                columns.put(headerParts[i].trim(), i);
+            }
+            int speedColumn = columns.getOrDefault("speed_mps", -1);
+
             String line;
 
             while ((line = reader.readLine()) != null) {
@@ -34,7 +43,7 @@ public final class RunSampleLoader {
 
                 String[] p = line.split(",", -1);
 
-                if (p.length < 6) {
+                if (p.length < 7) {
                     throw new IllegalArgumentException(
                             "Invalid row in " + file + ": " + line
                     );
@@ -47,11 +56,20 @@ public final class RunSampleLoader {
                         p[3].trim(),
                         p[4].trim(),
                         Double.parseDouble(p[5].trim()),
-                        Double.parseDouble(p[6].trim())
+                        Double.parseDouble(p[6].trim()),
+                        optionalDouble(p, speedColumn)
                 ));
             }
         }
 
         return out;
+    }
+
+    private static Double optionalDouble(String[] values, int column) {
+        if (column < 0 || column >= values.length) {
+            return null;
+        }
+        String value = values[column].trim();
+        return value.isEmpty() ? null : Double.parseDouble(value);
     }
 }

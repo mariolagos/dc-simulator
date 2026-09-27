@@ -5,7 +5,16 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.supply.domain.RunSample;
+import org.supply.solver.build.TrainPositionFactory;
 import org.supply.solver.io.ResultMetadata;
+import org.supply.solver.model.CalculationTrainPosition;
+import org.supply.track.TrackTransformService;
+import org.supply.track.LoadedTrackModel;
+import org.supply.track.PathSample;
+import org.supply.track.RouteView;
+import org.supply.track.RwyCoordinate;
+import org.supply.track.TrackConfigLoader;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -99,6 +108,7 @@ public final class DcReporter {
             writeGraphicalTimetableMarkers(
                     context,
                     baseRoutePositionMapper,
+                    context.exportDirectory(),
                     graphicalTimetableMarkers
             );
         }
@@ -125,6 +135,84 @@ public final class DcReporter {
 
         writeDeviationWorkbook(rows, metadata, deviations);
     }
+
+    static void writePlannedGraphicalTimetable(
+            DcStudyContext context,
+            Path exportDirectory,
+            List<RunSample> samples,
+            TrackTransformService transform,
+            Path outputDirectory
+    ) throws IOException {
+        TrainPositionFactory positions = new TrainPositionFactory(transform);
+        List<PlannedTimetablePoint> points = new ArrayList<>();
+        for (RunSample sample : samples) {
+            for (CalculationTrainPosition train
+                    : positions.fromRunSamples(List.of(sample))) {
+                points.add(new PlannedTimetablePoint(
+                        sample.timeS(),
+                        train.trainId(),
+                        train.sectionId(),
+                        train.positionM()
+                ));
+            }
+        }
+        writePlannedGraphicalTimetable(
+                context, exportDirectory, points, outputDirectory
+        );
+    }
+
+    static void writePlannedGraphicalTimetable(
+            DcStudyContext context,
+            Path exportDirectory,
+            List<PlannedTimetablePoint> points,
+            Path outputDirectory
+    ) throws IOException {
+        BaseRoutePositionMapper mapper =
+                loadBaseRoutePositionMapper(context, exportDirectory);
+        if (!mapper.isEnabled()) {
+            return;
+        }
+
+        Files.createDirectories(outputDirectory);
+        Path timetable = outputDirectory.resolve(
+                context.studyId() + "_graphical_timetable.csv"
+        );
+        try (BufferedWriter writer = Files.newBufferedWriter(timetable)) {
+            writer.write("time_s,train_id,base_route_position_m,p_delta_W");
+            writer.newLine();
+            for (PlannedTimetablePoint point : points) {
+                writer.write(Double.toString(point.timeS()));
+                writer.write(',');
+                writer.write(csv(point.trainId()));
+                writer.write(',');
+                Double position = mapper.map(
+                        point.sectionId(), point.positionM()
+                );
+                if (position != null) {
+                    writer.write(Double.toString(position));
+                }
+                writer.write(",0.0");
+                writer.newLine();
+            }
+        }
+
+        writeGraphicalTimetableMarkers(
+                context,
+                mapper,
+                exportDirectory,
+                outputDirectory.resolve(
+                        context.studyId()
+                                + "_graphical_timetable_markers.csv"
+                )
+        );
+    }
+
+    record PlannedTimetablePoint(
+            double timeS,
+            String trainId,
+            String sectionId,
+            double positionM
+    ) { }
 
     private static void writeTrainWorkbook(
             List<LongTableRow> rows,
@@ -220,6 +308,9 @@ public final class DcReporter {
                 case "position_m" ->
                         trainResult.positionM =
                                 parseDouble(row.value);
+
+                case "speed_mps" ->
+                        trainResult.speedMps = parseDouble(row.value);
 
                 case "u_V" ->
                         trainResult.uV =
@@ -333,9 +424,10 @@ public final class DcReporter {
     private static void writeGraphicalTimetableMarkers(
             DcStudyContext context,
             BaseRoutePositionMapper mapper,
+            Path exportDirectory,
             Path outputPath
     ) throws IOException {
-        Path trackStationsPath = context.exportDirectory()
+        Path trackStationsPath = exportDirectory
                 .resolve("track_stations.csv");
         if (!Files.exists(trackStationsPath)) {
             throw new IllegalArgumentException(
@@ -561,20 +653,24 @@ public final class DcReporter {
         header.createCell(6)
                 .setCellValue(trainId + ".base_route_position_m");
         header.createCell(7)
-                .setCellValue(trainId + ".u_V");
+                .setCellValue(trainId + ".speed_mps");
         header.createCell(8)
-                .setCellValue(trainId + ".i_A");
+                .setCellValue(trainId + ".speed_kph");
         header.createCell(9)
-                .setCellValue(trainId + ".p_req_W");
+                .setCellValue(trainId + ".u_V");
         header.createCell(10)
-                .setCellValue(trainId + ".p_W");
+                .setCellValue(trainId + ".i_A");
         header.createCell(11)
-                .setCellValue(trainId + ".p_delta_W");
+                .setCellValue(trainId + ".p_req_W");
         header.createCell(12)
-                .setCellValue(trainId + ".e_consumed_J");
+                .setCellValue(trainId + ".p_W");
         header.createCell(13)
-                .setCellValue(trainId + ".e_regenerated_J");
+                .setCellValue(trainId + ".p_delta_W");
         header.createCell(14)
+                .setCellValue(trainId + ".e_consumed_J");
+        header.createCell(15)
+                .setCellValue(trainId + ".e_regenerated_J");
+        header.createCell(16)
                 .setCellValue(trainId + ".e_net_J");
 
         int rowIndex = 1;
@@ -595,25 +691,37 @@ public final class DcReporter {
             setTextCell(row, 4, result.trackId);
             setNumericCell(row, 5, result.positionM);
             setNumericCell(row, 6, result.baseRoutePositionM);
-            setNumericCell(row, 7, result.uV);
-            setNumericCell(row, 8, result.iA);
-            setNumericCell(row, 9, result.pReqW);
-            setNumericCell(row, 10, result.pW);
-            setNumericCell(row, 11, result.pDeltaW);
-            setNumericCell(row, 12, result.eConsumedJ);
-            setNumericCell(row, 13, result.eRegeneratedJ);
-            setNumericCell(row, 14, result.eNetJ);
+            setNumericCell(row, 7, result.speedMps);
+            setNumericCell(row, 8,
+                    result.speedMps == null ? null : result.speedMps * 3.6);
+            setNumericCell(row, 9, result.uV);
+            setNumericCell(row, 10, result.iA);
+            setNumericCell(row, 11, result.pReqW);
+            setNumericCell(row, 12, result.pW);
+            setNumericCell(row, 13, result.pDeltaW);
+            setNumericCell(row, 14, result.eConsumedJ);
+            setNumericCell(row, 15, result.eRegeneratedJ);
+            setNumericCell(row, 16, result.eNetJ);
         }
 
         sheet.createFreezePane(0, 1);
 
-        for (int column = 0; column < 15; column++) {
+        for (int column = 0; column < 17; column++) {
             sheet.autoSizeColumn(column);
         }
     }
 
     private static BaseRoutePositionMapper loadBaseRoutePositionMapper(
             DcStudyContext context
+    ) throws IOException {
+        return loadBaseRoutePositionMapper(
+                context, context.exportDirectory()
+        );
+    }
+
+    private static BaseRoutePositionMapper loadBaseRoutePositionMapper(
+            DcStudyContext context,
+            Path exportDirectory
     ) throws IOException {
         String configPath = "report.graphical-timetable";
         Config scenario = context.scenario();
@@ -638,11 +746,101 @@ public final class DcReporter {
         List<String> sections =
                 graphicalTimetable.getStringList("base-route.sections");
 
-        Path trackSegments =
-                context.exportDirectory().resolve("track_segments.csv");
+        Path trackSegments = exportDirectory.resolve("track_segments.csv");
+        Map<String, Boolean> reversedSections =
+                loadReversedBaseRouteSections(
+                        context, graphicalTimetable, trackSegments
+                );
 
-        return BaseRoutePositionMapper.load(trackSegments, sections);
+        return BaseRoutePositionMapper.load(
+                trackSegments, sections, reversedSections
+        );
     }
+
+    private static Map<String, Boolean> loadReversedBaseRouteSections(
+            DcStudyContext context,
+            Config graphicalTimetable,
+            Path trackSegments
+    ) throws IOException {
+        if (!graphicalTimetable.hasPath("base-route.id")) {
+            return Map.of();
+        }
+
+        String routeId = graphicalTimetable.getString("base-route.id");
+        RouteView route;
+        try {
+            LoadedTrackModel track = new TrackConfigLoader().load(
+                    context.dcsim(), context.confFile()
+            );
+            route = track.getRouteViewsById().get(routeId);
+        } catch (Exception exception) {
+            throw new IOException(
+                    "Could not load base-route trackdata for " + routeId,
+                    exception
+            );
+        }
+
+        if (route == null) {
+            throw new IllegalArgumentException(
+                    "Base-route id is missing from track.route_views: "
+                            + routeId
+            );
+        }
+
+        Map<String, SectionDirection> routeDirections =
+                routeDirections(route);
+        Map<String, List<RailwaySegment>> modelSegments =
+                BaseRoutePositionMapper.readRailwaySegments(trackSegments);
+        Map<String, Boolean> result = new LinkedHashMap<>();
+
+        for (Map.Entry<String, SectionDirection> entry
+                : routeDirections.entrySet()) {
+            List<RailwaySegment> segments =
+                    modelSegments.get(entry.getKey());
+            if (segments == null || segments.isEmpty()) {
+                continue;
+            }
+            double modelStart = segments.get(0).fromRailwayM;
+            double modelEnd = segments.get(segments.size() - 1).toRailwayM;
+            double routeStart = entry.getValue().firstRailwayM;
+            double routeEnd = entry.getValue().lastRailwayM;
+            if (modelStart != modelEnd && routeStart != routeEnd) {
+                result.put(
+                        entry.getKey(),
+                        Math.signum(modelEnd - modelStart)
+                                != Math.signum(routeEnd - routeStart)
+                );
+            }
+        }
+        return Map.copyOf(result);
+    }
+
+    private static Map<String, SectionDirection> routeDirections(
+            RouteView route
+    ) {
+        Map<String, SectionDirection> result = new LinkedHashMap<>();
+        for (PathSample sample : route.getSamples()) {
+            RwyCoordinate coordinate = sample.getRailwayCoordinate();
+            result.compute(
+                    coordinate.getSectionId(),
+                    (ignored, direction) -> direction == null
+                            ? new SectionDirection(
+                            coordinate.getPositionM(),
+                            coordinate.getPositionM()
+                    )
+                            : new SectionDirection(
+                            direction.firstRailwayM,
+                            coordinate.getPositionM()
+                    )
+            );
+        }
+        return result;
+    }
+
+    private record SectionDirection(
+            double firstRailwayM,
+            double lastRailwayM
+    ) { }
 
     private static void writeDeviationWorkbook(
             List<LongTableRow> rows,
@@ -1547,6 +1745,7 @@ public final class DcReporter {
         private String trackId;
         private Double positionM;
         private Double baseRoutePositionM;
+        private Double speedMps;
         private Double uV;
         private Double iA;
         private Double pReqW;
@@ -1577,18 +1776,26 @@ public final class DcReporter {
 
     private static final class BaseRoutePositionMapper {
         private final Map<String, Double> sectionOffsetsM;
+        private final Map<String, Double> sectionLengthsM;
         private final Map<String, List<RailwaySegment>> segmentsBySection;
+        private final Map<String, Boolean> reversedSections;
 
         private BaseRoutePositionMapper(
                 Map<String, Double> sectionOffsetsM,
-                Map<String, List<RailwaySegment>> segmentsBySection
+                Map<String, Double> sectionLengthsM,
+                Map<String, List<RailwaySegment>> segmentsBySection,
+                Map<String, Boolean> reversedSections
         ) {
             this.sectionOffsetsM = sectionOffsetsM;
+            this.sectionLengthsM = sectionLengthsM;
             this.segmentsBySection = segmentsBySection;
+            this.reversedSections = reversedSections;
         }
 
         private static BaseRoutePositionMapper disabled() {
-            return new BaseRoutePositionMapper(Map.of(), Map.of());
+            return new BaseRoutePositionMapper(
+                    Map.of(), Map.of(), Map.of(), Map.of()
+            );
         }
 
         private boolean isEnabled() {
@@ -1597,7 +1804,8 @@ public final class DcReporter {
 
         private static BaseRoutePositionMapper load(
                 Path trackSegmentsPath,
-                List<String> baseRouteSections
+                List<String> baseRouteSections,
+                Map<String, Boolean> reversedSections
         ) throws IOException {
             if (baseRouteSections.isEmpty()) {
                 throw new IllegalArgumentException(
@@ -1634,7 +1842,10 @@ public final class DcReporter {
             }
 
             return new BaseRoutePositionMapper(
-                    offsetsM, segmentsBySection
+                    offsetsM,
+                    sectionLengthsM,
+                    segmentsBySection,
+                    reversedSections
             );
         }
 
@@ -1644,7 +1855,25 @@ public final class DcReporter {
             }
 
             Double offsetM = sectionOffsetsM.get(sectionId);
-            return offsetM == null ? null : offsetM + positionM;
+            if (offsetM == null) {
+                return null;
+            }
+            return offsetM + orientedPosition(sectionId, positionM);
+        }
+
+        private double orientedPosition(
+                String sectionId, double positionM
+        ) {
+            if (!reversedSections.getOrDefault(sectionId, false)) {
+                return positionM;
+            }
+            Double lengthM = sectionLengthsM.get(sectionId);
+            if (lengthM == null) {
+                throw new IllegalArgumentException(
+                        "Missing base-route section length: " + sectionId
+                );
+            }
+            return lengthM - positionM;
         }
 
         private Double mapRailwayPosition(String railwayPosition) {
@@ -1671,7 +1900,10 @@ public final class DcReporter {
             for (RailwaySegment segment : segments) {
                 if (segment.contains(railwayPositionM)) {
                     return sectionOffsetM
-                            + segment.modelPositionM(railwayPositionM);
+                            + orientedPosition(
+                            sectionId,
+                            segment.modelPositionM(railwayPositionM)
+                    );
                 }
             }
             throw new IllegalArgumentException(

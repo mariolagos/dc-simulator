@@ -47,18 +47,40 @@ public final class TrackStationExcelReader {
         return merge(List.of(),result);
     }
     /** Deduplicate exact station events, not all occurrences of a station name. */
-    static List<Station> merge(List<Station> configured,List<Station> excel) {
-        record Key(String name,String section,int position,String track) { }
-        Map<Key,Station> result=new LinkedHashMap<>();
-        List<Station> all=new ArrayList<>(configured);all.addAll(excel);
-        for(Station station:all) {
-            RwyCoordinate c=station.getPosition();
-            String track=c.getTrackId();
-            result.putIfAbsent(new Key(station.getName(),c.getSectionId(),c.getPositionM(),
-                    track==null||track.isBlank()?null:track),station);
+    /** Explicit Excel station events replace configured positions with the same name. */
+    static List<Station> merge(List<Station> configured, List<Station> excel) {
+        record Key(String name, String section, int position, String track) { }
+
+        Set<String> explicitNames = new HashSet<>();
+        for (Station station : excel) {
+            explicitNames.add(station.getName());
+        }
+
+        List<Station> all = new ArrayList<>();
+        for (Station station : configured) {
+            if (!explicitNames.contains(station.getName())) {
+                all.add(station);
+            }
+        }
+        all.addAll(excel);
+
+        Map<Key, Station> result = new LinkedHashMap<>();
+        for (Station station : all) {
+            RwyCoordinate c = station.getPosition();
+            String track = c.getTrackId();
+            result.putIfAbsent(
+                    new Key(
+                            station.getName(),
+                            c.getSectionId(),
+                            c.getPositionM(),
+                            track == null || track.isBlank() ? null : track
+                    ),
+                    station
+            );
         }
         return List.copyOf(result.values());
     }
+
     private static String text(Row row,Map<String,Integer> columns,String name,DataFormatter formatter) {
         Integer column=columns.get(name);
         return column==null?"":formatter.formatCellValue(row.getCell(column)).trim();

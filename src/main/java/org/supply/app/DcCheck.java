@@ -4,6 +4,7 @@ import org.supply.domain.Route;
 import org.supply.domain.RunSample;
 import org.supply.domain.SystemParameters;
 import org.supply.io.export.RunCsvWriter;
+import org.supply.io.export.NetworkInputCsvWriter;
 import org.supply.loader.GridModelLoader;
 import org.supply.loader.RouteFactory;
 import org.supply.loader.RunSampleLoader;
@@ -196,6 +197,29 @@ public final class DcCheck {
                                 errors, detail);
                     } else {
                         detail.append("SKIP Train placement: network, routes or parameters unavailable\n");
+                    }
+                    if (track != null) {
+                        stage("Planned graphical timetable", errors, detail, () -> {
+                            NetworkInputCsvWriter inputWriter =
+                                    new NetworkInputCsvWriter();
+                            inputWriter.writeTrackStations(
+                                    track, temporary.resolve("track_stations.csv")
+                            );
+                            inputWriter.writeTrackSegments(
+                                    track, temporary.resolve("track_segments.csv")
+                            );
+                            DcReporter.writePlannedGraphicalTimetable(
+                                    context,
+                                    temporary,
+                                    samples,
+                                    transform,
+                                    context.exportDirectory().getParent()
+                                            .resolve("checks")
+                            );
+                            return Boolean.TRUE;
+                        });
+                    } else {
+                        detail.append("SKIP Planned graphical timetable: track input failed\n");
                     }
                 }
             }

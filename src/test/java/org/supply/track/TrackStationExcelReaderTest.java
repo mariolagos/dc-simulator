@@ -14,11 +14,13 @@ public class TrackStationExcelReaderTest {
         for(int i=0;i<names.length;i++) header.createCell(i).setCellValue(names[i]);
         return sheet;
     }
+
     private static void row(Sheet sheet,int index,String type,String from,String to,int metre) {
         Row row=sheet.createRow(index);
         row.createCell(0).setCellValue(type);row.createCell(1).setCellValue(from);row.createCell(2).setCellValue(to);
         row.createCell(3).setCellValue(23);row.createCell(4).setCellValue(7);row.createCell(5).setCellValue(metre);
     }
+
     @Test public void readsNamedPEventsWithoutTrackNumberAndKeepsDistinctPositions() throws Exception {
         try(Workbook workbook=new XSSFWorkbook()) {
             Sheet sheet=sheet(workbook);
@@ -36,6 +38,7 @@ public class TrackStationExcelReaderTest {
             assertEquals(2,TrackStationExcelReader.merge(stations,stations).size());
         }
     }
+
     @Test public void readsWorkbookAndTreatsMissingStationColumnsAsOptional() throws Exception {
         Path path=Files.createTempFile("station-events-",".xlsx");
         try {
@@ -50,10 +53,50 @@ public class TrackStationExcelReaderTest {
             }
         } finally {Files.deleteIfExists(path);}
     }
+
     @Test(expected=IllegalArgumentException.class) public void rejectsInvalidCoordinateOnNamedStation() throws Exception {
         try(Workbook workbook=new XSSFWorkbook()) {
             Sheet sheet=sheet(workbook);row(sheet,1,"P","STA","STA",1000);
             TrackStationExcelReader.read(sheet);
         }
+    }
+
+    @Test
+    public void explicitExcelStationsReplaceConfiguredPositionsWithSameName() {
+        List<Station> configured = List.of(
+                new Station(
+                        "STA",
+                        new RwyCoordinate("23", "7+500", 7500, "U")
+                ),
+                new Station(
+                        "LEGACY",
+                        new RwyCoordinate("23", "8+000", 8000, "U")
+                )
+        );
+
+        List<Station> excel = List.of(
+                new Station(
+                        "STA",
+                        new RwyCoordinate("23", "7+400", 7400, "U")
+                ),
+                new Station(
+                        "STA",
+                        new RwyCoordinate("23", "7+600", 7600, "D")
+                )
+        );
+
+        List<Station> merged =
+                TrackStationExcelReader.merge(configured, excel);
+
+        assertEquals(3, merged.size());
+
+        assertEquals("LEGACY", merged.get(0).getName());
+        assertEquals(8000, merged.get(0).getPosition().getPositionM());
+
+        assertEquals("STA", merged.get(1).getName());
+        assertEquals(7400, merged.get(1).getPosition().getPositionM());
+
+        assertEquals("STA", merged.get(2).getName());
+        assertEquals(7600, merged.get(2).getPosition().getPositionM());
     }
 }

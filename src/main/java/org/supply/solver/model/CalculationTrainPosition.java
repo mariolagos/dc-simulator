@@ -9,6 +9,14 @@ public record CalculationTrainPosition(
         String routeId,
         double routePositionM,
         double positionM,
-        Real pReqW
+        Real pReqW,
+        Double speedMps
 ) {
+    public CalculationTrainPosition(
+            String trainId, String sectionId, String trackId, String routeId,
+            double routePositionM, double positionM, Real pReqW
+    ) {
+        this(trainId, sectionId, trackId, routeId,
+                routePositionM, positionM, pReqW, null);
+    }
 }

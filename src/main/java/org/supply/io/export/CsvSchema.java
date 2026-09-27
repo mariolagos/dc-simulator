@@ -32,7 +32,8 @@ public final class CsvSchema {
                         "track_id",
                         "route_id",
                         "position_m",
-                        "p_req_W"
+                        "p_req_W",
+                        "speed_mps"
                 )
         );
     }
@@ -46,7 +47,7 @@ public final class CsvSchema {
 
         for (int i = 0; i < rows.size(); i++) {
             Map<String, String> row = rows.get(i);
-            for (String h : headers) {
+            for (String h : requiredHeaders()) {
                 if (!row.containsKey(h)) {
                     throw new ValidationInputException(
                             fileName + " schema mismatch: missing header '" + h + "'"
@@ -59,14 +60,15 @@ public final class CsvSchema {
     public void validateHeader(List<String> headers) {
         Objects.requireNonNull(headers, "headers");
 
-        if (headers.size() != this.headers.size()) {
+        List<String> required = requiredHeaders();
+        if (!headers.equals(this.headers) && !headers.equals(required)) {
             throw new ValidationInputException(
                     fileName + " header mismatch: expected "
                             + this.headers + " but got " + headers
             );
         }
 
-        for (int i = 0; i < this.headers.size(); i++) {
+        for (int i = 0; i < headers.size(); i++) {
             String expected = this.headers.get(i);
             String actual = headers.get(i);
             if (!expected.equals(actual)) {
@@ -77,5 +79,14 @@ public final class CsvSchema {
                 );
             }
         }
+    }
+
+    private List<String> requiredHeaders() {
+        if ("run.csv".equals(fileName)
+                && !headers.isEmpty()
+                && "speed_mps".equals(headers.get(headers.size() - 1))) {
+            return headers.subList(0, headers.size() - 1);
+        }
+        return headers;
     }
 }
