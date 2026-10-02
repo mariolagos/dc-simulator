@@ -1,487 +1,551 @@
-# dc-simulator
+# TrainsSupply
 
-A modular DC railway power system simulator, written in Java, with a focus on:
+**Railway power-supply modelling and simulation**
 
-- realistic DC substation and catenary modelling,
-- train power profiles (traction, coasting, braking),
-- traceable numerical behavior (MFE + trace versioning),
-- high-resolution time series output for further analysis (CSV “longtable”).
+## Purpose
 
----
+TrainsSupply simulates railway power-supply systems with moving trains. The
+simulator combines railway infrastructure, an electrical grid and train
+traffic to calculate voltages, currents and power flows over time.
+See [Examples](#examples) for concrete study inputs and commands.
 
-## 1.1 Versioning and Traceability (MFE + trace)
+### Limitations
 
-Since **v0.7**, the simulator applies the **MFE + trace** principle consistently across
-code, documentation, and output files.
+- The current release is limited to DC traction networks.
+- Train movements and power demands are precalculated. Insufficient delivered
+  power is detected, but its effect is not fed back into the train dynamics.
 
-### Minimal Functional Extension (MFE)
-Each version introduces the smallest necessary functional change.
-Larger redesigns are decomposed into small, independently testable increments.
+## Examples
 
-### Traceability
-Every change must be:
+### two_sections — Multi-leg traffic in both directions
 
-- documented in `/doc` (requirements, specs, tests, change requests),
-- reproducible from machine-readable metadata stored in:
-  - **longtable** (one row per event),
-  - **wide Excel** (metadata header for each sheet),
-  - scenario configuration,
-  - git hash / manual hash.
+The `two_sections` study contains five trains from A to D and five from D to A,
+with a one-minute headway in each direction. Each train uses three RunExcel legs:
 
-### Metadata propagation (v0.7)
+| Template | First leg | Second leg | Third leg |
+| --- | --- | --- | --- |
+| A-D | `A-D_timetable_A-B.xlsx` | `A-D_timetable_B-C.xlsx` | `A-D_timetable_C-D.xlsx` |
+| D-A | `D-A_timetable_D-C.xlsx` | `D-A_timetable_C-B.xlsx` | `D-A_timetable_B-A.xlsx` |
 
-From v0.7 onward:
+The RunExcel files are located under
+`D:\studies\dc-simulator-verifiering\references\two_sections`.
+Trackdata contains the sheets `A-D` and `D-A`; each sheet's `trackInformation`
+must match its route ID. Both views are configured in `dcsim.track.route_views`.
 
-- Every **longtable row** includes:
-  - `project-id`
-  - `scenario-id`
-  - `hash_tag`
+```bat
+dcStudy --check D:\studies\dc-simulator-verifiering\conf\two_sections\two_sections.conf D:\studies\dc-simulator-verifiering
+```
+![Graphical timetable for two_sections](docs/images/two_sections_graphical_timetable.svg)
 
-- The **wide Excel** output adds this metadata in the header of each sheet:
-  - project-id
-  - scenario-id
-  - hash
-  - (Signals-sheet) `generated_at`, `longtable_path`, `wide_path`, `cli_args`
+*Figure 1. Graphical timetable for the two_sections study.*
 
-This guarantees that any analysis file is fully reproducible and traceable back
-The current baseline scenario is **3S1T v0.1 – static anchor at S2**, which models a single train supplied by three DC substations along a simple feeder.
+## Part 1 — Using TrainsSupply
 
----
+### The study model
 
-## 1. Scope and goals
+A study combines three descriptions: **track infrastructure** defines railway
+positions, sections, stations and connections; the **electrical grid** defines
+conductors, nodes and power installations; and **traffic** defines routes,
+RunExcel templates and train departures. A template can contain several legs.
+The main configuration brings these inputs together and defines the simulation
+window. See [Examples](#examples) for a concrete study.
 
-`dc-simulator` is a technical playground for studying DC traction networks, not a polished end-user product. The main goals are:
+### Check and run
 
-- **Electrical realism**  
-  Represent DC feeders, substations and trains with physically meaningful parameters (voltages, internal resistances, line resistances, power limits, etc.).
+TrainsSupply is run from the command line or an IDE. Check the inputs first:
 
-- **Traceability**  
-  Every important change in the physics, numerics or architecture is documented using the **MFE + trace** principles in the `/doc` tree.
-
-- **Inspectability**  
-  Simulations produce a detailed **longtable CSV** that can be pivoted and analysed in external tools (Excel, Python, etc.).
-
-- **Experimentation for future extensions**  
-  This includes multi-train cases, dynamic topology (train position affecting the admittance matrix), and AC/DC hybrid scenarios.
-
----
-
-## 2. Current baseline: 3S1T v0.1 – static anchor at S2
-
-The current reference configuration is a **DC feeder with 3 substations and 1 train**:
-
-- 3 DC substations (SS0, SS1, SS2), modelled as Thevenin sources converted to Norton form in the solver.
-- 1 DC line with three segments between the substations.
-- 1 train, electrically anchored near the middle substation (S2) at a fixed node.
-- A predefined train power profile:
-   - max traction around `t ≈ 24 s` (≈ 2.4 MW),
-   - coasting around `t ≈ 50 s`,
-   - max braking around `t ≈ 79 s` (≈ 2.5 MW dissipated in onboard resistors when receptivity is zero).
-
-This baseline has been:
-
-- checked for **KCL consistency** (G·V = J),
-- verified for reasonable **line losses** (I²R),
-- verified for **substation net power and internal losses**,
-- verified for **brake energy split** (requested / to network / to resistor).
-
-### 2.1 Known limitations in v0.1
-
-- The train’s **electrical position is static** (a fixed anchor node near S2).  
-  The line is not yet segmented by train position.
-- The train load is stamped into **G** (conductance), not J (current injection).  
-  As a consequence:
-   - `Train1.I_A`
-   - `Train1.P_net_W`  
-     are **not physically meaningful in v0.1** and should not be used for analysis.
-- The “requested power” (`req_W`) is a control-level quantity from the Grid Model Actor (GMA). It may differ slightly from the true catenary power `mot_W`.
-
-### ⚠️ Note on 1-tick offset between mot_W and req_W (3S1T scenario)
-In the current 3Subs-1Train (3S1T) implementation, **TrainActor** and **GridModelActor** record power at slightly different stages in the actor pipeline.
-
-- `TrainActor` logs `mot_W(t)` immediately upon receiving `Tick(t)` when reading its power profile.
-- `DcSimApp` then triggers `SolveTick(t)` for `GridModelActor` before the train’s `UpdateTrainPower(t)` has been delivered.
-- Consequently, `GridModelActor` always uses the previous tick’s power update when solving the network and logs it as `req_W(t)`.
-
-Result:
-`req_W(t)` ≈ `mot_W(t − Δt)`
-
-This is a **sequential artifact** of the actor pipeline, not a physical error.  
-Power balances remain correct; however, plots (e.g., *longtable*) will show a one-step time shift.  
-For 3S1T v0.1 this behaviour is accepted and documented; it will be corrected in v0.2/v0.3 by adding a synchronization barrier between `TrainActor` updates and the solver step.
-
-These limitations are documented and scheduled to be addressed in later versions (see Roadmap).
-
----
-
-## 3. Repository structure
-
-The most relevant top-level directories are:
-
-```text
-doc/
-  A_user/
-    modelDescription.md      # High-level system and model description
-    USER_GUIDE.md            # User-facing guidance (where applicable)
-    terms.md                 # Terminology and definitions
-
-  B_developer/
-    softwareSpecification.md # How requirements are implemented in code
-    README_dev.md            # Developer overview
-    README_dev_additions.md  # Additional internal notes
-    testPlan.md              # Original test plan
-    testPlan_updated.md      # Updated tests and verification
-    CONTRIBUTING*.md         # Contribution guidelines
-
-  C_planning/
-    prototypePlan.md         # Prototyping phases and status
-    Roadmap - Symphony 0.1.0.md  # High-level roadmap
-    Backlog.md               # Work items
-    docPlan.md               # Documentation planning
-    changeRequest*.md        # Explicit change requests
-
-src/
-  main/java/...              # Solver, actors, models, etc.
-  test/java/...              # Tests (where present)
-
-project/
-  ...                        # Example scenarios (config files, longtable outputs, etc.)
+```bat
+dcStudy --check <configuration-file> <working-directory>
 ```
 
-For most users and reviewers, the entry points are:
+The check validates inputs and exported train placements, and produces
+reports and diagrams in the study's `checks` directory. No time step is solved.
+Inspect the graphical timetable for intended routes, directions, stops and
+unexplained position jumps.
 
-- `doc/A_user/modelDescription.md`
-- `doc/B_developer/softwareSpecification.md`
-- `doc/B_developer/testPlan_updated.md`
-- `doc/C_planning/prototypePlan.md`
+After the check passes, run the simulation:
 
----
-
-## 4. Building and running
-
-### 4.1 Prerequisites
-
-- Java (JDK 17 or compatible)
-- Gradle wrapper included in the repository
-- A terminal (Windows CMD is commonly used by the project author)
-
-### 4.2 Typical build
-
-From the repository root:
-
-```bash
-# Compile
-gradlew clean build
-
-# Run a predefined scenario (example)
-gradlew runDcSim -Pargs="--config project/3subs1train/scenario1/application.conf"
+```bat
+dcStudy <configuration-file> <working-directory>
 ```
 
-The exact task names and arguments may evolve over time; refer to:
+The command exports traffic, solves the electrical network for each time step
+and produces detailed results and summary workbooks.
+
+### Validate and archive
+
+Validate representative traction, regenerative braking and train interactions.
+Confirm physically consistent voltages, currents, power flows and losses;
+a successful input check does not guarantee convergence or power availability.
+
+Keep configurations, required inputs, selected reference results and a
+study-specific `README.md` in Git. Record commands and assumptions needed for
+reproduction, including access to externally referenced files. Generated
+calculation output is normally working data.
+
+## Part 2 — Developing TrainsSupply
+
+### Architecture overview
+
+```mermaid
+flowchart TD
+   BA["BA (Benefit Analysis)"] --> RE["RunExcel"]
+   BA --> TD["Trackdata"]
+   mermaid
+   subgraph Simulation["Full simulation"]
+      EX["DcExporter"] --> CSV["Exported CSV files (including run.csv)"]
+      CSV --> SOL["DcSolver"]
+      SOL --> LT["Longtable CSV"]
+      LT --> REP["DcReporter"]
+      REP --> REPORTS["Report workbooks"]
+      REP --> GT["Timetable and marker CSVs"]
+      GT --> SP["SPlot"]
+      SP --> SVG["Graphical timetable SVG"]
+   end
+
+   subgraph Check["Input check"]
+      DC["DcCheck"] --> DIAG["Check report and track/network diagrams"]
+      DC --> PLAN["Planned timetable and marker CSVs"]
+      PLAN --> SPC["SPlot"]
+      SPC --> SVGC["Planned graphical timetable SVG"]
+   end
+
+   RE --> EX
+   TD --> EX
+   RE --> DC
+   TD --> DC
+```
+
+The application separates input preparation, electrical calculation and
+reporting. The Gradle task `dcStudy` runs the tasks `dcExporter`, `dcSolver` and
+`dcReporter` in that order. They invoke `DcExporter.main`, `DcSolver.main` and
+`DcReporter.main` to export traffic, solve the electrical network and produce
+reports.
+
+Track transformations connect route coordinates with physical track sections
+and model positions. Reporting introduces a further coordinate: distance along
+the configured graphical-timetable base route. Keep these coordinates distinct
+when tracing a train through the application.
+
+The stories below describe concrete execution paths. Each story records calls and intermediate data so another developer can
+follow the execution path. Concrete study inputs are described in Examples.
+
+### Development principles
+
+The main package responsibilities under `org.supply` are:
+
+| Package | Responsibility |
+| --- | --- |
+| `domain` | Configuration-facing concepts and input data contracts |
+| `loader` | Configuration loading, validation and input construction |
+| `track` | Track data and railway, route and model coordinate transformations |
+| `solver.build` | Calculation network construction and train placement |
+| `solver.model` | Electrical element models and stamping behavior |
+| `solver.electrical` | Admittance assembly and numerical solution |
+| `io` | Input/output formats, export and report I/O |
+| `app` | Application entry points and orchestration |
+| `utils` | Shared helpers; keep domain rules in their owning packages |
+
+Prefer small, independently verifiable changes. Preserve the invariants recorded
+in the relevant story and update its explanation when behavior changes.
+Electrical verification should include Kirchhoff's current law, power balance
+and line losses calculated as I²R, where applicable; solver convergence alone
+does not establish physical correctness.
+
+For reproducibility and handover, retain the code revision, configuration,
+required input versions and run command with reference results. Result metadata
+supports this traceability but does not replace the inputs. A useful bug report
+includes these details, the failing timestep and a focused result extract.
+
+### Story 1 — Check multi-leg traffic and draw its complete timetable
+
+The task `dcCheck` invokes `DcCheck.main` to verify inputs without
+solving time steps. `dcCheckGt` depends on `dcCheck` and then invokes the external
+SPlot task `:tools:splot:splotCsv` to render the planned timetable. `dcStudyGt`
+adds the same rendering step after a full study.
+
+#### Execution sequence
+
+1. **Gradle `dcCheckGt` -> `dcCheck` -> `DcCheck.main(args)`:** load the study
+   with `DcStudyContextLoader.load(conf)` and call `DcCheck.run(context, routeId)`.
+   Gradle supplies the working directory through `studyWorkingDir`.
+2. **`DcCheck.run` -> input loaders:** call `GridModelLoader.load(dcsim)`,
+   `TrackConfigLoader.load(dcsim, confFile)`, `SystemParametersFactory.build(dcsim)`
+   and `RouteFactory.build(traffic)`. Construct `DefaultTrackTransformService`
+   from the loaded track and call `CalculationNetworkBuilder.buildBase(grid)`.
+   Each input stage is wrapped by `DcCheck.stage` to record success or failure.
+3. **`DcCheck.run` -> diagnostic writers:** call `TrackRouteDiagram.write`,
+   `ElectricalRouteCheck.inspect` and `ElectricalTopologyGraph.write` to produce
+   track diagrams and electrical route diagnostics in `checks`.
+4. **`DcCheck.run` -> `RunCsvWriter.write(dcsim, confFile, temporary)`:** export
+   traffic into a temporary directory. Load its `run.csv` with
+   `RunSampleLoader.load(runCsv)` to obtain `List<RunSample>`.
+5. **`DcCheck.run` -> `checkPlacements`:** call
+   `TrainPositionFactory.fromRunSamples(List.of(sample))` for each sample and
+   `TrainNodeInserter.insertTrainNodes(network, List.of(train))` for each distinct
+   placement. Check train IDs, route IDs and finite time, position and power.
+6. **`DcCheck.run` -> `NetworkInputCsvWriter`:** call `writeTrackStations` and
+   `writeTrackSegments` with the loaded track to create `track_stations.csv` and
+   `track_segments.csv` in the temporary directory.
+7. **`DcCheck.run` -> `DcReporter.writePlannedGraphicalTimetable(context,
+   temporary, samples, transform, checks)`:** use the five-argument overload
+   accepting `List<RunSample>`. It constructs `TrainPositionFactory`, calls
+   `fromRunSamples(List.of(sample))`, and creates
+   `PlannedTimetablePoint(timeS, trainId, sectionId, positionM)` values.
+8. **`DcReporter` -> points overload and base-route mapping:** call
+   `writePlannedGraphicalTimetable(context, exportDirectory, points,
+   outputDirectory)` and `loadBaseRoutePositionMapper`. Read
+   `report.graphical-timetable.base-route.sections` and `track_segments.csv`.
+   If `base-route.id` is supplied, `loadReversedBaseRouteSections` uses
+   `TrackConfigLoader.load` and `routeDirections` to determine section orientation.
+9. **`DcReporter` -> timetable and marker CSVs:** map each point with
+   `BaseRoutePositionMapper.map(sectionId, positionM)` and write
+   `<studyId>_graphical_timetable.csv` in `checks`, with columns
+   `time_s,train_id,base_route_position_m,p_delta_W`. Planned points use `0.0`
+   for power deficit. Unmapped positions leave an empty position field.
+   `writeGraphicalTimetableMarkers` writes station, supply-point and
+   section-boundary markers to `<studyId>_graphical_timetable_markers.csv`.
+10. **`DcCheck.run` -> check report:** delete the temporary directory in
+    `finally`, write `<studyId>_input_check.txt` and return `CheckResult`.
+    `DcCheck.main` prints the report and throws if the result is invalid.
+11. **Gradle `dcCheckGt` -> external SPlot Gradle wrapper:** after `dcCheck`
+    succeeds, invoke `:tools:splot:splotCsv` with `-Pinput`, `-Pmarkers`,
+    `-Poutput` and `-Ptitle`. Input and output paths refer to `checks`;
+    the output is `<studyId>_graphical_timetable.svg`. The external project is
+    selected by `splotProjectDir` or `SPLOT_PROJECT_DIR`.
 
-- `doc/A_user/USER_GUIDE.md` for up-to-date run instructions,
-- `doc/B_developer/README_dev.md` for developer-specific run/debug notes.
+### Story 2 — Railway coordinates and electrical routes
 
----
+#### Problem
 
-## 5. Output: longtable CSV
+Traffic describes movement along a journey, while electrical infrastructure must identify a physical location independently of travel direction. Railway kilometre references can increase or decrease, restart in another section, and cover a physical distance different from their numerical difference. A single position in metres cannot represent all these meanings.
 
-Simulations produce a **time series CSV** sometimes called the “longtable”.  
-Each row typically contains:
+The implementation therefore separates path positions, railway coordinates and model coordinates. It also separates a track route view from an electrical route. Both use a route ID, but serve different purposes.
 
-- `time_s` – simulation time in seconds
-- `object_type` – e.g. `Train`, `Sub`, `Line`, `Node`
-- `object_id` – e.g. `Train1`, `SS1`, `L0`, `S2`
-- `signal` – e.g. `mot_W`, `brk_W`, `V_V`, `I_A`, `P_net_W`, `P_loss_W`, `P_brk_res_W`
-- `value` – numeric value of the signal
-- unit and tags (where applicable)
+| Representation | Meaning | Code |
+| --- | --- | --- |
+| Path position | Position along a particular route view, as supplied by traffic | `PathSample`, `RouteView` |
+| Railway coordinate | Section, kilometre reference and optional track ID | `RwyCoordinate` |
+| Model coordinate | Section, optional track ID and physical model position within that section | `ModelCoordinate` |
+| Electrical route | Permitted source line IDs for feeding and return connections | `org.supply.domain.Route` |
 
-For **3S1T v0.1**, the following groups of signals are considered stable and validated for analysis:
+#### Design decisions and difficulties
 
-- **Train (Train1)**
-   - `pos_m`, `v_mps`
-   - `mot_W` (catenary power at the pantograph)
-   - `brk_W` (negative during braking)
-   - `aux_W`
-   - `req_trac_W`, `req_W` (GMA control signals)
-   - `P_brk_req_W`, `P_brk_net_W`, `P_brk_res_W` (brake energy split)
+Infrastructure geometry is defined once. Opposite travel directions use separate route views over that geometry. Reversing a journey must not rebuild or reverse the physical section model.
 
-- **Substations (SS0, SS1, SS2)**
-   - `V_V` (bus voltage)
-   - `I_A` (node current)
-   - `P_net_W` (net power into the DC network)
-   - `P_loss_W` (internal loss in substation resistance)
+Within each section, kilometer boards retain their configured order. The `length` of a board defines the physical distance to the next board. It must not be replaced with the numerical difference between kilometre references. Model position starts at zero independently in each section.
 
-- **Lines (L0, L1, L2)**
-   - `I_A` (line current)
-   - `P_W` (line loss, I²R)
+A route view provides samples linking path positions to railway coordinates. Interpolation is valid only within the same section and track. At a section or track change, the current implementation permits a transition interval of at most one metre. It does not interpolate kilometre references across that boundary.
 
-- **Nodes (S1, S2, S3)**
-   - `V_V`
-   - `I_A`
-   - `P_W`
+Electrical route membership and physical placement are separate conditions. A train must lie on the appropriate section and a compatible track, and the branch must belong to its electrical route. Line endpoints are handled in either positional order.
 
-The following signals are **known to be incomplete / not physically correct in v0.1**:
+#### Implementation sequence
 
-- `Train1.I_A`
-- `Train1.P_net_W`
+1. **Load the section model.** `org.supply.track.TrackConfigLoader.load(dcsim, confFile)` reads `track.kilometer_boards`, `track.junctions` and configured stations, then calls `TrackLoader.load(...)`. `TrackLoader` groups boards by section without sorting. Consecutive boards become `RouteSegment` instances, using the first board's length to the next board and an accumulated section-local model position. Each section requires at least two boards. Junctions are retained in the loaded model.
 
-They are scheduled for redefinition once the solver exposes proper per-device power for the train.
+2. **Load the route views.** `TrackConfigLoader` reads `track.route_data_excel` and `track.route_views`, which must be configured together. Relative workbook paths resolve against the configuration file's directory. For every configured view, `RouteViewExcelReader.read(workbookPath, sheetName, routeId)` reads `position [m]`, `trackSection`, `bisKm` and `bisMeter`, with optional `trackNumber` and `trackInformation`. The configured route ID is authoritative. Nonblank `trackInformation` must match it. Duplicate configured route IDs are rejected. The reader also requires explicit km+000 rows for each whole kilometre reference covered by each contiguous section/track interval.
 
----
+3. **Load station events.** `TrackStationExcelReader.read(...)` accepts named rows with `dataType = P` and identical `fromStationAbbr` and `toStationAbbr`. Unequal names describe an interval and are not interpreted as a station event. `merge(...)` replaces configured stations whose names occur in Excel, then deduplicates exact events by name, section, railway position and track. Multiple distinct positions with the same station name remain distinct events.
 
-## 6. Development process and documentation
+4. **Load electrical routes.** `org.supply.loader.RouteFactory.build(traffic)` reads `traffic.routes`. Each route contains its ID and the configured `feeding_lines` and `return_lines`. This step creates line references; it performs no coordinate transformation or adjacency check.
 
-The project uses a lightweight but strict documentation and traceability structure:
+5. **Transform a traffic position.** `TrainPositionFactory.fromRunSamples(...)` calls `DefaultTrackTransformService.pathToModel(routeId, positionM)`. The service calls `pathToRailway(...)`, which looks up the route view and delegates to `RouteViewMapper.toRailway(...)`. Exact sample positions return their stored railway coordinates. Positions between samples on the same section and track use linear interpolation rounded to whole metres. Within an allowed section/track transition interval, the preceding coordinate is used; the next sample itself selects the new coordinate. Nonfinite positions, unknown routes and positions outside the route range are rejected.
 
-- **A_user/** – user and high-level model descriptions
-- **B_developer/** – implementation details, specifications and tests
-- **C_planning/** – roadmap, backlog, prototype planning and progress tracking
+6. **Transform to section-local model position.** `DefaultTrackTransformService.toModel(...)` selects the section from the railway coordinate and calls `TrackSectionMapper.toModel(...)`. The mapper finds a segment containing the railway reference and scales the offset by the segment's configured physical length, rounding to whole metres. It preserves the coordinate's track ID. Increasing and decreasing kilometre references are supported. A nonzero model segment with identical railway endpoints cannot be mapped.
 
-The **MFE + trace** versioning principle is applied:
+7. **Select electrical connections.** `org.supply.solver.build.TrainNodeInserter.insertTrainNodes(...)` uses the resulting `CalculationTrainPosition`. `routeContains(...)` matches a branch's `sourceId` against the route's feeding or return line IDs. Both endpoints must match the train's section and have compatible track IDs. A blank track ID on either side acts as a wildcard. If routes are configured, an unknown train route cannot select a branch. If no routes are configured, the implementation permits placement without route filtering for compatibility.
 
-- Changes in physics, numerics or architecture are described in the specs,
-- Tests are updated in `testPlan_updated.md`,
-- Prototypes and milestones are tracked in `prototypePlan.md` and the roadmap.
+8. **Connect feeding and return.** A train at an eligible endpoint reuses that node. A train strictly inside an eligible branch receives a train node, and the branch is split in endpoint order with resistance proportional to physical segment length. Placement must provide both a feeding node and a return node; otherwise insertion fails. The details of rebuilding the dynamic network belong to Story 3.
 
-New code should always be traceable back to:
+#### Example: two_sections
 
-- a requirement or change request in `doc`, and
-- a specific test case or verification step.
+Both route views describe the same 4000 m infrastructure. A-D runs from START to END; D-A runs from END to START. Stations are 500 m inside each end.
 
----
+| Station | A-D path position [m] | D-A path position [m] | Railway coordinate |
+| --- | ---: | ---: | --- |
+| A | 500 | 3500 | 101 1+500 U |
+| B | 1500 | 2500 | 101 0+500 U |
+| C | 2500 | 1500 | 102 0+500 U |
+| D | 3500 | 500 | 102 1+500 U |
 
-## 7. Roadmap (high-level)
+Thus A-D at 1500 m and D-A at 2500 m refer to the same physical station B. The route views provide the direction-dependent mapping. The section model and electrical infrastructure remain shared. The numerical path position must never be used directly as a section-local electrical position.
 
-This is a simplified view; see  
-`doc/C_planning/Roadmap - Symphony 0.1.0.md`  
-and `doc/C_planning/prototypePlan.md` for details.
+#### Invariants and tests to preserve
 
-### 7.1 Short term (v0.2 – DC baseline refinement)
+- Preserve configured kilometer-board order and physical lengths. Changing travel direction must not change section geometry.
+- Preserve section and track identity through the transformation. Equal metre values in different sections do not identify the same location.
+- Keep route-view interpolation within one section and track. Preserve exact boundary samples and the explicit transition rule.
+- Require both physical compatibility and electrical route membership when routes are configured. Preserve endpoint reuse and require both feeding and return connections.
+- Treat stations as explicit events rather than inferring them from interval endpoint names.
 
-- Clean up legacy code and old stamping paths.
-- Clarify and correct `req_W` semantics vs physical catenary power (`mot_W`).
-- Provide physically correct `Train.{I_A, P_net_W}` based on solver device power.
-- Align tests and documentation with the 3S1T baseline.
+The supplied JUnit tests protect these specific cases:
 
-### 7.2 Medium term (v0.3 – dynamic topology, 1 train)
+| Test | Existing assertions |
+| --- | --- |
+| `TrackLoaderTest.keepsAscendingInfrastructureGeometryIndependentOfRouteDirection` | Two ascending sections each produce two 1000 m segments with model starts at 0 and 1000 m. The fixture does not itself exercise reverse route mapping. |
+| `RouteViewMapperTest.mapsWeRouteAcrossTrackSections` | Exact samples on either side of section and track transitions retain their expected section, track and railway position. It does not test interpolation inside the transition. |
+| `TrackSectionMapperTest.scalesRailwayDistanceToShorterModelSegment` | A 1000 m railway-reference span maps to an 800 m physical segment, including rounding and its endpoint. |
+| `TrackSectionMapperTest.scalesRailwayDistanceToLongerModelSegment` | A 1000 m railway-reference span maps to a 1200 m physical segment. |
+| `TrackSectionMapperTest.mapsDecreasingRailwayCoordinates` | Decreasing railway references map to increasing model positions with correct endpoints and midpoint. |
 
-- Introduce line segmentation based on train position.
-- Move the train anchor node along the catenary.
-- Update the G-matrix incrementally as the train moves.
-- Revalidate station loading and line losses as functions of position.
+`dcCheck` complements these unit tests by exercising exported train placement against the calculation network without solving a timestep. A successful placement check establishes that the supplied positions can be connected; it does not establish that upstream timetable generation assigned the intended station positions.
 
-### 7.3 Longer term (3S2T / multi-train)
+#### Current implementation limits
 
-- Extend the solver and actor model to handle multiple trains.
-- Study interactions between trains (voltage drops, shared substations, overlapping braking/traction).
-- Add additional test scenarios and baseline longtables.
+`DefaultTrackTransformService.toRailway(...)`, for conversion from model coordinates back to railway coordinates, is not implemented. `distanceOnRoute(...)` returns the absolute difference of two section-local model positions; it does not accumulate a journey distance across sections. It should not be treated as a general route-distance operation.
 
----
+The supplied tests were inspected for this documentation, not executed here. They do not establish complete coverage of loader failures, station merging or electrical placement.
 
-## 8. Contributing
+### Story 3 — Dynamic electrical network and train placement
+### Story 3: Dynamic electrical network and train placement
 
-For contribution guidelines, coding style and testing strategy, see:
+#### Problem
 
-- `doc/B_developer/CONTRIBUTING.md`
-- `doc/B_developer/contributing_primer.md`
-- `doc/B_developer/contributing_primer_SmokeAndSanityTests.md`
+The infrastructure is fixed, but train positions and requested powers change with time. Each train needs an electrical connection between feeding and return conductors at its current physical position. Connecting a train to the nearest infrastructure node would discard the resistance between that node and the train. Accumulating train nodes from earlier timesteps would also change the network incorrectly.
 
-Bug reports, improvement ideas, and test case suggestions are best driven by:
+The implementation builds a base network once and derives a separate calculation network for each timestep. Trains at existing endpoints reuse nodes. Trains inside a conductor branch split that branch at their positions, preserving its total resistance.
 
-- explicit references to `softwareSpecification.md` and `testPlan_updated.md`,
-- example longtable extracts showing the observed behavior.
+#### Design decisions and difficulties
 
-# Deltas
-# Delta_v0.8
-## v0.8 (delta): Node model and track section integration
+Coordinate transformation belongs to Story 2. This story starts with section-local model positions and follows how they become electrical connections. Regenerative power allocation, voltage-dependent current and nonlinear convergence belong to Story 4.
 
-This release introduces a physically consistent “one electrical node per device”
-model for the DC network, implemented with minimal changes to the existing
-GridModel, GridModelActor and solver architecture.
+The base network contains infrastructure nodes, conductor branches, installation elements and fixed loads. The timestep network adds the current trains. Every timestep starts from the base network, rather than modifying the preceding timestep's topology.
 
-### Summary of changes
+Feeding and return connections are selected independently. Both require compatible physical coordinates and, when electrical routes are configured, membership of the train's route. Direction of travel does not determine branch endpoint order.
 
-- **One node per device**  
-  Each substation and each active train instance now has its own electrical
-  node. A single ground node remains the solver reference.
+Sorting trains by position makes branch splitting independent of input order for distinct positions. Endpoint reuse avoids zero-length segments at infrastructure nodes. Distinct trains at the same interior position are not merged by the current implementation: their placement would produce a zero-length split branch and fail.
 
-- **Node metadata extended**  
-  All nodes now carry:
-  - `nodeKind` (`SUBSTATION`, `TRAIN`, `GROUND`)
-  - `trackId` (nullable)
-  - `positionM` (nullable; meters along the track)
+#### Implementation sequence
 
-  These fields are used only for solver preparation and do not affect the
-  existing node index or matrix structure.
+1. **Build the base network once.** `org.supply.app.DcSolver.run(...)` constructs `CalculationNetworkBuilder(trackTransform)` and calls `buildBase(grid)`. Each configured node's railway position is parsed with `RwyCoordinateParser.parse(...)` and transformed with `TrackTransformService.toModel(...)`. A `CalculationNode` retains the original node ID, section, track and model position.
 
-- **Track sections enhanced (R_per_m)**  
-  The existing DC line/segment model is extended with resistance per meter.  
-  Track segments form a continuous chain along each line.
+2. **Create conductor branches.** `CalculationNetworkBuilder.buildBase(...)` calculates each line's length as the absolute difference between its endpoints' model positions. Resistance is `resistance_ohm_per_m × length`, with a minimum of 1e-9 ohm. A branch receives a generated ID and retains the configured line ID as `sourceId`. This source identity is subsequently used for electrical route selection and remains attached to split branches. The length calculation is a difference of section-local positions, not a general distance calculation across sections.
 
-- **Line resistance computed from geometry**  
-  A new utility computes electrical distance between two positions by
-  integrating `R_per_m` over the relevant track sections.
+3. **Add installation elements.** `addSixTerminalInternalBranches(...)` adds four low-resistance internal connections per six-terminal rectifier installation. `addSubstationElements(...)` resolves feeding and return connections through `ElectricalNodeAliases.canonicalNodeId(...)`, then creates `DiodeSubstationElement` or `ThyristorSubstationElement`. Multiple connection entries are accepted only when they resolve to the same canonical node for a connection type. Missing connections and substations with identical feeding and return nodes are rejected. `addFixedLoadElements(...)` creates fixed loads using the same connection resolution. The resulting base `CalculationNetwork` has no train loads.
 
-- **Adjacency built dynamically**  
-  Before each solver call:
-  1. Substation and train nodes are grouped by `trackId`.
-  2. Nodes on each track are sorted by `positionM`.
-  3. Consecutive nodes are connected with a resistor whose value derives from
-     the track geometry.
+4. **Group traffic into timesteps.** `DcSolver.solveRun(...)` loads `run.csv` with `RunSampleLoader.load(...)` and groups samples by `RunSample.timeS`. For each group, it calls `solveTimestep(...)`. The timestep loop carries previous solved voltages and accumulated energy, but train topology is rebuilt from the base network.
 
-  No other solver logic is changed.
+5. **Transform the current train positions.** `TrainPositionFactory.fromRunSamples(...)` creates `CalculationTrainPosition` instances using the coordinate transformation described in Story 2. Each position includes train ID, route ID, section, track, path position, model position, requested power and optional speed.
 
-### No breaking API changes
+6. **Select eligible branches.** `TrainNodeInserter.insertTrainNodes(baseNetwork, trainPositions)` copies the base node list and builds a new branch list. Branches whose endpoint IDs both start with `F` are treated as feeding branches; those whose endpoints both start with `R` are treated as return branches. Other branches are retained unchanged. `routeContains(...)` tests `branch.sourceId()` against the route's feeding or return line IDs. `sameTrack(...)` requires section equality and compatible track IDs. Blank track IDs on either side act as wildcards. With no configured routes, route filtering is disabled for compatibility; with configured routes, an unknown train route cannot select a branch.
 
-- Node indices remain stable.
-- Solver interface and equation structure remain unchanged.
-- GridModelActor continues to assemble the DC network, now with position-based
-  line resistances.
+7. **Reuse endpoint connections.** For each eligible branch, `isAtNode(...)` recognizes a train at either endpoint within 1e-9 m. The train is associated with that existing feeding or return node. Separate maps track each train's feeding and return placement, preventing repeated placement on adjacent branches of the same conductor type.
 
-### Impact for developers
+8. **Insert interior nodes.** `trainsInsideBranch(...)` selects unplaced trains strictly inside the branch. They are sorted by model position and then train ID. If the branch runs from a higher position to a lower position, the sorted list is reversed. Each train creates a `TRAIN_NODE` named `train_<trainId>_F` or `train_<trainId>_R`. The chain starts at the original from-node, passes through train nodes, and ends at the original to-node.
 
-- Configuration files must now provide `R_per_m` for each track section.
-- Substation definitions must include their position along the line.
-- Train actors must report their current position to GridModelActor every tick.
+9. **Split resistance proportionally.** `addSplitBranches(...)` replaces the original branch with consecutive chain segments. Each segment receives resistance `originalResistance × segmentLength / originalLength`, and retains the original `sourceId`. Zero-length original or split segments are rejected. Branches without interior trains are retained unchanged.
 
-This delta enables a physically accurate multi-node DC topology without
-introducing additional matrix nodes or changing the solver API.
+10. **Create train loads.** Every train must have both a feeding and a return connection. Otherwise insertion throws `IllegalArgumentException` identifying the train, physical position and missing connection. Successful placements create `CalculationTrainLoad` instances. The timestep element list contains the resulting branches, retained non-branch infrastructure elements and a `TrainLoadElement` for each train. `insertTrainNodes(...)` returns a new `CalculationNetwork`.
 
-### v0.8 – Per-tick flow (short ASCII)
+11. **Solve and report the timestep.** `DcSolver.solveTimestep(...)` collects requested powers from the connected train loads and calls `solveWithFallback(...)`. The electrical solver uses the timestep topology while rebuilding the voltage-dependent train elements during its iterations. After a successful solve, `saveResults(...)` writes results. The next timestep again inserts its trains into the original base network.
 
-1. Train update
-  - TrainActor får Tick(t)
-  - uppdaterar kinematik och beräknar P_net_W(t) + positionM(t)
+#### Example: splitting a conductor
 
-2. Node update
-  - TrainActor skickar TrainState(t) till GridModelActor
-  - GridModelActor uppdaterar tågnodens metadata i GridModel  
-    (`nodeKind=TRAIN`, `trackId`, `positionM`)
+The placement test uses parallel feeding and return branches, each 1000 m long with resistance 1 ohm. Trains at 300 m and 700 m split each conductor into the following chain:
 
-3. Network assembly + solve
-  - GridModelActor hämtar alla aktiva noder, grupperar per trackId
-  - sorterar per positionM och kopplar intilliggande noder  
-    med R_ij från R_per_m-track-sektionerna (via PathResolver)
-  - stämplar linjer, substationer och tåg in i Solver och kör solve()
+| Segment | Length [m] | Resistance [ohm] |
+| --- | ---: | ---: |
+| Infrastructure start to T1 | 300 | 0.3 |
+| T1 to T2 | 400 | 0.4 |
+| T2 to infrastructure end | 300 | 0.3 |
 
-4. Results back to trains
-  - Solver returnerar nodspänningar/strömmar
-  - GridModelActor skickar TrainResult(t) (t.ex. V_V, P_net_W) till varje TrainActor
-  - TrainActor uppdaterar intern state och logg
+Each train connects between its own feeding and return node. The sum of split resistances equals the original conductor resistance. A train at 0 m instead uses the existing start nodes and leaves both conductor branches unchanged.
 
-## Delta v0.8 — Data contracts and dynamic topology (additions)
+#### Invariants and tests to preserve
 
-### Coordinate and unit contracts (NEW)
-- All positions used as input or output in v0.8 are **absolute positions in meters** (`positionAbsM`).
-- Distance calculations within a track section use:
-  length_m = abs(posB_m - posA_m)
-  Direction (increasing/decreasing km) is irrelevant.
-- `bisKm`, `bisMeter`, `bisPos` are **presentation/label fields only** and must not be used as source-of-truth for distance or resistance calculations.
-- This explicitly avoids ambiguity caused by Excel `km+meter` formatting and locale issues.
+- Build each timestep's train topology from the base network. Do not retain train nodes or split branches from earlier timesteps.
+- Preserve infrastructure elements and configured source line IDs when splitting branches.
+- Preserve total conductor resistance through proportional splitting.
+- Require both feeding and return placement for every train. Reject unsupported positions instead of silently omitting a train.
+- Reuse eligible endpoint nodes. Preserve branch traversal order for both increasing and decreasing endpoint positions.
+- Apply physical compatibility and configured electrical route membership together.
 
-### Configuration requirements (clarification)
-- When Excel is used as input, the section/template configuration **must explicitly specify sheet names** for:
-- `track` data (track geometry and section definitions)
-- `run` data (train position and power profiles)
-- `position` columns in both track and run sheets are interpreted as **absolute meters**.
+`TrainNodeInserterTest` contains these existing cases:
 
-### Dynamic topology invariants (clarification)
-- When dynamic line devices are present, **NetBuilder uses dynamic lines exclusively**.
-- Legacy static `Line` devices are ignored in this case.
-- This behavior is now considered a stable contract.
+| Test | Existing assertions |
+| --- | --- |
+| `insertsTwoTrainNodesAndSplitsBranchDeterministically` | Four train nodes, six split branches, two train loads, and the expected 0.3/0.4/0.3 ohm chain on both conductors. |
+| `rejectsTrainThatCannotBePlacedOnAnyBranch` | A train at 1200 m on the 0–1000 m fixture is rejected. |
+| `treatsTrainExactlyAtExistingNodeAsPlacedWithoutChangingTopology` | A train at the start endpoint reuses feeding and return nodes, preserving node and branch counts. |
+| `producesIdenticalTopologyForDifferentTrainInputOrder` | Reversing the two input trains preserves compared node IDs and positions, branch IDs, endpoints and resistances, and train-load count. |
+| `producesIdenticalTopologyAcrossRepeatedRuns` | Repeated insertion into the same base fixture preserves those same topology properties. |
 
-### Solver and logging fixes (NEW)
-- Removed hardcoded train node index usage in solver/debug logic.
-- Train voltage (`Train/<id> V_V`) is logged for **all trains present in `DcNet.trains()`**.
-- Logging and probe logic must not rely on fixed node indices.
+These fixtures use no configured electrical routes. They do not establish coverage of route filtering, reversed branch endpoints, coincident interior trains, installation aliases or base-network construction. `dcCheck` additionally exercises exported train placement without solving the nonlinear electrical equations. Successful placement does not guarantee convergence or sufficient power availability.
 
-### Substation validation (NEW)
-- Substations must have **distinct electrical terminals**.
-- A substation with identical `fromNode` and `toNode` is rejected at NetBuilder time (fail-fast).
 
----
+### Story 4 — Regenerative braking and non-receptive networks
 
-## Package Structure (v0.11+)
+#### Problem
 
-A new package structure is introduced to separate domain concepts, transformation logic, and solver implementation.  
-This structure will be gradually adopted. Legacy code may remain outside this structure until cleanup (planned for v0.12).
+A braking train can supply energy to accelerating trains, but the electrical network may be unable to absorb all the requested regenerative power. Diode substations supply the railway and block reverse current; they do not provide an unrestricted sink for braking energy. Receptivity therefore depends on simultaneous loads, conductor resistance and terminal voltages.
 
-### Structure
+The implementation combines a voltage-dependent regenerative train characteristic with a timestep fallback that reduces regenerative allocations when the numerical solution is unacceptable. Reporting must use the resulting allocation and voltage. Otherwise a curtailed train could still appear to deliver its original requested braking power.
 
-- supply
-  - domain
-  - mapping
-  - solver
-  - io
-  - app
-  - util
+#### Design decisions and difficulties
 
-### Responsibilities
+Train power is positive for motoring and negative for regeneration. Three quantities must remain distinct:
 
-#### `domain`
-Contains all domain and configuration-facing classes.  
-These represent the concepts exposed to the user via configuration.
+| Quantity | Meaning |
+| --- | --- |
+| Requested power | Traffic input, retained as the reference for power deviation |
+| Allocated power | Power passed to the solver after any fallback reduction |
+| Actual power | Terminal voltage multiplied by the current delivered by the train characteristic |
 
-Examples:
-- Node
-- Line
-- PowerInstallation
-- Substation
-- Point
-- PowerConnection
-- Enums and value objects (e.g. positions)
+An unchanged allocation does not guarantee full regeneration: the voltage-dependent characteristic can already reduce current. Conversely, fallback changes the allocation before the characteristic is evaluated.
 
-#### `mapping`
-Contains transformation logic between representations.
+`RegenerativeTrainElement` uses constant-power regeneration below a start voltage and a linear **current** ramp from the start voltage to the maximum voltage. This is not a linear power ramp. `DiodeSubstationElement` selects its conducting or blocked state using voltages from the preceding nonlinear iteration. These voltage-dependent elements require repeated matrix assembly and solution.
 
-Examples:
-- Railway → model coordinate transformation
-- Section-based positioning
-- Mapping between domain objects and solver objects
+The fallback applies one common multiplier to all negative train powers and leaves positive requests unchanged. This provides a deterministic reduction policy, but it is not an optimization of individual trains, recovered energy or departure times. The fallback searches for a numerically acceptable result; failure is not by itself proof that the physical network has no solution.
 
-#### `solver`
-Contains electrical and numerical computation logic.
+#### Implementation sequence
 
-Examples:
-- Matrix assembly (stamping)
-- Solver algorithms
-- Device behavior implementations
+1. **Collect the timestep requests.** After train placement, `org.supply.app.DcSolver.solveTimestep(...)` builds a requested-power map from the calculation train loads and calls `solveWithFallback(...)`. The network connections are those described in Story 3.
 
-#### `io`
-Handles all input and output operations.
+2. **Attempt the requested powers.** `solveWithRetry(...)` calls `SingleTimestepSolver.solve(...)` with up to 200 iterations and a voltage tolerance of 1e-3 V. It first supplies the preceding timestep's voltages. If the result is unacceptable and that map was nonempty, it retries with an empty voltage map.
 
-Examples:
-- Configuration readers
-- CSV import/export
-- Report generation I/O
+3. **Create voltage-dependent train elements.** During each iteration, `SingleTimestepSolver.withTrainLoads(...)` replaces the ordinary train elements using the current power map. Negative power creates `RegenerativeTrainElement`; zero or positive power creates `TrainLoadElement`. The regenerative start voltage is currently fixed at 850 V, while the maximum voltage comes from system parameters. Train voltage guesses are initialized on each solve call; the supplied previous voltages separately inform element stamping.
 
-#### `app`
-Executable application entry points.
+4. **Apply the regenerative characteristic.** Let Q be the magnitude of allocated regenerative power, U the feeding-to-return terminal voltage, Us the start voltage and Um the maximum voltage. The generated current magnitude is:
 
-Examples:
-- DcSimApp
-- DcExport
-- DcReport
+   | Voltage region | Generated current magnitude |
+         | --- | --- |
+   | U < Us | Q / U |
+   | Us ≤ U < Um | (Q / Us) × (Um − U) / (Um − Us) |
+   | U ≥ Um | 0 |
 
-#### `util`
-General-purpose helper utilities.  
-This package should remain small and not contain domain logic.
+   Below Us, `RegenerativeTrainElement.stamp(...)` linearizes constant-power generation around the current voltage guess with conductance Q/U² and Norton injection 2Q/U. In the ramp region it stamps conductance 1/r and Norton injection Um/r, where r = (Um − Us)/(Q/Us). At or above Um it contributes no generation. `regenerativeCurrentA(...)` evaluates the same characteristic for reporting.
 
----
+5. **Assemble the network and select diode states.** `AdmittanceSystemBuilder.build(...)` creates the active node index and stamps the electrical elements. Disabled substations are omitted. `DiodeSubstationElement.stamp(...)` blocks when the preceding terminal voltage exceeds its emf by more than 1e-3 V. Otherwise it stamps its Norton equivalent, with conductance 1/R and injection E/R. Without preceding terminal voltages, it initially stamps as conducting.
 
-### Design Principles
+6. **Iterate and assess the result.** `SingleTimestepSolver` solves the assembled system, compares new train terminal voltages with their guesses, and updates those guesses with relaxation factor 0.1. Convergence uses the unrelaxed voltage difference. A singular admittance matrix returns a non-converged result. `DcSolver.isAcceptable(...)` additionally requires finite returned voltages and an available, finite train terminal voltage greater than zero and no more than Um + 1e-3 V. This acceptance check does not independently verify current or power residuals.
 
-- Domain classes reflect configuration and user concepts.
-- Model coordinates are derived from railway coordinates via mapping.
-- Solver logic is separated from domain representation.
-- Interfaces are introduced selectively at system boundaries (e.g. mapping, IO, solver).
-- Legacy code will be incrementally migrated into this structure.
+7. **Reduce regeneration if necessary.** If the full-request attempt is unacceptable, `solveWithFallback(...)` first sets every negative request to zero while preserving motoring requests. If this also fails, it throws `DC network is not solvable even with zero regenerative train power`. Otherwise it performs 30 bisection steps between a feasible multiplier of zero and an infeasible multiplier of one. Successful candidates update the retained solution and allocation. The returned voltages and allocated-power map always belong to the same accepted candidate.
 
----
+8. **Report delivered power.** `DcSolver.powerSnapshot(...)` uses the accepted allocation and terminal voltage. `trainCurrentA(...)` returns negative current for regeneration using `RegenerativeTrainElement.regenerativeCurrentA(...)`; for motoring it evaluates `TrainLoadElement.currentA(...)`. The reported `p_W` is U × I, and `trainPowerDeltaW(...)` calculates `p_delta_W` as original requested power minus actual power. A traction shortfall therefore gives a positive deviation; curtailed regeneration gives a negative deviation. Train energy accumulation and system power accounting use the actual-power snapshot.
 
-### Migration Strategy
+#### Example: allocated power versus delivered power
 
-- New and refactored code should be placed in the new `supply` structure.
-- Existing code remains unchanged until explicitly migrated.
-- Full cleanup and consolidation are planned for version v0.12.
+For an allocated request of −900 kW, a start voltage of 850 V and a maximum voltage of 900 V, a terminal voltage of 872.738 V produces approximately −577.3 A and −503.8 kW. The difference from the original request is approximately −396.2 kW if the original request was also −900 kW. The remaining requested braking power is not injected into the electrical network. This electrical model does not describe the train's mechanical braking equipment.
+
+Simultaneous acceleration can improve receptivity, but the benefit depends on where the trains connect and the resulting voltages. Matching the sums of requested motoring and braking powers alone does not establish that every braking train can deliver its full request.
+
+#### Invariants and tests to preserve
+
+- Keep original requests, fallback allocations and actual delivered powers distinct.
+- Preserve positive requests during regenerative fallback. Motoring current remains subject to its own train characteristic.
+- Keep the regenerative current continuous at Us and zero at Um. Preserve the linear current ramp and its matrix equivalent.
+- Block diode reverse conduction according to the voltage-state rule, and omit disabled substations.
+- Return an accepted solution together with the exact allocation used to obtain it.
+- Calculate reported train power and energy from allocation-dependent current and solved voltage.
+
+The inspected tests provide the following coverage:
+
+| Test class | Existing coverage |
+| --- | --- |
+| `RegenerativeTrainElementTest` | Full current at the start voltage; half current halfway through the ramp; zero current at the maximum voltage; constant-power and ramp-region stamps |
+| `DiodeSubstationElementTest` | Conducting Norton equivalent and omission of a disabled substation |
+| `AdmittanceSystemBuilderTest` | Active-node indexing, reference-node validation, branch and installation stamps, current injection handling and deterministic indexing |
+| `DcSolverFallbackTest` | Unchanged allocations for two directly convergent braking/motoring cases; regenerative reduction without reducing the motoring allocation; reported regenerative current and power from the voltage-dependent characteristic |
+
+The unchanged-allocation assertions do not establish full delivered regeneration. The reporting test checks `DcSolver.trainCurrentA(...)`, rather than an end-to-end result export. Additional regression coverage should exercise voltage-triggered diode blocking and verify that fallback allocations propagate through exported power and accumulated energy. These source tests were inspected for this story; they were not executed here.
+
+#### Current implementation limits
+
+The fixed 850 V start voltage is not scaled with nominal system voltage. The regenerative characteristic requires Um > Us, but the general ordering check `u_min_V < u_cutoff_V < u_max_V` does not establish that relationship. The regenerative characteristic also has no configured current cap.
+
+Bisection relies on a useful feasible/infeasible boundary in the common allocation multiplier; nonlinear convergence is not guaranteed to be monotonic. The result is a retained acceptable candidate, not proof of an optimal allocation. A zero-regeneration failure must be investigated through motoring demand, topology, parameters and numerical behavior rather than attributed automatically to braking energy.
+
+
+### Story 5 — Traffic generation from multi-leg RunExcel journeys
+
+#### Problem
+
+A complete train journey may consist of several BA (benefit analysis) RunExcel workbooks, one per station-to-station leg. Each workbook contains its own time series, positions and power demand. The DC simulator needs one continuous journey per train, including station dwell, and must be able to repeat that journey for several departures without treating each leg as a separate train.
+
+The implementation separates template expansion from reading and joining the source data. `RunCsvInputFactory` expands configured departures into ordered train-leg entries. `RunCsvFromExcel` reads those entries, aligns their times and positions, fills intermediate dwell and writes the samples consumed by the electrical simulation. Existing single-leg configurations remain supported.
+
+#### Design decisions and difficulties
+
+Three time references must remain distinct: the train's absolute departure, the leg's relative departure within the journey, and the time values in the workbook's run sheet. The first run sample need not have the same time as the timetable departure. Alignment therefore uses the difference between the desired leg start and the first source sample, rather than simply adding all three times.
+
+The relative departure is chosen in this order:
+
+| Priority | Source |
+| --- | --- |
+| 1 | The leg's configured `departure` |
+| 2 | The first departure row in the workbook's `timetable` sheet, using its `Time` column |
+| 3 | The first time value in the run data |
+
+The timetable `Time` column represents the departure used for this alignment. Its `Time s` column is not used. After alignment, the preceding leg's final run sample determines when the next leg may start. A planned timetable duration does not replace that achieved end time.
+
+Position joining and infrastructure mapping are separate operations. The reader preserves the run sheet's `position [m]` as route position. It does not replace it with railway kilometrage from the `track` sheet. Subsequent legs receive a constant position shift so that their first point equals the preceding leg's endpoint. Story 2 describes the later conversion from route position to physical infrastructure coordinates.
+
+Auxiliary power also needs an explicit ownership rule. A workbook may already include it in its power model, while a synthetic station dwell has no workbook power samples. The configured auxiliary demand applies to the leg and its following dwell; the model flag controls whether it must be added to the leg's source power.
+
+#### Implementation sequence
+
+1. **Resolve templates and expand departures.** `org.supply.loader.RunCsvInputFactory.build(...)` reads `traffic.timetable.trains` and `traffic.templates`. It accepts `template_id` and the legacy spelling `templateId`. A template with `legs` supplies an ordered list; otherwise the template itself is treated as one leg. Empty leg lists are rejected.
+
+2. **Create one entry per train and leg.** For `count = 1`, the configured train ID is retained. For larger counts, IDs receive suffixes such as `T1-001`, and train i departs at the configured departure plus i times the headway, with i starting at zero. Count must be positive; repeated departures require a positive headway. Every expanded train receives every leg in configured order, with the same absolute train departure attached to each entry.
+
+3. **Resolve input and per-leg settings.** Each leg requires exactly one of `run_excel` and `run_log`. Excel defaults to the `run` sheet unless `run_excel_sheet` is supplied. Relative file paths are resolved against the configuration file's directory. Missing files produce an error identifying train, template, leg number and path. Section and track IDs use leg settings first, then train settings; route ID comes from the train. Auxiliary settings use leg settings first, then template settings, with defaults of `motoring_and_auxiliaries_in_same_model = true` and `auxiliary_power_W = 0`.
+
+4. **Pass the expanded input to the writer.** `RunCsvInput` carries aligned lists of source descriptors, train identities, departures, coordinate metadata and auxiliary settings, together with the simulation window and export resolution. `org.supply.io.export.RunCsvWriter.write(...)` passes these to `RunCsvFromExcel.writeRunCsv(...)` and writes `run.csv`. Compatibility constructors convert older Excel file/sheet inputs to `RunSource` entries and supply missing optional settings.
+
+5. **Read a workbook.** `RunCsvFromExcel.read(...)` calls `readRunExcel(...)`, which requires the selected run sheet and a `track` sheet. `readRunSheet(...)` reads `time [s]`, `position [m]`, `primaryMotoringPower [kW]` and `primaryMotorBrakingPower [kW]`. Requested power in watts is their sum multiplied by 1000; the source braking column is expected to be negative. Source speed is read from `speed [m/s]` when available, otherwise derived from the position/time samples. `readRelativeDepartureS(...)` reads the first timetable departure from `Time`, accepting numeric Excel time or text time.
+
+6. **Complete auxiliary demand.** For Excel input with `same_model = false`, `addAuxiliaryPower(...)` adds the configured nonnegative auxiliary demand to every run point, including regenerative points. With `same_model = true`, the leg's power is retained. Measured logs use a separate `RunCsvFromLog` reader; auxiliary-completion options are rejected for those sources because the measured power must not be supplemented by the BA policy.
+
+7. **Align and validate a leg.** The desired absolute start is the expanded train departure plus the selected relative departure. `shiftRunPoints(...)` shifts time by desired start minus the first source time. For subsequent legs, it also shifts position by previous endpoint minus the new leg's first position. `previousLegEnds`, keyed by train ID, retains the complete preceding leg's end state. A start earlier than that end by more than 1e-9 s is rejected; equal start and end times are accepted.
+
+8. **Fill an intermediate station dwell.** For Excel input, a positive gap between legs creates stationary points at the preceding endpoint, with zero speed and the preceding leg's configured auxiliary power. The preceding leg's section, track and route metadata are retained for these points. No dwell is added before the first leg or after the last leg.
+
+9. **Clip and optionally resample.** The full leg endpoint is saved before clipping, so joining remains based on the complete journey even when a leg lies outside the simulation window. `clipRunPoints(...)` retains the overlap and interpolates boundary positions. With positive `export.exportResolution_s`, `resampleRunPoints(...)` uses a time grid anchored at simulation start, interpolates positions and averages piecewise-constant source power over each output interval. Zero resolution retains the clipped source sampling. Dwell is clipped and resampled through the same helpers.
+
+10. **Resolve shared boundaries and export.** Rows are sorted by time and then train ID. `removeDuplicateTrainTimes(...)` keeps the later row for duplicate train/time entries within 1e-9 s. Consequently a next-leg start supersedes the dwell endpoint at the same timestamp. `RunCsvFileWriter` writes the common run schema, including train and coordinate identifiers, route position, requested power and speed.
+
+#### Example: a journey with station dwell
+
+The auxiliary-power test uses a train departing at 10:00:00. Its first leg lasts ten seconds; its second leg starts at relative time fifteen seconds. Both source legs request 20 kW at their starts.
+
+| Time | State | Exported demand |
+| --- | --- | ---: |
+| 10:00:00 | First leg, auxiliaries absent from source model | 20 kW + 100 kW = 120 kW |
+| 10:00:10 | Dwell after the first leg | 100 kW |
+| 10:00:15 | Second leg, auxiliaries already included in source model | 20 kW |
+
+The second leg's configured auxiliary demand is 200 kW. It is not added to that leg's source power, and would apply to a following dwell if another leg existed. The flag and configured demand must therefore accurately describe the workbook's model.
+
+For `two_sections`, templates `A-D` and `D-A` each contain three legs. Five trains per template produce ten train journeys and thirty train-leg entries. A one-minute headway shifts every leg of each repeated journey by the same minute, preserving its internal timing.
+
+#### Invariants and tests to preserve
+
+- Preserve single-leg configurations, legacy template naming and compatibility constructors.
+- Expand all legs for every train in configured order; shift the whole journey consistently by headway.
+- Apply the documented departure precedence and reject overlap against the full preceding run's achieved endpoint.
+- Preserve route positions and continuity between legs without substituting railway kilometrage.
+- Add auxiliary power only when absent from the source model; use the preceding leg's auxiliary setting during its following dwell.
+- Save full endpoints before clipping, and keep one sample per train at shared boundaries with the next leg taking precedence.
+
+| Test class | Existing coverage |
+| --- | --- |
+| `RunCsvInputFactoryTest` | Headway expansion, original ID for a single train, expansion of every leg with inherited/overridden settings, and measured-log source construction |
+| `RunCsvFromExcelTest` | Route position instead of BIS position, absolute-window clipping, omission outside the window, timetable departure fallback, touching leg boundaries, auxiliary demand during a leg and following dwell, and rejection of overlapping legs |
+
+These tests were inspected, not executed here. The supplied tests do not directly cover every constructor, three-leg repeated journeys, or the positive-resolution resampling path.
+
+#### Current implementation limits
+
+Joining positions ensures numerical continuity but does not verify that the workbooks refer to the same physical station. Correct BA track/timetable matching remains an input responsibility; a consistently shifted first leg is not repaired by joining later legs. Coordinate checks and the graphical timetable provide complementary validation.
+
+Resampling emits points on the simulation-anchored grid. An off-grid final endpoint is not guaranteed to appear as a separate output sample. Duplicate-time resolution deliberately replaces earlier boundary rows; it does not combine their powers. Changes to either behavior must account for downstream timestep and timetable consumers.
+
+## Part 3 — Future work
+
+The following directions extend the simulator's scope and capabilities:
+
+- **Electrical sectioning** — model switching, isolation and changes to network connectivity.
+- **Interactive simulation** — inspect and influence the simulation while it runs.
+- **Additional electrical elements** — extend installation and device models, including onboard batteries and wayside energy storage.
+- **Single-phase AC traction networks** — model AC feeding and return conductors, impedances and associated supply equipment.
+- **Three-phase utility supply networks** — model the upstream high-voltage grid, transformers and connections supplying traction converters.
