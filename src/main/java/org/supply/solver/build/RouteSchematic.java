@@ -24,54 +24,46 @@ public final class RouteSchematic {
         return svg(network,route,ohmPerM,Context.empty());
     }
     public static String svg(CalculationNetwork network,Route route,Map<String,Double> ohmPerM,Context context) {
-        return render(network,route,ohmPerM,Map.of(),context);
+        return render(network,route,ohmPerM,Map.of(),Map.of(),context);
     }
 
-    /** Combines opposite routes without duplicating their physical branches. */
+    /** Shows every route in its own drawing lane, including shared solver branches. */
     public static String combinedSvg(CalculationNetwork network, List<Route> routes, Map<String,Double> ohmPerM) {
         return combinedSvg(network,routes,ohmPerM,Context.empty());
     }
     public static String combinedSvg(CalculationNetwork network,List<Route> routes,Map<String,Double> ohmPerM,Context context) {
-        Map<String,CalculationNode> nodes=new HashMap<>();
-        for(var n:network.nodes()) { nodes.put(n.id(),n); }
-        Map<String,String> side=new LinkedHashMap<>();
         List<Route> ordered=new ArrayList<>(routes);
         ordered.sort(Comparator.comparing(Route::id));
-        boolean railwaySides=ordered.stream().allMatch(r->routeSide(network,r,nodes)!=null);
-        if(railwaySides) ordered.sort(Comparator.comparing(r->routeSide(network,r,nodes)));
-        if(!railwaySides && ordered.size()!=2) {
-            throw new IllegalArgumentException("Without U/D track metadata, a combined schematic requires exactly two routes");
-        }
+        if (ordered.isEmpty()) throw new IllegalArgumentException("No routes selected");
+        Map<String,List<String>> lanes=new LinkedHashMap<>();
+        Map<String,String> routeLabels=new LinkedHashMap<>();
         Set<String> feed=new LinkedHashSet<>(), returning=new LinkedHashSet<>();
-        for(Route r:ordered) {
-            String track=railwaySides?routeSide(network,r,nodes):(ordered.indexOf(r)==0?"U":"D");
-            for(String line:r.feedingLineIds()) { assign(side,line,track+"F");feed.add(line); }
-            for(String line:r.returnLineIds()) { assign(side,line,track+"R");returning.add(line); }
-        }
-        // U establishes the common physical left-to-right order, irrespective of D traversal.
-        List<String> f=new ArrayList<>(feed);f.sort(Comparator.comparing(id->side.get(id).startsWith("U")?0:1));
-        String title=ordered.stream().map(Route::id).reduce((a,b)->a+" + "+b).orElseThrow();
-        return render(network,new Route(title,f,new ArrayList<>(returning)),ohmPerM,side,context);
-    }
-    private static void assign(Map<String,String> map,String id,String value) {
-        String old=map.putIfAbsent(id,value);
-        if(old!=null && !old.equals(value)) { throw new IllegalArgumentException("Shared line has conflicting U/D classification: "+id); }
-    }
-    private static String routeSide(CalculationNetwork network,Route route,Map<String,CalculationNode> nodes) {
-        Set<String> sides=new HashSet<>();
-        Set<String> lines=new HashSet<>(route.feedingLineIds());lines.addAll(route.returnLineIds());
-        for(var b:network.branches()) { if(lines.contains(b.sourceId())) {
-            for(String id:List.of(b.fromNodeId(),b.toNodeId())) {
-                var n=nodes.get(id);String track=n==null?null:n.trackId();
-                if(track!=null && track.matches("U[0-9]*")) { sides.add("U"); }
-                if(track!=null && track.matches("D[0-9]*")) { sides.add("D"); }
+        for (int index=0;index<ordered.size();index++) {
+            Route r=ordered.get(index);
+            String lane=Integer.toString(index);
+            routeLabels.put(lane,r.id());
+            for (String id:new LinkedHashSet<>(r.feedingLineIds())) {
+                lanes.computeIfAbsent(id,k->new ArrayList<>()).add(lane);
+                feed.add(id);
             }
-        } }
-        if(sides.size()!=1) { return null; }
-        return sides.iterator().next();
+            for (String id:new LinkedHashSet<>(r.returnLineIds())) {
+                if (r.feedingLineIds().contains(id))
+                    throw new IllegalArgumentException("Line is both feeding and return: "+id);
+                lanes.computeIfAbsent(id,k->new ArrayList<>()).add(lane);
+                returning.add(id);
+            }
+        }
+        if (!Collections.disjoint(feed,returning))
+            throw new IllegalArgumentException("Routes disagree on feeding/return line classification");
+        String title=ordered.stream().map(Route::id).reduce((a,b)->a+" + "+b).orElseThrow();
+        // Shared branches have one drawing per route, but remain one solver branch.
+        return render(network,new Route(title,new ArrayList<>(feed),new ArrayList<>(returning)),
+                ohmPerM,lanes,routeLabels,context);
     }
-    private static String render(CalculationNetwork network,Route route,Map<String,Double> ohmPerM,Map<String,String> lanes,Context context) {
+    private static String render(CalculationNetwork network,Route route,Map<String,Double> ohmPerM,Map<String,List<String>> lanes,Map<String,String> routeLabels,Context context) {
         boolean combined=!lanes.isEmpty();
+        int returnY=combined?Math.max(RETURN,FEED+80*routeLabels.size()+80):RETURN;
+        int height=combined?Math.max(580,returnY+80*(routeLabels.size()-1)+100):580;
         Map<String,CalculationNode> nodes=new LinkedHashMap<>();
         for(var n:network.nodes()) { nodes.put(n.id(),n); }
         Map<String,List<CalculationBranch>> byLine=new LinkedHashMap<>();
@@ -133,10 +125,10 @@ public final class RouteSchematic {
         Map<String,Integer> x=new LinkedHashMap<>();int col=0;
         for(String p:places) { x.put(p,120+STEP*col++); }
         StringBuilder out=new StringBuilder("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"");
-        out.append(Math.max(1100,STEP*(col-1)+240)).append("\" height=\"580\" viewBox=\"0 0 ").append(Math.max(1100,STEP*(col-1)+240)).append(" 580\">\n");
+        out.append(Math.max(1100,STEP*(col-1)+240)).append("\" height=\"").append(height).append("\" viewBox=\"0 0 ").append(Math.max(1100,STEP*(col-1)+240)).append(" ").append(height).append("\">\n");
         out.append("<rect width=\"100%\" height=\"100%\" fill=\"white\"/><g font-family=\"Arial\">\n");
-        text(out,20,28,"Route "+route.id()+" | selected route, topology only",14,"#222","start");
-        text(out,20,50,combined?"Route lanes in title order: first red; second blue. Feeding above return; layout not to distance scale.":"Red: feeding; blue: return. Layout not to distance scale.",12,"#333","start");
+        text(out,20,28,"Route "+route.id()+(combined?" | combined topology":" | selected route, topology only"),14,"#222","start");
+        text(out,20,50,combined?"Separate lanes per route in title order, alternating red/blue. Shared line IDs are views of the same solver branch.":"Red: feeding; blue: return. Layout not to distance scale.",12,"#333","start");
         text(out,20,68,"Model assumption: all feeder breakers closed. Internal station connections not drawn.",9,"#555","start");
         for(var entry:x.entrySet()) {
             Set<String> references=new LinkedHashSet<>();Set<Double> metres=new LinkedHashSet<>();
@@ -163,7 +155,7 @@ public final class RouteSchematic {
         }
         for(Station s:stations) {
             int sx=x.get(layout.place(nodes.get(s.from())));
-            out.append("<g><title>").append(xml(s.id()+" | "+s.type()+" | terminals: "+s.terminals())).append("</title><rect x=\"").append(sx-HALF).append("\" y=\"125\" width=\"160\" height=\"400\" rx=\"6\" fill=\"#f0fdf4\" stroke=\"#067647\"/></g>\n");
+            out.append("<g><title>").append(xml(s.id()+" | "+s.type()+" | terminals: "+s.terminals())).append("</title><rect x=\"").append(sx-HALF).append("\" y=\"125\" width=\"160\" height=\"").append(height-180).append("\" rx=\"6\" fill=\"#f0fdf4\" stroke=\"#067647\"/></g>\n");
             text(out,sx,280,s.id(),14,"#067647","middle");text(out,sx,298,s.type(),9,"#067647","middle");
             String values=stationValues.get(s.id());
             if(values!=null) { String[] fields=values.split(" \\| ");text(out,sx,330,fields[0],9,"#067647","middle");text(out,sx,345,fields[1],9,"#067647","middle"); }
@@ -200,29 +192,35 @@ public final class RouteSchematic {
         }
         Set<String> labels=new HashSet<>();int feedingCount=0,returnCount=0;
         for(String id:selected) {
-            boolean feeding=route.feedingLineIds().contains(id);int y=feeding?FEED:RETURN;String color=feeding?"#b42318":"#175cd3";
-            if(southOnly) y+=80;
-            if(combined) { String lane=lanes.get(id);boolean down=lane.startsWith("D");y=(feeding?FEED:RETURN)+(down?80:0);color=down?"#175cd3":"#b42318"; }
-            for(var b:byLine.getOrDefault(id,List.of())) {
-                int a=x.get(layout.place(nodes.get(b.fromNodeId()))),z=x.get(layout.place(nodes.get(b.toNodeId())));
-                if(a==z) {
-                    if(layout.connectors.contains(b.id())) continue;
-                    throw new IllegalArgumentException("External line has coincident schematic locations: "+id);
+            boolean feeding=route.feedingLineIds().contains(id);
+            for (String lane:combined?lanes.get(id):List.of("0")) {
+                int laneIndex=Integer.parseInt(lane);
+                int y=feeding?FEED:returnY;
+                String color=feeding?"#b42318":"#175cd3";
+                if(southOnly) y+=80;
+                if(combined) { y+=80*laneIndex;color=laneIndex%2==0?"#b42318":"#175cd3"; }
+                for(var b:byLine.getOrDefault(id,List.of())) {
+                    int a=x.get(layout.place(nodes.get(b.fromNodeId()))),z=x.get(layout.place(nodes.get(b.toNodeId())));
+                    if(a==z) {
+                        if(layout.connectors.contains(b.id())) continue;
+                        throw new IllegalArgumentException("External line has coincident schematic locations: "+id);
+                    }
+                    int sign=a<z?1:-1;
+                    int from=a+(owner.containsKey(b.fromNodeId())?sign*HALF:0);
+                    int to=z-(owner.containsKey(b.toNodeId())?sign*HALF:0);
+                    line(out,from,y,to,y,color,false,id+(combined?" | routes: "+routeLabels.get(lane):"")+" | total R="+b.resistanceOhm().asDouble()+" ohm");
+                    int mid=(from+to)/2;
+                    text(out,mid,y-36,id,8,color,"middle");
+                    if(combined) text(out,mid,y-52,routeLabels.get(lane),9,color,"middle");
+                    Double r=ohmPerM.get(id);
+                    text(out,mid,y-23,r==null?"ohm/m unavailable":String.format(Locale.ROOT,"%.6g ohm/m",r),9,color,"middle");
+                    endpoint(out,b.fromNodeId(),from,y,sign,owner.containsKey(b.fromNodeId()),color,labels,layout.isJunction(nodes.get(b.fromNodeId())));
+                    endpoint(out,b.toNodeId(),to,y,-sign,owner.containsKey(b.toNodeId()),color,labels,layout.isJunction(nodes.get(b.toNodeId())));
+                    if(feeding) { feedingCount++; } else { returnCount++; }
                 }
-                int sign=a<z?1:-1;
-                int from=a+(owner.containsKey(b.fromNodeId())?sign*HALF:0);
-                int to=z-(owner.containsKey(b.toNodeId())?sign*HALF:0);
-                line(out,from,y,to,y,color,false,id+" | total R="+b.resistanceOhm().asDouble()+" ohm");
-                int mid=(from+to)/2;
-                text(out,mid,y-36,id,8,color,"middle");
-                Double r=ohmPerM.get(id);
-                text(out,mid,y-23,r==null?"ohm/m unavailable":String.format(Locale.ROOT,"%.6g ohm/m",r),9,color,"middle");
-                endpoint(out,b.fromNodeId(),from,y,sign,owner.containsKey(b.fromNodeId()),color,labels,layout.isJunction(nodes.get(b.fromNodeId())));
-                endpoint(out,b.toNodeId(),to,y,-sign,owner.containsKey(b.toNodeId()),color,labels,layout.isJunction(nodes.get(b.toNodeId())));
-                if(feeding) { feedingCount++; } else { returnCount++; }
             }
         }
-        text(out,20,558,"External branches drawn: feeding="+feedingCount+", return="+returnCount+". Co-located junction connectors omitted: "+layout.connectors.size()+". Solver nodes unchanged.",10,"#555","start");
+        text(out,20,height-22,(combined?"Branch views drawn: ":"External branches drawn: ")+" feeding="+feedingCount+", return="+returnCount+". Co-located junction connectors omitted: "+layout.connectors.size()+". Solver nodes unchanged.",10,"#555","start");
         return out.append("</g></svg>\n").toString();
     }
     private static void endpoint(StringBuilder out,String id,int x,int y,int direction,boolean station,String color,Set<String> labels,boolean junction) {
