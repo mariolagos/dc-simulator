@@ -19,6 +19,7 @@ public class GridModelLoader {
         GridModel model = new GridModel();
 
         nodeFactory.build(model, grid);
+        installationFactory.prepareTerminalNodes(model, grid);
         lineFactory.build(model, grid);
         installationFactory.build(model, grid);
         fixedLoadFactory.build(model, grid);

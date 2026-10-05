@@ -34,10 +34,20 @@ public final class TrainPositionFactory {
                             sample.positionM()
                     );
 
+            // Explicit traffic track identifies the electrical track. Route
+            // transformation supplies section and position, and is the fallback
+            // for legacy traffic without an explicit track.
+            String trackId = sample.trackId();
+            if (trackId == null || trackId.isBlank()) {
+                trackId = modelCoordinate.getTrackId();
+            } else {
+                trackId = trackId.trim();
+            }
+
             out.add(new CalculationTrainPosition(
                     sample.trainId(),
                     modelCoordinate.getSectionId(),
-                    modelCoordinate.getTrackId(),
+                    trackId,
                     sample.routeId(),
                     sample.positionM(),               // routePositionM
                     modelCoordinate.getPositionM(),   // positionM inom sektionen

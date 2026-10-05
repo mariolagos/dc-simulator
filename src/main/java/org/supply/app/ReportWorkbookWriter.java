@@ -1,0 +1,960 @@
+package org.supply.app;
+
+import com.typesafe.config.Config;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.supply.domain.RunSample;
+import org.supply.solver.build.TrainPositionFactory;
+import org.supply.solver.io.ResultMetadata;
+import org.supply.solver.model.CalculationTrainPosition;
+import org.supply.track.TrackTransformService;
+import org.supply.track.LoadedTrackModel;
+import org.supply.track.PathSample;
+import org.supply.track.RouteView;
+import org.supply.track.RwyCoordinate;
+import org.supply.track.TrackConfigLoader;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.supply.app.DcReporter.*;
+
+final class ReportWorkbookWriter {
+    static void writeTrainWorkbook(
+            List<LongTableRow> rows,
+            ResultMetadata metadata,
+            BaseRoutePositionMapper baseRoutePositionMapper,
+            Path outputPath
+    ) throws IOException {
+
+        Map<String, Map<Double, TrainResult>> results =
+                collectTrainResults(rows);
+
+        populateBaseRoutePositions(results, baseRoutePositionMapper);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+
+            writeMetadataSheet(workbook, metadata);
+
+            for (Map.Entry<String, Map<Double, TrainResult>> trainEntry
+                    : results.entrySet()) {
+
+                String trainId =
+                        trainEntry.getKey();
+
+                Sheet sheet =
+                        workbook.createSheet(
+                                safeSheetName(trainId)
+                        );
+
+                writeTrainSheet(
+                        sheet,
+                        trainId,
+                        trainEntry.getValue()
+                );
+            }
+
+            Files.createDirectories(outputPath.getParent());
+
+            try (OutputStream out =
+                         Files.newOutputStream(outputPath)) {
+
+                workbook.write(out);
+            }
+        }
+    }
+
+    static Map<String, Map<Double, TrainResult>>
+    collectTrainResults(
+            List<LongTableRow> rows
+    ) {
+        Map<String, Map<Double, TrainResult>> result =
+                new LinkedHashMap<>();
+
+        for (LongTableRow row : rows) {
+
+            if (!"TRAIN".equals(row.objectType())) {
+                continue;
+            }
+
+            if (row.timeS() == null) {
+                continue;
+            }
+
+            Map<Double, TrainResult> byTime =
+                    result.computeIfAbsent(
+                            row.objectId(),
+                            ignored -> new LinkedHashMap<>()
+                    );
+
+            TrainResult trainResult =
+                    byTime.computeIfAbsent(
+                            row.timeS(),
+                            ignored -> new TrainResult()
+                    );
+
+            switch (row.signal()) {
+
+                case "electric_route_id" ->
+                        trainResult.electricRouteId =
+                                row.value();
+
+                case "electric_route_position_m" ->
+                        trainResult.electricRoutePositionM =
+                                parseDouble(row.value());
+
+                case "section_id" ->
+                        trainResult.sectionId =
+                                row.value();
+
+                case "track_id" ->
+                        trainResult.trackId =
+                                row.value();
+
+                case "position_m" ->
+                        trainResult.positionM =
+                                parseDouble(row.value());
+
+                case "speed_mps" ->
+                        trainResult.speedMps = parseDouble(row.value());
+
+                case "u_V" ->
+                        trainResult.uV =
+                                parseDouble(row.value());
+
+                case "i_A" ->
+                        trainResult.iA =
+                                parseDouble(row.value());
+
+                case "p_req_W" ->
+                        trainResult.pReqW =
+                                parseDouble(row.value());
+
+                case "p_W" ->
+                        trainResult.pW =
+                                parseDouble(row.value());
+
+                case "p_delta_W" ->
+                        trainResult.pDeltaW =
+                                parseDouble(row.value());
+
+                case "e_consumed_J" ->
+                        trainResult.eConsumedJ = parseDouble(row.value());
+
+                case "e_regenerated_J" ->
+                        trainResult.eRegeneratedJ = parseDouble(row.value());
+
+                case "e_net_J" ->
+                        trainResult.eNetJ = parseDouble(row.value());
+
+                default -> {
+                    // Ignore other signals.
+                }
+            }
+        }
+
+        return result;
+    }
+
+    static void writeTrainSheet(
+            Sheet sheet,
+            String trainId,
+            Map<Double, TrainResult> results
+    ) {
+        Row header = sheet.createRow(0);
+
+        header.createCell(0)
+                .setCellValue(trainId + ".time_s");
+        header.createCell(1)
+                .setCellValue(trainId + ".electric_route_id");
+        header.createCell(2)
+                .setCellValue(trainId + ".electric_route_position_m");
+        header.createCell(3)
+                .setCellValue(trainId + ".section_id");
+        header.createCell(4)
+                .setCellValue(trainId + ".track_id");
+        header.createCell(5)
+                .setCellValue(trainId + ".position_m");
+        header.createCell(6)
+                .setCellValue(trainId + ".base_route_position_m");
+        header.createCell(7)
+                .setCellValue(trainId + ".speed_mps");
+        header.createCell(8)
+                .setCellValue(trainId + ".speed_kph");
+        header.createCell(9)
+                .setCellValue(trainId + ".u_V");
+        header.createCell(10)
+                .setCellValue(trainId + ".i_A");
+        header.createCell(11)
+                .setCellValue(trainId + ".p_req_W");
+        header.createCell(12)
+                .setCellValue(trainId + ".p_W");
+        header.createCell(13)
+                .setCellValue(trainId + ".p_delta_W");
+        header.createCell(14)
+                .setCellValue(trainId + ".e_consumed_J");
+        header.createCell(15)
+                .setCellValue(trainId + ".e_regenerated_J");
+        header.createCell(16)
+                .setCellValue(trainId + ".e_net_J");
+
+        int rowIndex = 1;
+
+        for (Map.Entry<Double, TrainResult> entry
+                : results.entrySet()) {
+
+            Row row = sheet.createRow(rowIndex++);
+
+            row.createCell(0)
+                    .setCellValue(entry.getKey());
+
+            TrainResult result = entry.getValue();
+
+            setTextCell(row, 1, result.electricRouteId);
+            setNumericCell(row, 2, result.electricRoutePositionM);
+            setTextCell(row, 3, result.sectionId);
+            setTextCell(row, 4, result.trackId);
+            setNumericCell(row, 5, result.positionM);
+            setNumericCell(row, 6, result.baseRoutePositionM);
+            setNumericCell(row, 7, result.speedMps);
+            setNumericCell(row, 8,
+                    result.speedMps == null ? null : result.speedMps * 3.6);
+            setNumericCell(row, 9, result.uV);
+            setNumericCell(row, 10, result.iA);
+            setNumericCell(row, 11, result.pReqW);
+            setNumericCell(row, 12, result.pW);
+            setNumericCell(row, 13, result.pDeltaW);
+            setNumericCell(row, 14, result.eConsumedJ);
+            setNumericCell(row, 15, result.eRegeneratedJ);
+            setNumericCell(row, 16, result.eNetJ);
+        }
+
+        sheet.createFreezePane(0, 1);
+
+        for (int column = 0; column < 17; column++) {
+            sheet.autoSizeColumn(column);
+        }
+    }
+
+    static void writeDeviationWorkbook(
+            List<LongTableRow> rows,
+            ResultMetadata metadata,
+            Path outputPath
+    ) throws IOException {
+        Map<String, Map<Double, TrainResult>> trains =
+                collectTrainResults(rows);
+        List<DeviationPeriod> periods =
+                collectDeviationPeriods(trains);
+        Map<String, SectorSummary> sectors =
+                summarizeSectors(periods);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            writeMetadataSheet(workbook, metadata);
+            writeThresholdSheet(workbook);
+            writeDeviationPeriodsSheet(
+                    workbook.createSheet("Deviation periods"), periods);
+            writeSectorSummarySheet(
+                    workbook.createSheet("Weak sectors"), sectors);
+
+            Files.createDirectories(outputPath.getParent());
+            try (OutputStream out = Files.newOutputStream(outputPath)) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    static List<DeviationPeriod> collectDeviationPeriods(
+            Map<String, Map<Double, TrainResult>> trains
+    ) {
+        List<RawDeviation> deviations = new ArrayList<>();
+
+        for (Map.Entry<String, Map<Double, TrainResult>> trainEntry
+                : trains.entrySet()) {
+            String trainId = trainEntry.getKey();
+            for (Map.Entry<Double, TrainResult> timeEntry
+                    : trainEntry.getValue().entrySet()) {
+                double timeS = timeEntry.getKey();
+                TrainResult train = timeEntry.getValue();
+
+                if (train.uV != null && train.uV < MIN_TRAIN_VOLTAGE_V) {
+                    deviations.add(new RawDeviation(
+                            DeviationType.UNDER_VOLTAGE,
+                            trainId,
+                            timeS,
+                            train,
+                            train.uV,
+                            null
+                    ));
+                }
+
+                if (train.pDeltaW != null
+                        && train.pDeltaW > MIN_POWER_DEFICIT_W) {
+                    deviations.add(new RawDeviation(
+                            DeviationType.POWER_DEFICIT,
+                            trainId,
+                            timeS,
+                            train,
+                            train.uV,
+                            train.pDeltaW
+                    ));
+                }
+            }
+        }
+
+        deviations.sort(Comparator
+                .comparing((RawDeviation d) -> d.trainId)
+                .thenComparing(d -> d.type)
+                .thenComparingDouble(d -> d.timeS));
+
+        List<DeviationPeriod> periods = new ArrayList<>();
+        DeviationPeriod current = null;
+        for (RawDeviation deviation : deviations) {
+            if (current == null || !current.canAppend(deviation)) {
+                current = new DeviationPeriod(deviation);
+                periods.add(current);
+            } else {
+                current.append(deviation);
+            }
+        }
+
+        periods.sort(Comparator
+                .comparingDouble((DeviationPeriod p) -> p.startTimeS)
+                .thenComparing(p -> p.trainId)
+                .thenComparing(p -> p.type));
+        return periods;
+    }
+
+    static Map<String, SectorSummary> summarizeSectors(
+            List<DeviationPeriod> periods
+    ) {
+        Map<String, SectorSummary> result = new LinkedHashMap<>();
+        for (DeviationPeriod period : periods) {
+            String section = valueOrUnknown(period.sectionId);
+            String track = valueOrUnknown(period.trackId);
+            String key = section + " / " + track;
+            result.computeIfAbsent(
+                    key,
+                    ignored -> new SectorSummary(section, track)
+            ).add(period);
+        }
+        return result;
+    }
+
+    static void writeThresholdSheet(Workbook workbook) {
+        Sheet sheet = workbook.createSheet("Thresholds");
+        writeThresholdRow(sheet, 0, "min_train_voltage_V",
+                MIN_TRAIN_VOLTAGE_V,
+                "UNDER_VOLTAGE when u_V is below this value");
+        writeThresholdRow(sheet, 1, "min_power_deficit_W",
+                MIN_POWER_DEFICIT_W,
+                "POWER_DEFICIT when p_delta_W is above this value");
+        writeThresholdRow(sheet, 2, "max_event_gap_s",
+                MAX_EVENT_GAP_S,
+                "Largest time gap merged into one deviation period");
+        sheet.autoSizeColumn(0);
+        sheet.autoSizeColumn(1);
+        sheet.autoSizeColumn(2);
+    }
+
+    static void writeThresholdRow(
+            Sheet sheet,
+            int rowIndex,
+            String name,
+            double value,
+            String description
+    ) {
+        Row row = sheet.createRow(rowIndex);
+        row.createCell(0).setCellValue(name);
+        row.createCell(1).setCellValue(value);
+        row.createCell(2).setCellValue(description);
+    }
+
+    static void writeDeviationPeriodsSheet(
+            Sheet sheet,
+            List<DeviationPeriod> periods
+    ) {
+        String[] headers = {
+                "type", "train_id", "section_id", "track_id",
+                "start_time_s", "end_time_s", "duration_s",
+                "start_position_m", "end_position_m",
+                "start_route_position_m", "end_route_position_m",
+                "min_voltage_V", "max_power_deficit_W", "sample_count"
+        };
+        writeHeader(sheet, headers);
+
+        int rowIndex = 1;
+        for (DeviationPeriod period : periods) {
+            Row row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(period.type.name());
+            row.createCell(1).setCellValue(period.trainId);
+            setTextCell(row, 2, period.sectionId);
+            setTextCell(row, 3, period.trackId);
+            row.createCell(4).setCellValue(period.startTimeS);
+            row.createCell(5).setCellValue(period.endTimeS);
+            row.createCell(6).setCellValue(period.endTimeS - period.startTimeS);
+            setNumericCell(row, 7, period.startPositionM);
+            setNumericCell(row, 8, period.endPositionM);
+            setNumericCell(row, 9, period.startRoutePositionM);
+            setNumericCell(row, 10, period.endRoutePositionM);
+            setNumericCell(row, 11, period.minVoltageV);
+            setNumericCell(row, 12, period.maxPowerDeficitW);
+            row.createCell(13).setCellValue(period.sampleCount);
+        }
+
+        sheet.createFreezePane(0, 1);
+        autoSize(sheet, headers.length);
+    }
+
+    static void writeSectorSummarySheet(
+            Sheet sheet,
+            Map<String, SectorSummary> sectors
+    ) {
+        String[] headers = {
+                "section_id", "track_id", "period_count",
+                "total_duration_s", "min_voltage_V",
+                "max_power_deficit_W", "affected_trains"
+        };
+        writeHeader(sheet, headers);
+
+        List<SectorSummary> sorted = new ArrayList<>(sectors.values());
+        sorted.sort(Comparator
+                .comparingDouble((SectorSummary s) -> s.totalDurationS)
+                .reversed()
+                .thenComparing(
+                        Comparator.comparingInt(
+                                        (SectorSummary s) -> s.periodCount)
+                                .reversed())
+                .thenComparing(
+                        s -> s.minVoltageV,
+                        Comparator.nullsLast(Double::compareTo))
+                .thenComparing(
+                        s -> s.maxPowerDeficitW,
+                        Comparator.nullsLast(
+                                Comparator.reverseOrder())));
+
+        int rowIndex = 1;
+        for (SectorSummary sector : sorted) {
+            Row row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(sector.sectionId);
+            row.createCell(1).setCellValue(sector.trackId);
+            row.createCell(2).setCellValue(sector.periodCount);
+            row.createCell(3).setCellValue(sector.totalDurationS);
+            setNumericCell(row, 4, sector.minVoltageV);
+            setNumericCell(row, 5, sector.maxPowerDeficitW);
+            row.createCell(6).setCellValue(String.join(", ", sector.trainIds));
+        }
+
+        sheet.createFreezePane(0, 1);
+        autoSize(sheet, headers.length);
+    }
+
+    static void writeHeader(Sheet sheet, String[] headers) {
+        Row header = sheet.createRow(0);
+        for (int column = 0; column < headers.length; column++) {
+            header.createCell(column).setCellValue(headers[column]);
+        }
+    }
+
+    static void autoSize(Sheet sheet, int columnCount) {
+        for (int column = 0; column < columnCount; column++) {
+            sheet.autoSizeColumn(column);
+        }
+    }
+
+    static String valueOrUnknown(String value) {
+        return value == null || value.isBlank() ? "UNKNOWN" : value;
+    }
+
+    static void writeSystemWorkbook(
+            List<LongTableRow> rows,
+            ResultMetadata metadata,
+            Path outputPath
+    ) throws IOException {
+        Map<Double, SystemResult> results = collectSystemResults(rows);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            writeMetadataSheet(workbook, metadata);
+            Sheet sheet = workbook.createSheet("Power and energy balance");
+            writeSystemSheet(sheet, results);
+
+            Files.createDirectories(outputPath.getParent());
+            try (OutputStream out = Files.newOutputStream(outputPath)) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    static Map<Double, SystemResult> collectSystemResults(
+            List<LongTableRow> rows
+    ) {
+        Map<Double, SystemResult> result = new LinkedHashMap<>();
+
+        for (LongTableRow row : rows) {
+            if (!"SYSTEM".equals(row.objectType())
+                    || !"DC".equals(row.objectId())
+                    || row.timeS() == null
+                    || !"RESULT".equals(row.stage())) {
+                continue;
+            }
+
+            SystemResult system = result.computeIfAbsent(
+                    row.timeS(),
+                    ignored -> new SystemResult()
+            );
+
+            Double value = parseDouble(row.value());
+            switch (row.signal()) {
+                case "p_substations_W" -> system.pSubstationsW = value;
+                case "p_trains_W" -> system.pTrainsW = value;
+                case "p_fixed_loads_W" -> system.pFixedLoadsW = value;
+                case "p_losses_W" -> system.pLossesW = value;
+                case "p_balance_W" -> system.pBalanceW = value;
+                case "e_substations_supplied_J" -> system.eSubstationsSuppliedJ = value;
+                case "e_substations_absorbed_J" -> system.eSubstationsAbsorbedJ = value;
+                case "e_substations_net_J" -> system.eSubstationsNetJ = value;
+                case "e_trains_consumed_J" -> system.eTrainsConsumedJ = value;
+                case "e_trains_regenerated_J" -> system.eTrainsRegeneratedJ = value;
+                case "e_trains_net_J" -> system.eTrainsNetJ = value;
+                case "e_fixed_loads_consumed_J" -> system.eFixedLoadsConsumedJ = value;
+                case "e_losses_J" -> system.eLossesJ = value;
+                case "e_balance_J" -> system.eBalanceJ = value;
+                default -> {
+                    // Ignore static system parameters and other signals.
+                }
+            }
+        }
+
+        return result;
+    }
+
+    static void writeSystemSheet(
+            Sheet sheet,
+            Map<Double, SystemResult> results
+    ) {
+        String[] headers = {
+                "time_s",
+                "p_substations_W",
+                "p_trains_W",
+                "p_fixed_loads_W",
+                "p_losses_W",
+                "p_balance_W",
+                "e_substations_supplied_J",
+                "e_substations_absorbed_J",
+                "e_substations_net_J",
+                "e_trains_consumed_J",
+                "e_trains_regenerated_J",
+                "e_trains_net_J",
+                "e_fixed_loads_consumed_J",
+                "e_losses_J",
+                "e_balance_J"
+        };
+
+        Row header = sheet.createRow(0);
+        for (int column = 0; column < headers.length; column++) {
+            header.createCell(column).setCellValue(headers[column]);
+        }
+
+        int rowIndex = 1;
+        for (Map.Entry<Double, SystemResult> entry : results.entrySet()) {
+            Row row = sheet.createRow(rowIndex++);
+            SystemResult value = entry.getValue();
+            row.createCell(0).setCellValue(entry.getKey());
+            setNumericCell(row, 1, value.pSubstationsW);
+            setNumericCell(row, 2, value.pTrainsW);
+            setNumericCell(row, 3, value.pFixedLoadsW);
+            setNumericCell(row, 4, value.pLossesW);
+            setNumericCell(row, 5, value.pBalanceW);
+            setNumericCell(row, 6, value.eSubstationsSuppliedJ);
+            setNumericCell(row, 7, value.eSubstationsAbsorbedJ);
+            setNumericCell(row, 8, value.eSubstationsNetJ);
+            setNumericCell(row, 9, value.eTrainsConsumedJ);
+            setNumericCell(row, 10, value.eTrainsRegeneratedJ);
+            setNumericCell(row, 11, value.eTrainsNetJ);
+            setNumericCell(row, 12, value.eFixedLoadsConsumedJ);
+            setNumericCell(row, 13, value.eLossesJ);
+            setNumericCell(row, 14, value.eBalanceJ);
+        }
+
+        sheet.createFreezePane(0, 1);
+        for (int column = 0; column < headers.length; column++) {
+            sheet.autoSizeColumn(column);
+        }
+    }
+
+    static void writeLineWorkbook(
+            List<LongTableRow> rows,
+            ResultMetadata metadata,
+            Path outputPath
+    ) throws IOException {
+        Map<String, Map<Double, LineResult>> results =
+                collectLineResults(rows);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            writeMetadataSheet(workbook, metadata);
+
+            for (Map.Entry<String, Map<Double, LineResult>> lineEntry
+                    : results.entrySet()) {
+                String lineId = lineEntry.getKey();
+                Sheet sheet = workbook.createSheet(safeSheetName(lineId));
+                writeLineSheet(sheet, lineId, lineEntry.getValue());
+            }
+
+            Files.createDirectories(outputPath.getParent());
+            try (OutputStream out = Files.newOutputStream(outputPath)) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    static Map<String, Map<Double, LineResult>> collectLineResults(
+            List<LongTableRow> rows
+    ) {
+        Map<String, Map<Double, LineResult>> result = new LinkedHashMap<>();
+
+        for (LongTableRow row : rows) {
+            if (!"LINE".equals(row.objectType())
+                    || row.timeS() == null
+                    || !"RESULT".equals(row.stage())) {
+                continue;
+            }
+
+            Map<Double, LineResult> byTime =
+                    result.computeIfAbsent(
+                            row.objectId(),
+                            ignored -> new LinkedHashMap<>()
+                    );
+            LineResult lineResult =
+                    byTime.computeIfAbsent(
+                            row.timeS(),
+                            ignored -> new LineResult()
+                    );
+
+            switch (row.signal()) {
+                case "p_losses_W" ->
+                        lineResult.pLossesW = parseDouble(row.value());
+                case "e_losses_J" ->
+                        lineResult.eLossesJ = parseDouble(row.value());
+                default -> {
+                    // Ignore other signals.
+                }
+            }
+        }
+
+        return result;
+    }
+
+    static void writeLineSheet(
+            Sheet sheet,
+            String lineId,
+            Map<Double, LineResult> results
+    ) {
+        Row header = sheet.createRow(0);
+        header.createCell(0).setCellValue(lineId + ".time_s");
+        header.createCell(1).setCellValue(lineId + ".p_losses_W");
+        header.createCell(2).setCellValue(lineId + ".e_losses_J");
+
+        int rowIndex = 1;
+        for (Map.Entry<Double, LineResult> entry : results.entrySet()) {
+            Row row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(entry.getKey());
+            setNumericCell(row, 1, entry.getValue().pLossesW);
+            setNumericCell(row, 2, entry.getValue().eLossesJ);
+        }
+
+        sheet.createFreezePane(0, 1);
+        for (int column = 0; column < 3; column++) {
+            sheet.autoSizeColumn(column);
+        }
+    }
+
+    static void writeInstallationWorkbook(
+            List<LongTableRow> rows,
+            ResultMetadata metadata, Path outputPath
+    ) throws IOException {
+
+        Map<String, Double> resistanceByInstallation =
+                findInternalResistances(rows);
+
+        Map<String, Map<Double, InstallationResult>> results =
+                collectInstallationResults(rows);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+
+            writeMetadataSheet(workbook, metadata);
+
+            for (Map.Entry<String, Map<Double, InstallationResult>> installationEntry
+                    : results.entrySet()) {
+
+                String installationId =
+                        installationEntry.getKey();
+
+                Sheet sheet =
+                        workbook.createSheet(
+                                safeSheetName(installationId)
+                        );
+
+                writeInstallationSheet(
+                        sheet,
+                        installationId,
+                        installationEntry.getValue(),
+                        resistanceByInstallation.get(installationId)
+                );
+            }
+
+            Files.createDirectories(outputPath.getParent());
+
+            try (OutputStream out =
+                         Files.newOutputStream(outputPath)) {
+
+                workbook.write(out);
+            }
+        }
+    }
+
+    static void writeMetadataSheet(
+            Workbook workbook,
+            ResultMetadata metadata
+    ) {
+        Sheet sheet =
+                workbook.createSheet("Metadata");
+
+        writeMetadataRow(sheet, 0, "project", metadata.project());
+        writeMetadataRow(sheet, 1, "scenario", metadata.scenario());
+        writeMetadataRow(sheet, 2, "base_hash", metadata.baseHash());
+        writeMetadataRow(sheet, 3, "generated_at", metadata.generatedAt());
+
+        sheet.autoSizeColumn(0);
+        sheet.autoSizeColumn(1);
+    }
+
+    static void writeMetadataRow(
+            Sheet sheet,
+            int rowIndex,
+            String name,
+            String value
+    ) {
+        Row row =
+                sheet.createRow(rowIndex);
+
+        row.createCell(0)
+                .setCellValue(name);
+
+        row.createCell(1)
+                .setCellValue(value);
+    }
+    static void writeInstallationSheet(
+            Sheet sheet,
+            String installationId,
+            Map<Double, InstallationResult> results,
+            Double internalResistanceOhm
+    ) {
+        Row header =
+                sheet.createRow(0);
+
+        header.createCell(0)
+                .setCellValue(installationId + ".time_s");
+
+        header.createCell(1)
+                .setCellValue(installationId + ".u_V");
+
+        header.createCell(2)
+                .setCellValue(installationId + ".i_A");
+
+        header.createCell(3)
+                .setCellValue(installationId + ".p_W");
+
+        header.createCell(4)
+                .setCellValue(installationId + ".p_losses_W");
+
+        header.createCell(5)
+                .setCellValue(installationId + ".state");
+
+        header.createCell(6)
+                .setCellValue(installationId + ".e_supplied_J");
+        header.createCell(7)
+                .setCellValue(installationId + ".e_absorbed_J");
+        header.createCell(8)
+                .setCellValue(installationId + ".e_net_J");
+
+        int rowIndex = 1;
+
+        for (Map.Entry<Double, InstallationResult> entry
+                : results.entrySet()) {
+
+            double timeS =
+                    entry.getKey();
+
+            InstallationResult result =
+                    entry.getValue();
+
+            Row row =
+                    sheet.createRow(rowIndex++);
+
+            row.createCell(0)
+                    .setCellValue(timeS);
+
+            setNumericCell(
+                    row,
+                    1,
+                    result.uV
+            );
+
+            setNumericCell(
+                    row,
+                    2,
+                    result.iA
+            );
+
+            setNumericCell(
+                    row,
+                    3,
+                    result.pW
+            );
+
+            if (result.iA != null
+                    && internalResistanceOhm != null) {
+
+                double pLossesW =
+                        result.iA
+                                * result.iA
+                                * internalResistanceOhm;
+
+                row.createCell(4)
+                        .setCellValue(pLossesW);
+            }
+
+            if (result.state != null) {
+                row.createCell(5)
+                        .setCellValue(result.state);
+            }
+
+            setNumericCell(row, 6, result.eSuppliedJ);
+            setNumericCell(row, 7, result.eAbsorbedJ);
+            setNumericCell(row, 8, result.eNetJ);
+        }
+
+        sheet.createFreezePane(0, 1);
+
+        for (int column = 0; column < 9; column++) {
+            sheet.autoSizeColumn(column);
+        }
+    }
+
+    static Map<String, Map<Double, InstallationResult>>
+    collectInstallationResults(
+            List<LongTableRow> rows
+    ) {
+        Map<String, Map<Double, InstallationResult>> result =
+                new LinkedHashMap<>();
+
+        for (LongTableRow row : rows) {
+
+            if (!isSubstation(row.objectType())) {
+                continue;
+            }
+
+            if (row.timeS() == null) {
+                continue;
+            }
+
+            if (!"RESULT".equals(row.stage())) {
+                continue;
+            }
+
+            Map<Double, InstallationResult> byTime =
+                    result.computeIfAbsent(
+                            row.objectId(),
+                            ignored -> new LinkedHashMap<>()
+                    );
+
+            InstallationResult installationResult =
+                    byTime.computeIfAbsent(
+                            row.timeS(),
+                            ignored -> new InstallationResult()
+                    );
+
+            switch (row.signal()) {
+
+                case "u_V" ->
+                        installationResult.uV =
+                                parseDouble(row.value());
+
+                case "i_A" ->
+                        installationResult.iA =
+                                parseDouble(row.value());
+
+                case "p_W" ->
+                        installationResult.pW =
+                                parseDouble(row.value());
+
+                case "state" ->
+                        installationResult.state =
+                                row.value();
+
+                case "e_supplied_J" ->
+                        installationResult.eSuppliedJ = parseDouble(row.value());
+
+                case "e_absorbed_J" ->
+                        installationResult.eAbsorbedJ = parseDouble(row.value());
+
+                case "e_net_J" ->
+                        installationResult.eNetJ = parseDouble(row.value());
+
+                default -> {
+                    // Ignore other signals.
+                }
+            }
+        }
+
+        return result;
+    }
+
+    static Map<String, Double> findInternalResistances(
+            List<LongTableRow> rows
+    ) {
+        Map<String, Double> result =
+                new LinkedHashMap<>();
+
+        for (LongTableRow row : rows) {
+
+            if (!isSubstation(row.objectType())) {
+                continue;
+            }
+
+            if (!"internal_resistance_ohm".equals(row.signal())) {
+                continue;
+            }
+
+            Double resistance =
+                    parseDouble(row.value());
+
+            if (resistance != null) {
+                result.put(
+                        row.objectId(),
+                        resistance
+                );
+            }
+        }
+
+        return result;
+    }
+
+    static boolean isSubstation(String objectType) {
+        return "DIODE_SUBSTATION".equals(objectType)
+                || "THYRISTOR_SUBSTATION".equals(objectType);
+    }
+
+}

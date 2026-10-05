@@ -2,6 +2,9 @@ package org.supply.io.export;
 
 import com.typesafe.config.Config;
 import org.supply.domain.Load;
+import org.supply.domain.Node;
+import org.supply.domain.InstallationConnection;
+import org.supply.loader.GridModelLoader;
 import org.supply.model.GridModel;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
@@ -23,10 +26,10 @@ public final class NetworkInputCsvWriter {
     static final boolean DEBUG_VERBOSITY = false;
 
     public void writeAll(Config dcsim, GridModel model, LoadedTrackModel trackModel, Path exportDir) throws IOException {
-        writeNodes(dcsim, exportDir.resolve("nodes.csv"));
+        writeNodes(model, exportDir.resolve("nodes.csv"));
         writeLines(dcsim, exportDir.resolve("lines.csv"));
         writePowerInstallations(dcsim, exportDir.resolve("powerInstallations.csv"));
-        writeInstallationConnections(dcsim, exportDir.resolve("installationConnections.csv"));
+        writeInstallationConnections(model, exportDir.resolve("installationConnections.csv"));
         writeSystemParameters(dcsim, exportDir.resolve("systemParameters.csv"));
 
         writeTrackStations(trackModel, exportDir.resolve("track_stations.csv"));
@@ -59,18 +62,19 @@ public final class NetworkInputCsvWriter {
     }
 
     public void writeNodes(Config dcsim, Path file) throws IOException {
+        writeNodes(new GridModelLoader().load(dcsim), file);
+    }
+
+    public void writeNodes(GridModel model, Path file) throws IOException {
         createParent(file);
-
-        Config grid = dcsim.getConfig("grid");
-
         try (BufferedWriter writer = Files.newBufferedWriter(file)) {
             writer.write("node_id,track_id,position_m");
             writer.newLine();
-
-            for (Config node : grid.getConfigList("nodes")) {
-                String nodeId = node.getString("node_id");
-                RwyCoordinate rwy = parseRwyCoordinate(node.getString("position_rwy"));
-                writer.write(nodeId + "," + rwy.getSectionId() + "," + rwy.getPositionM());
+            java.util.List<Node> nodes = new java.util.ArrayList<>(model.getNodes());
+            nodes.sort(java.util.Comparator.comparing(Node::getNodeId));
+            for (Node node : nodes) {
+                RwyCoordinate rwy = parseRwyCoordinate(node.getPositionRwy());
+                writer.write(node.getNodeId() + "," + rwy.getSectionId() + "," + rwy.getPositionM());
                 writer.newLine();
             }
         }
@@ -140,20 +144,18 @@ public final class NetworkInputCsvWriter {
     }
 
     public void writeInstallationConnections(Config dcsim, Path file) throws IOException {
+        writeInstallationConnections(new GridModelLoader().load(dcsim), file);
+    }
+
+    public void writeInstallationConnections(GridModel model, Path file) throws IOException {
         createParent(file);
-
-        Config grid = dcsim.getConfig("grid");
-
         try (BufferedWriter writer = Files.newBufferedWriter(file)) {
             writer.write("installation_id,node_id,connection_type");
             writer.newLine();
-
-            for (Config connection : grid.getConfigList("installation_connections")) {
-                writer.write(
-                        connection.getString("installation_id") + "," +
-                                connection.getString("node_id") + "," +
-                                connection.getString("connection_type")
-                );
+            for (InstallationConnection connection : model.getInstallationConnections()) {
+                writer.write(connection.getInstallationId() + ","
+                        + connection.getNodeId() + ","
+                        + connection.getConnectionType().name());
                 writer.newLine();
             }
         }

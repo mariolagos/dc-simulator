@@ -1,6 +1,8 @@
 package org.supply.loader;
 
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigValueType;
+import org.supply.domain.Node;
 import org.supply.domain.InstallationModel;
 import org.supply.domain.SixTerminalRectifierInstallation;
 import org.supply.domain.SixTerminalRectifierTerminal;
@@ -22,6 +24,73 @@ import static org.supply.utils.ConfigUtils.requirePositiveReal;
 import static org.supply.utils.ConfigUtils.requireString;
 
 public class InstallationFactory {
+
+    /** Generate compact terminal nodes before LineFactory resolves its endpoints. */
+    public void prepareTerminalNodes(GridModel model, Config gridConfig) {
+        if (!gridConfig.hasPath("power_installations")) return;
+        for (Config inst : gridConfig.getConfigList("power_installations")) {
+            if (!inst.hasPath("installation_model")) continue;
+            InstallationModel kind = InstallationModel.valueOf(
+                    requireString(inst, "installation_model").toUpperCase(java.util.Locale.ROOT));
+            if (kind != InstallationModel.SIX_TERMINAL_RECTIFIER) continue;
+            if (!"SUBSTATION".equalsIgnoreCase(requireString(inst, "installation_category")))
+                throw new IllegalArgumentException("installation_model requires SUBSTATION");
+            Config terminals = inst.hasPath("terminals") ? inst.getConfig("terminals") : null;
+            if (terminals != null) {
+                for (String name : terminals.root().keySet()) {
+                    try { SixTerminalRectifierTerminal.valueOf(name); }
+                    catch (IllegalArgumentException failure) {
+                        throw new IllegalArgumentException("Unknown terminal " + name + " for "
+                                + requireString(inst, "installation_id"), failure);
+                    }
+                }
+            }
+            for (SixTerminalRectifierTerminal terminal : SixTerminalRectifierTerminal.values()) {
+                if (terminals != null && terminals.hasPath(terminal.name())
+                        && terminals.getValue(terminal.name()).valueType() == ConfigValueType.STRING)
+                    continue; // Existing format: reference an explicitly declared grid node.
+                Config spec = terminalSpec(inst, terminal);
+                String position = spec != null && spec.hasPath("position_rwy")
+                        ? requireString(spec, "position_rwy") : requireString(inst, "position_rwy");
+                String nodeId = terminalNodeId(inst, terminal);
+                if (model.getNodes().stream().anyMatch(n -> nodeId.equals(n.getNodeId())))
+                    throw new IllegalArgumentException("Generated terminal node already exists: " + nodeId);
+                model.addNode(new Node(nodeId, position));
+            }
+        }
+    }
+
+    private static Config terminalSpec(Config inst, SixTerminalRectifierTerminal terminal) {
+        if (!inst.hasPath("terminals")) return null;
+        Config terminals = inst.getConfig("terminals");
+        String name = terminal.name();
+        if (!terminals.hasPath(name))
+            throw new IllegalArgumentException("Missing terminal " + name + " for "
+                    + requireString(inst, "installation_id"));
+        ConfigValueType type = terminals.getValue(name).valueType();
+        if (type == ConfigValueType.STRING) return null;
+        if (type != ConfigValueType.OBJECT)
+            throw new IllegalArgumentException("Terminal " + name + " must be a node ID or object");
+        return terminals.getConfig(name);
+    }
+
+    private static String terminalNodeId(Config inst, SixTerminalRectifierTerminal terminal) {
+        Config terminals = inst.hasPath("terminals") ? inst.getConfig("terminals") : null;
+        if (terminals != null && terminals.hasPath(terminal.name())
+                && terminals.getValue(terminal.name()).valueType() == ConfigValueType.STRING)
+            return requireString(terminals, terminal.name());
+        Config spec = terminalSpec(inst, terminal);
+        if (spec != null && spec.hasPath("node_id")) return requireString(spec, "node_id");
+        String id = requireString(inst, "installation_id");
+        return switch (terminal) {
+            case NORTH_POWER_LEFT -> "F_" + id + "_A";
+            case NORTH_POWER_RIGHT -> "F_" + id + "_B";
+            case SOUTH_POWER_LEFT -> "F_" + id + "_C";
+            case SOUTH_POWER_RIGHT -> "F_" + id + "_D";
+            case NORTH_RETURN -> "R_" + id + "_N";
+            case SOUTH_RETURN -> "R_" + id + "_S";
+        };
+    }
 
     public void build(GridModel model, Config gridConfig) {
         buildInstallations(model, gridConfig);
@@ -130,9 +199,6 @@ public class InstallationFactory {
             Config instConfig,
             PowerInstallation installation
     ) {
-        Config terminalsConfig =
-                instConfig.getConfig("terminals");
-
         Map<SixTerminalRectifierTerminal, String>
                 terminalNodeIds =
                 new EnumMap<>(
@@ -141,10 +207,7 @@ public class InstallationFactory {
 
         for (SixTerminalRectifierTerminal terminal
                 : SixTerminalRectifierTerminal.values()) {
-            String nodeId = requireString(
-                    terminalsConfig,
-                    terminal.name()
-            );
+            String nodeId = terminalNodeId(instConfig, terminal);
 
             model.getNode(nodeId);
             terminalNodeIds.put(terminal, nodeId);
