@@ -122,14 +122,17 @@ public final class RouteSchematic {
             }
             stations.add(station);
         }
+        int step=Math.max(STEP,selected.stream().filter(Objects::nonNull)
+                .mapToInt(id->id.length()*7+120).max().orElse(STEP));
         Map<String,Integer> x=new LinkedHashMap<>();int col=0;
-        for(String p:places) { x.put(p,120+STEP*col++); }
+        for(String p:places) { x.put(p,120+step*col++); }
         StringBuilder out=new StringBuilder("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"");
-        out.append(Math.max(1100,STEP*(col-1)+240)).append("\" height=\"").append(height).append("\" viewBox=\"0 0 ").append(Math.max(1100,STEP*(col-1)+240)).append(" ").append(height).append("\">\n");
+        out.append(Math.max(1100,step*(col-1)+240)).append("\" height=\"").append(height).append("\" viewBox=\"0 0 ").append(Math.max(1100,step*(col-1)+240)).append(" ").append(height).append("\">\n");
         out.append("<rect width=\"100%\" height=\"100%\" fill=\"white\"/><g font-family=\"Arial\">\n");
         text(out,20,28,"Route "+route.id()+(combined?" | combined topology":" | selected route, topology only"),14,"#222","start");
         text(out,20,50,combined?"Separate lanes per route in title order, alternating red/blue. Shared line IDs are views of the same solver branch.":"Red: feeding; blue: return. Layout not to distance scale.",12,"#333","start");
         text(out,20,68,"Model assumption: all feeder breakers closed. Internal station connections not drawn.",9,"#555","start");
+        Map<String,List<String>> columnReferences=new LinkedHashMap<>();
         for(var entry:x.entrySet()) {
             Set<String> references=new LinkedHashSet<>();Set<Double> metres=new LinkedHashSet<>();
             for(String id:routeNodes) {
@@ -139,6 +142,7 @@ public final class RouteSchematic {
                 if(coordinate!=null) references.add(railwayLabel(coordinate));
                 metres.add(node.positionM());
             }
+            columnReferences.put(entry.getKey(),List.copyOf(references));
             int labelY=85;
             if(references.isEmpty()) {
                 text(out,entry.getValue(),labelY,"Model "+entry.getKey()+" m",12,"#333","middle");
@@ -165,30 +169,9 @@ public final class RouteSchematic {
                 text(out,sx,383,"Common return bus",12,"#333","middle");
             }
             text(out,sx,315,"rectifier / load",8,"#555","middle");
-            List<String> inactive=s.terminals().stream().filter(t->!routeNodes.contains(t)).sorted().toList();
-            int y=210;
-            for(String id:inactive) {
-                // Compact terminal names follow the configured A/B/C/D contract.
-                // Use the active same-side terminal to respect reversed route layout.
-                String peer=id.endsWith("_C")?id.substring(0,id.length()-1)+"A":
-                        id.endsWith("_D")?id.substring(0,id.length()-1)+"B":
-                                id.endsWith("_A")?id.substring(0,id.length()-1)+"C":
-                                        id.endsWith("_B")?id.substring(0,id.length()-1)+"D":null;
-                int side=id.endsWith("LEFT")?-1:1, terminalY=y;
-                if(peer!=null && routeNodes.contains(peer)) {
-                    for(String lineId:selected) for(var b:byLine.getOrDefault(lineId,List.of())) {
-                        String other=peer.equals(b.fromNodeId())?b.toNodeId():peer.equals(b.toNodeId())?b.fromNodeId():null;
-                        if(other!=null) side=Integer.compare(x.get(layout.place(nodes.get(other))),sx);
-                    }
-                    terminalY=FEED+((id.endsWith("_C")||id.endsWith("_D"))?80:0);
-                } else if(id.startsWith("R_")&&id.endsWith("_S")) {
-                    terminalY=RETURN+80;
-                } else if(id.startsWith("R_")&&id.endsWith("_N")) {
-                    terminalY=RETURN;
-                }
-                point(out,sx+side*HALF,terminalY,"#555",id+" | no external line on selected route");
-                text(out,sx+side*(HALF-4),terminalY-8,id,12,"#333",side<0?"start":"end");y+=22;
-            }
+            // Only terminals connected to this route are drawn. Other route views
+            // must not introduce extra station ports in this schematic.
+
         }
         Set<String> labels=new HashSet<>();int feedingCount=0,returnCount=0;
         for(String id:selected) {
@@ -214,8 +197,8 @@ public final class RouteSchematic {
                     if(combined) text(out,mid,y-52,routeLabels.get(lane),9,color,"middle");
                     Double r=ohmPerM.get(id);
                     text(out,mid,y-23,r==null?"ohm/m unavailable":String.format(Locale.ROOT,"%.6g ohm/m",r),9,color,"middle");
-                    endpoint(out,b.fromNodeId(),from,y,sign,owner.containsKey(b.fromNodeId()),color,labels,layout.isJunction(nodes.get(b.fromNodeId())));
-                    endpoint(out,b.toNodeId(),to,y,-sign,owner.containsKey(b.toNodeId()),color,labels,layout.isJunction(nodes.get(b.toNodeId())));
+                    endpoint(out,b.fromNodeId(),from,y,sign,owner.containsKey(b.fromNodeId()),color,labels,layout.isJunction(nodes.get(b.fromNodeId())),columnReferences.get(layout.place(nodes.get(b.fromNodeId()))));
+                    endpoint(out,b.toNodeId(),to,y,-sign,owner.containsKey(b.toNodeId()),color,labels,layout.isJunction(nodes.get(b.toNodeId())),columnReferences.get(layout.place(nodes.get(b.toNodeId()))));
                     if(feeding) { feedingCount++; } else { returnCount++; }
                 }
             }
@@ -223,9 +206,15 @@ public final class RouteSchematic {
         text(out,20,height-22,(combined?"Branch views drawn: ":"External branches drawn: ")+" feeding="+feedingCount+", return="+returnCount+". Co-located junction connectors omitted: "+layout.connectors.size()+". Solver nodes unchanged.",10,"#555","start");
         return out.append("</g></svg>\n").toString();
     }
-    private static void endpoint(StringBuilder out,String id,int x,int y,int direction,boolean station,String color,Set<String> labels,boolean junction) {
+    private static void endpoint(StringBuilder out,String id,int x,int y,int direction,boolean station,String color,Set<String> labels,boolean junction,List<String> references) {
         String key=(junction?"junction":id)+":"+x+":"+y;
         if(labels.add(key)) {
+            if(junction && references!=null) {
+                int labelY=y-12-18*Math.max(0,references.size()-1);
+                for(String reference:references) {
+                    text(out,x,labelY,reference,12,color,"middle");labelY+=18;
+                }
+            }
             point(out,x,y,color,junction?"Physical junction; separate solver nodes retained":id);
             text(out,x+(station?-direction*4:0),y+15,junction?"Junction":id,12,color,station?(direction>0?"end":"start"):"middle");
         }
@@ -255,7 +244,13 @@ public final class RouteSchematic {
                 boolean explicit=context.junctions().stream().anyMatch(j->
                         (sameCoordinate(from,j.getFrom())&&sameCoordinate(to,j.getTo()))||
                                 (sameCoordinate(to,j.getFrom())&&sameCoordinate(from,j.getTo())));
-                if(!explicit) continue;
+                // Older WE input encodes section joins only as near-ideal grid
+                // lines. Recognize that drawing convention on the same track;
+                // ordinary low-resistance lines still need an explicit junction.
+                boolean gridSectionJoin=r<=1e-12
+                        && !from.getSectionId().equals(to.getSectionId())
+                        && Objects.equals(from.getTrackId(),to.getTrackId());
+                if(!explicit && !gridSectionJoin) continue;
                 String a=place(nodes.get(b.fromNodeId())),z=place(nodes.get(b.toNodeId()));
                 if(!a.equals(z)) parent.put(z,a);
                 connectors.add(b.id());

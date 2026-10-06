@@ -17,7 +17,7 @@ public class RouteSchematicJunctionTest {
     private static CalculationBranch branch(String id,String from,String to,double r) {
         return new CalculationBranch(id,id,from,to,new Real(r));
     }
-    @Test public void groupsOnlyExplicitNearIdealConnectorsAndRetainsSourceLabels() throws Exception {
+    @Test public void groupsSectionJoinsAndRetainsSourceLabels() throws Exception {
         List<CalculationNode> nodes=List.of(node("start","23",4324),node("b23","23",0),node("b21","21",3576),node("end","21",2200));
         List<CalculationBranch> branches=List.of(branch("first","start","b23",0.1),branch("bridge","b23","b21",1e-15),branch("last","b21","end",0.1));
         CalculationNetwork network=new CalculationNetwork(nodes,branches,List.of(),new ArrayList<>(branches));
@@ -42,7 +42,22 @@ public class RouteSchematicJunctionTest {
         assertTrue(practicalConnector.contains("junction connectors omitted: 1"));
         String unconfigured=RouteSchematic.svg(network,route,resistance,new RouteSchematic.Context(positions,List.of()));
         var ungrouped=DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new InputSource(new StringReader(unconfigured)));
-        assertEquals(3,ungrouped.getElementsByTagName("line").getLength());
+        assertEquals(2,ungrouped.getElementsByTagName("line").getLength());
+        // A small but ordinary resistance is insufficient without a junction.
+        String unspecified=RouteSchematic.svg(network,route,
+                Map.of("bridge",1e-9),new RouteSchematic.Context(positions,List.of()));
+        var unspecifiedDoc=DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .parse(new InputSource(new StringReader(unspecified)));
+        assertEquals(3,unspecifiedDoc.getElementsByTagName("line").getLength());
+        // Different physical tracks must never be inferred as one junction.
+        Map<String,RwyCoordinate> differentTracks=new HashMap<>(positions);
+        differentTracks.put("b23",new RwyCoordinate("23","3+576",3576,"N"));
+        differentTracks.put("b21",new RwyCoordinate("21","3+576",3576,"S"));
+        String crossing=RouteSchematic.svg(network,route,resistance,
+                new RouteSchematic.Context(differentTracks,List.of()));
+        var crossingDoc=DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .parse(new InputSource(new StringReader(crossing)));
+        assertEquals(3,crossingDoc.getElementsByTagName("line").getLength());
         String nonIdeal=RouteSchematic.svg(network,route,Map.of("bridge",0.000015),context);
         var real=DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new InputSource(new StringReader(nonIdeal)));
         assertEquals(3,real.getElementsByTagName("line").getLength());

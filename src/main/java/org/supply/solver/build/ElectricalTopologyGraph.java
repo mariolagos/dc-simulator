@@ -130,23 +130,8 @@ public final class ElectricalTopologyGraph {
         Files.createDirectories(directory);
         List<Route> ordered = new ArrayList<>(routes);
         ordered.sort(Comparator.comparing(Route::id));
-        // Standard output is one combined schematic. An explicit selection keeps
-        // the per-route SVG and diagnostic DOT available.
-        if (selected == null && !ordered.isEmpty()) {
-            Path combined = directory.resolve("routes_combined.svg");
-            Files.deleteIfExists(combined);
-            try {
-                String schematic = ordered.size() == 1
-                        ? RouteSchematic.svg(network, ordered.get(0), ohmPerM, context)
-                        : RouteSchematic.combinedSvg(network, ordered, ohmPerM, context);
-                Files.writeString(combined, schematic, StandardCharsets.UTF_8);
-                report.append("Combined route topology SVG: ").append(combined).append('\n');
-            } catch (IllegalArgumentException | IOException failure) {
-                Files.deleteIfExists(combined);
-                warnings.add("Combined route schematic not generated: " + failure.getMessage());
-            }
-            return;
-        }
+        // Each route has its own schematic; remove the obsolete aggregate output.
+        if (selected == null) Files.deleteIfExists(directory.resolve("routes_combined.svg"));
         int index=0;
         for (Route route : ordered) {
             index++;

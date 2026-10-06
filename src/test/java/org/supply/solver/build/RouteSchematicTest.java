@@ -34,6 +34,10 @@ public class RouteSchematicTest {
         assertTrue(svg.contains("ohm/m"));assertTrue(svg.contains("return_1"));assertTrue(svg.contains("return_2"));
         assertTrue(svg.contains("F_U_S_LEFT"));assertTrue(svg.contains("F_U_S_RIGHT"));
         var document=DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new InputSource(new StringReader(svg)));
+        // Four route branches have eight displayed endpoints. Inactive station
+        // terminals from the other direction must not add extra markers.
+        assertEquals(8,document.getElementsByTagName("circle").getLength());
+        assertFalse(svg.contains("no external line on selected route"));
         var lines=document.getElementsByTagName("line");
         for(int j=0;j<lines.getLength();j++) {
             var attrs=lines.item(j).getAttributes();
