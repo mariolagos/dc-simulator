@@ -129,7 +129,9 @@ final class GraphicalTimetableMarkerWriter {
 
     private static Map<String, RouteScope> scopes(DcStudyContext context, BaseRoutePositionMapper mapper) throws IOException {
         Config scenario = context.scenario();
-        Config electricRoutes = scenario.hasPath("routes") ? scenario.getConfig("routes")
+        Config electricRoutes = scenario.hasPath("dcsim.traffic.routes")
+                ? scenario.getConfig("dcsim.traffic.routes")
+                : scenario.hasPath("routes") ? scenario.getConfig("routes")
                 : scenario.hasPath("dcsim.routes") ? scenario.getConfig("dcsim.routes") : null;
         // Reports without electrical routes retain the established three-column
         // marker format. Do not require trackdata or grid lines in this mode.
