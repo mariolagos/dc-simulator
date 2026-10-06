@@ -91,29 +91,16 @@ public final class DcReporter {
         );
 
         if (baseRoutePositionMapper.isEnabled()) {
-            Path graphicalTimetableInput =
-                    context.resultDirectory().resolve(
-                            context.studyId()
-                                    + "_graphical_timetable.csv"
-                    );
-
-            writeGraphicalTimetableInput(
-                    rows,
-                    baseRoutePositionMapper,
-                    graphicalTimetableInput
-            );
-
-            Path graphicalTimetableMarkers =
-                    context.resultDirectory().resolve(
-                            context.studyId()
-                                    + "_graphical_timetable_markers.csv"
-                    );
-            writeGraphicalTimetableMarkers(
-                    context,
-                    baseRoutePositionMapper,
-                    context.exportDirectory(),
-                    graphicalTimetableMarkers
-            );
+            List<DcStudyContext> views = graphicalTimetableContexts(context);
+            for (DcStudyContext view : views) {
+                BaseRoutePositionMapper mapper = loadBaseRoutePositionMapper(view);
+                writeGraphicalTimetableInput(rows, mapper, context.resultDirectory().resolve(
+                        view.studyId() + "_graphical_timetable.csv"));
+                writeGraphicalTimetableMarkers(view, mapper, context.exportDirectory(),
+                        context.resultDirectory().resolve(
+                                view.studyId() + "_graphical_timetable_markers.csv"));
+            }
+            writeGraphicalTimetableManifest(context, views, context.resultDirectory());
         }
 
         Path resultsLine =
@@ -137,6 +124,44 @@ public final class DcReporter {
                         .resolve(context.studyId() + "_deviations.xlsx");
 
         writeDeviationWorkbook(rows, metadata, deviations);
+    }
+
+    static List<DcStudyContext> graphicalTimetableContexts(DcStudyContext context) {
+        String path = "report.graphical-timetable";
+        if (!context.scenario().hasPath(path + ".base-routes")
+                || context.scenario().hasPath(path + ".enabled")
+                && !context.scenario().getBoolean(path + ".enabled")) {
+            return List.of(context);
+        }
+        List<DcStudyContext> result = new ArrayList<>();
+        Set<String> ids = new HashSet<>();
+        for (Config route : context.scenario().getConfigList(path + ".base-routes")) {
+            String id = route.getString("id");
+            if (!id.matches("[A-Za-z0-9_-]+") || !ids.add(id)) {
+                throw new IllegalArgumentException("Invalid or duplicate timetable base-route id: " + id);
+            }
+            Config scenario = context.scenario().withoutPath(path + ".base-routes")
+                    .withValue(path + ".base-route", route.root());
+            result.add(new DcStudyContext(context.confFile(), context.workingDirectory(),
+                    scenario, context.dcsim(), context.studyId().equals(id)
+                    ? context.studyId() : context.studyId() + "_" + id,
+                    context.studyName(), context.studyDescription(),
+                    context.exportDirectory(), context.resultDirectory()));
+        }
+        if (result.isEmpty()) {
+            throw new IllegalArgumentException("Timetable base-routes must not be empty");
+        }
+        return result;
+    }
+
+    private static void writeGraphicalTimetableManifest(DcStudyContext context,
+                                                        List<DcStudyContext> views, Path directory) throws IOException {
+        Files.createDirectories(directory);
+        List<String> stems = new ArrayList<>();
+        for (DcStudyContext view : views) {
+            stems.add(view.studyId() + "_graphical_timetable");
+        }
+        Files.write(directory.resolve(context.studyId() + "_graphical_timetables.txt"), stems);
     }
 
     static void writePlannedGraphicalTimetable(
@@ -169,6 +194,19 @@ public final class DcReporter {
             Path exportDirectory,
             List<PlannedTimetablePoint> points,
             Path outputDirectory
+    ) throws IOException {
+        List<DcStudyContext> views = graphicalTimetableContexts(context);
+        for (DcStudyContext view : views) {
+            writePlannedGraphicalTimetableView(view, exportDirectory, points, outputDirectory);
+        }
+        if (loadBaseRoutePositionMapper(views.get(0), exportDirectory).isEnabled()) {
+            writeGraphicalTimetableManifest(context, views, outputDirectory);
+        }
+    }
+
+    private static void writePlannedGraphicalTimetableView(
+            DcStudyContext context, Path exportDirectory,
+            List<PlannedTimetablePoint> points, Path outputDirectory
     ) throws IOException {
         BaseRoutePositionMapper mapper =
                 loadBaseRoutePositionMapper(context, exportDirectory);

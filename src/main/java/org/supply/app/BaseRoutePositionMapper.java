@@ -58,6 +58,13 @@ final class BaseRoutePositionMapper {
             return BaseRoutePositionMapper.disabled();
         }
 
+        // The train workbook retains the first base route as its position axis.
+        if (graphicalTimetable.hasPath("base-routes")) {
+            List<? extends Config> routes = graphicalTimetable.getConfigList("base-routes");
+            if (routes.isEmpty()) throw new IllegalArgumentException("Timetable base-routes must not be empty");
+            graphicalTimetable = graphicalTimetable.withValue("base-route", routes.get(0).root());
+        }
+
         if (!graphicalTimetable.hasPath("base-route.sections")) {
             throw new IllegalArgumentException(
                     "Missing configuration: " + configPath
