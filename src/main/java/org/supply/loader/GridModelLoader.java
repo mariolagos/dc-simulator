@@ -14,7 +14,7 @@ public class GridModelLoader {
     private final FixedLoadFactory fixedLoadFactory = new FixedLoadFactory();
 
     public GridModel load(Config config) {
-        Config grid = config.getConfig("grid");
+        Config grid = CompactGridExpander.expand(config).getConfig("grid");
 
         GridModel model = new GridModel();
 

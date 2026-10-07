@@ -5,6 +5,7 @@ import org.supply.domain.Load;
 import org.supply.domain.Node;
 import org.supply.domain.InstallationConnection;
 import org.supply.loader.GridModelLoader;
+import org.supply.loader.CompactGridExpander;
 import org.supply.model.GridModel;
 import org.supply.track.DefaultTrackTransformService;
 import org.supply.track.LoadedTrackModel;
@@ -81,6 +82,7 @@ public final class NetworkInputCsvWriter {
     }
 
     public void writeLines(Config dcsim, Path file) throws IOException {
+        dcsim = CompactGridExpander.expand(dcsim);
         createParent(file);
 
         Config grid = dcsim.getConfig("grid");
@@ -101,6 +103,7 @@ public final class NetworkInputCsvWriter {
     }
 
     public void writePowerInstallations(Config dcsim, Path file) throws IOException {
+        dcsim = CompactGridExpander.expand(dcsim);
         createParent(file);
 
         Config grid = dcsim.getConfig("grid");
