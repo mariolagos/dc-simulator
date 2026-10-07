@@ -32,7 +32,9 @@ public final class DcStudyContext {
     ) {
         this.confFile = confFile;
         this.workingDirectory = workingDirectory;
-        this.scenario = scenario;
+        // Reports read scenario.dcsim while loaders use dcsim directly.
+        // Both must see the same expanded grid (including generated lines).
+        this.scenario = scenario.withValue("dcsim", dcsim.root());
         this.dcsim = dcsim;
         this.studyId = studyId;
         this.studyName = studyName;
