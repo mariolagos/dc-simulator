@@ -16,6 +16,14 @@ Evidence is separated into:
 - **Test-local prototype:** the model or mechanism being asserted is implemented inside the test itself.
 - **Artifact smoke check:** an output exists; its physical or visual correctness is not established.
 
+### Maintenance note — 2026-10-09
+
+The original archive inventory, reconstructed requirements and Appendix A are
+retained unchanged. Their statements about unexecuted tests and missing evidence
+refer to that archive review. Appendix C adds later implementation, diagnostic
+and user-run evidence; it does not retroactively change the archive's contents
+or turn every later observation into an automated assertion.
+
 ## 1. Configuration and installation input
 
 | ID | Reconstructed functional expectation | Test evidence |
@@ -587,3 +595,72 @@ Evidence scope: Production component or fixture integration.
 
 - `src/test/java/org/supply/solver/testsupport/ElectricalTestCases.java`: shared circuit fixtures and analytic expected values; no annotated tests.
 - `src/test/java/org/supply/solver/testsupport/ObserverSnapshotTest.md`: diagrams and explanation of the test-local snapshot experiment; no additional executable evidence.
+
+## Appendix C — Electrical object input and verification update, 2026-10-09
+
+### Evidence and scope
+
+The user reported a successful full `gradlew test` run after the graphical
+reporting fixture was corrected. The preceding full run counted 169 tests and
+had one failure in `DcReporterTest`; that class and then the full suite passed
+after correction. No commit ID for the final source state was supplied with this
+update. The original 134-method archive register remains a historical inventory,
+not the register of the later active suite.
+
+Additional evidence comprises supplied production source, the supplied
+`TwoSectionsOrderDiagnosticTest` wrapper and diagnostic reports, study
+configurations, and exported results from user-run two_sections and WE object
+studies. The latter are scenario observations, not JUnit assertions or a proof
+for arbitrary networks.
+
+### Supplementary behavior and evidence
+
+These IDs extend the document without renumbering the original requirements.
+Unlike the original test-derived tables, the evidence type is explicit here.
+
+| ID | Supplementary expectation or observed behavior | Evidence and limit |
+| --- | --- | --- |
+| UP-01 | Accept an object grid using reusable `substationTypes` and `lineTypes`, named `electricalObjects` and `electricalAssociations`, expanding it to nodes, conductor lines and installation connections. | two_sections and WE object configurations completed user-run calculations. `ElectricalObjectExpanderTest` is present in the reported working tree; its latest assertions were not supplied for this update. |
+| UP-02 | Electrical routes and the reference node shall use IDs from the expanded grid, for example `L01.N.F`, `L01.N.R` and `START.N.R`. Reports and loaders shall see the same supplied expanded `dcsim` block. | Supplied configurations and `DcStudyContext` source. The constructor replaces `scenario.dcsim` with the supplied block; this is implementation evidence. |
+| UP-03 | Retain station, supply-point and section-boundary markers on the configured base route in the reporting fixture. | `DcReporterTest.exportsGraphicalTimetableInputOnConfiguredBaseRoute`: the supplied expected rows include SS0 at 300 m, SS1 at 1000 m and SS2 at 1300 m. Passing an empty `dcsim` block removed the grid; supplying `scenario.getConfig("dcsim")` restored the fixture and the user reported the class passing. |
+| UP-04 | Compare explicit and object networks, train attachments and replayed solutions across the two_sections diagnostic. | `TwoSectionsOrderDiagnosticTest.replayOriginalAndObjectGridWithOriginalOrdering` calls the diagnostic main method. Its report establishes structural equivalence over 343 timesteps and no replayed voltage difference above 1 V after the numerical change. The report is the evidence for these quantities; a passing wrapper alone is not a general numerical assertion. |
+| UP-05 | Reject a floating matrix component rather than assigning it an apparently valid absolute voltage. | Supplied `LinearSystemSolver` change checks connectivity to the reference through nonzero off-diagonal entries. This is implementation evidence for the current branch/two-terminal model; no dedicated new connectivity test source was supplied. |
+| UP-06 | Handle a small regenerative upper-boundary overshoot consistently in iteration and result acceptance. | Supplied `SingleTimestepSolver` and `DcSolver` changes: when the negative-power train guess is below `uMaxV`, an overshoot of at most twice the convergence tolerance uses `uMaxV` as the convergence/relaxation target. Raw node voltages remain unchanged; production acceptance allows `uMaxV + 0.002 V`. The physical current cutoff remains at `uMaxV`. The cold diagnostic orderings both converged in 142 iterations, at about 3600.001283 V and 3600.000634 V. |
+| UP-07 | Export calculation results separately from graphical timetable rendering. | Supplied Gradle configuration: `dcStudy` runs exporter, solver and reporter; `dcStudyGt` then invokes SPlot with its own wrapper. The rendering `-PstudyId` must match configured `study.id`. Multiple base routes are selected from the generated timetable manifest. User-run WE_objects outputs include WE and NwSe CSVs and SVGs. |
+
+### Scenario observations and result interpretation
+
+The two_sections object result archive contains five trains in each direction.
+Positive requested powers were delivered without a material deficit; minimum
+train voltage was about 2948.8 V. Regeneration was curtailed near the 3600 V
+upper limit. These observations apply to that loading and traffic pattern.
+
+The WE_objects result archive covers 10:00:00–10:59:59. Reported train voltage
+ranges from about 2705 to 3251 V. At 10:01:29, `we-047` delivers about 3.85 MW
+of its 5.81 MW requested regenerative power while other trains consume power.
+The system workbook records about 1467 kWh of train regeneration, 10960 kWh
+supplied by stations and 208 kWh of conductor losses over this window.
+Positive power deficits also occur. Their cause must be distinguished from
+voltage, train-characteristic limits and numerical fallback before prescribing
+an operational power reduction.
+
+Use the system workbook to locate demanding periods, the timetable to identify
+trains and positions, and the train workbook or longtable to quantify requested
+and actual powers, voltage and current. `p_delta_W` is requested minus actual
+power: positive values indicate traction shortfall; negative values indicate
+curtailed regeneration. A blue timetable segment can still deliver regenerative
+power. An empty deviations workbook does not establish unrestricted regeneration;
+its positive-deficit and undervoltage thresholds must be checked against the
+study's voltage level.
+
+### Remaining evidence limits
+
+The successful suite and supplied scenario results supplement, rather than
+replace, Section 13. General convergence, independent KCL residual checks,
+complete fallback coverage and feedback into train motion are not established
+by these runs. Updated test sources are still needed before extending Appendix A
+or assigning exact new test-method coverage to expansion and placement rules.
+
+For the input schema, numerical equations, full result-file inventory and run
+commands, see README Stories 6–7 and its result-file section. Keep this document
+focused on functional expectations and the evidence supporting them.

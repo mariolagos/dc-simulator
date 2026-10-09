@@ -72,6 +72,61 @@ dcStudy <configuration-file> <working-directory>
 The command exports traffic, solves the electrical network for each time step
 and produces detailed results and summary workbooks.
 
+### Result files and scenario assessment
+
+Outputs are written under `dc/<studyId>/exports`, `results` and, when an input
+check is run, `checks`. Use the study ID from the resolved configuration.
+
+| File or group | Contents and use |
+| --- | --- |
+| `exports/run.csv` | Precalculated train movements, requested power and speed used as calculation input |
+| `exports/nodes.csv`, `lines.csv` | Expanded electrical geometry and conductor data |
+| `exports/powerInstallations.csv`, `installationConnections.csv`, `fixed_loads.csv`, `systemParameters.csv` | Exported installations, connections, fixed loads and system limits |
+| `exports/track_segments.csv`, `track_stations.csv`, `track_junctions.csv` | Track geometry and markers used for position mapping and diagnostics |
+| `<studyId>_longtable.csv` | Detailed input, static and result signals with time, object ID, units and result metadata; source for reports and custom analysis |
+| `<studyId>_results_train.xlsx` | One sheet per train: route and physical position, base-route position, speed, voltage, current, requested and actual power, power difference and accumulated energy |
+| `<studyId>_results_installation.xlsx` | One sheet per installation: terminal voltage, current, power, state and supplied, absorbed and net energy; diode station sheets also report internal losses |
+| `<studyId>_results_line.xlsx` | Power losses and accumulated loss energy per electrical line |
+| `<studyId>_results_system.xlsx` | Combined station, train and fixed-load power, losses, power balance and accumulated energy balance |
+| `<studyId>_deviations.xlsx` | Applied thresholds, deviation periods and weak sectors for undervoltage and positive train power deficit |
+| `*_graphical_timetable.csv`, `*_graphical_timetable_markers.csv` | Train paths with power differences, and station, supply-point and section-boundary markers |
+| `<studyId>_graphical_timetables.txt` | Manifest listing the timetable file stems, including separate configured base routes |
+| `*_graphical_timetable.svg` | SPlot rendering: red indicates traction shortfall, blue indicates curtailed regeneration; black indicates neither condition above the rendering threshold |
+| `checks/<studyId>_input_check.txt`, route `.dot`/`.svg` and track-route `.svg` files | Input-check findings and electrical/track topology diagrams; planned timetable files have zero power difference because no electrical solve is performed |
+
+`dcStudy` updates calculation results and timetable CSVs. `dcStudyGt` also
+renders their SVGs using the external SPlot project. Likewise, `dcCheckGt`
+adds planned SVG rendering to `dcCheck`. Old SVGs or check files can remain
+from a previous run; check their timestamps before comparing them with new data.
+
+For example, run the object-based WE study and render all configured base routes:
+
+```bat
+gradlew dcStudyGt -Pargs=D:/studies/dc-simulator-verifiering/conf/WE/WE_grid_objects_run.conf -PworkingDir=D:/studies/dc-simulator-verifiering -PstudyId=WE_objects -PsplotProjectDir=C:/pvcs_worktrees/itsolutions-splot/allProjects
+```
+
+`-PstudyId` selects the result directory for rendering; it does not change the
+study ID used by the simulation. It must match `study.id`. SPlot uses its own
+Gradle wrapper in the configured external project.
+
+The main scenario question is **where, when and by how much requested traction
+power needs to be reduced**. Start with the system workbook to locate demanding
+periods, use the graphical timetable to identify trains and locations, then
+read each train's `p_req_W`, `p_W`, `p_delta_W`, `u_V` and `i_A`. For positive
+requests, the observed shortfall is `p_req_W - p_W`; divide by `p_req_W` to
+express it as a fraction. Distinguish train characteristic limits and numerical
+fallback from a physical network supply constraint before proposing a limit.
+A proposed reduction changes network loading and must be verified in a new run.
+Train motion is precalculated and is not updated by this power assessment.
+
+For braking, inspect negative requested and actual powers separately. A blue
+segment can still return part of the requested braking power. Concurrent
+motoring trains can consume that power, while some is dissipated as network
+losses. The deviations workbook targets positive power deficits and undervoltage;
+an empty sheet does not establish unrestricted regeneration. Check its recorded
+thresholds against the study's voltage level: a 600 V reporting threshold is not
+a useful low-voltage criterion for a 3000 V network.
+
 ### Validate and archive
 
 Validate representative traction, regenerative braking and train interactions.
@@ -87,34 +142,7 @@ calculation output is normally working data.
 
 ### Architecture overview
 
-```mermaid
-flowchart TD
-   BA["BA (Benefit Analysis)"] --> RE["RunExcel"]
-   BA --> TD["Trackdata"]
-   mermaid
-   subgraph Simulation["Full simulation"]
-      EX["DcExporter"] --> CSV["Exported CSV files (including run.csv)"]
-      CSV --> SOL["DcSolver"]
-      SOL --> LT["Longtable CSV"]
-      LT --> REP["DcReporter"]
-      REP --> REPORTS["Report workbooks"]
-      REP --> GT["Timetable and marker CSVs"]
-      GT --> SP["SPlot"]
-      SP --> SVG["Graphical timetable SVG"]
-   end
-
-   subgraph Check["Input check"]
-      DC["DcCheck"] --> DIAG["Check report and track/network diagrams"]
-      DC --> PLAN["Planned timetable and marker CSVs"]
-      PLAN --> SPC["SPlot"]
-      SPC --> SVGC["Planned graphical timetable SVG"]
-   end
-
-   RE --> EX
-   TD --> EX
-   RE --> DC
-   TD --> DC
-```
+![Architecture overview](docs/images/architecture_overview.png)
 
 The application separates input preparation, electrical calculation and
 reporting. The Gradle task `dcStudy` runs the tasks `dcExporter`, `dcSolver` and
@@ -408,7 +436,7 @@ The fallback applies one common multiplier to all negative train powers and leav
 4. **Apply the regenerative characteristic.** Let Q be the magnitude of allocated regenerative power, U the feeding-to-return terminal voltage, Us the start voltage and Um the maximum voltage. The generated current magnitude is:
 
    | Voltage region | Generated current magnitude |
-         | --- | --- |
+            | --- | --- |
    | U < Us | Q / U |
    | Us ≤ U < Um | (Q / Us) × (Um − U) / (Um − Us) |
    | U ≥ Um | 0 |
@@ -417,7 +445,7 @@ The fallback applies one common multiplier to all negative train powers and leav
 
 5. **Assemble the network and select diode states.** `AdmittanceSystemBuilder.build(...)` creates the active node index and stamps the electrical elements. Disabled substations are omitted. `DiodeSubstationElement.stamp(...)` blocks when the preceding terminal voltage exceeds its emf by more than 1e-3 V. Otherwise it stamps its Norton equivalent, with conductance 1/R and injection E/R. Without preceding terminal voltages, it initially stamps as conducting.
 
-6. **Iterate and assess the result.** `SingleTimestepSolver` solves the assembled system, compares new train terminal voltages with their guesses, and updates those guesses with relaxation factor 0.1. Convergence uses the unrelaxed voltage difference. A singular admittance matrix returns a non-converged result. `DcSolver.isAcceptable(...)` additionally requires finite returned voltages and an available, finite train terminal voltage greater than zero and no more than Um + 1e-3 V. This acceptance check does not independently verify current or power residuals.
+6. **Iterate and assess the result.** `SingleTimestepSolver` solves the assembled system, compares new train terminal voltages with their guesses, and updates those guesses with relaxation factor 0.1. Convergence uses the unrelaxed voltage difference. A singular admittance matrix returns a non-converged result. `DcSolver.isAcceptable(...)` additionally requires finite returned voltages and an available, finite train terminal voltage greater than zero and no more than Um + 2e-3 V. Near the regenerative upper boundary, convergence and relaxation use the bounded iteration target described in Story 7. This acceptance check does not independently verify current or power residuals.
 
 7. **Reduce regeneration if necessary.** If the full-request attempt is unacceptable, `solveWithFallback(...)` first sets every negative request to zero while preserving motoring requests. If this also fails, it throws `DC network is not solvable even with zero regenerative train power`. Otherwise it performs 30 bisection steps between a feasible multiplier of zero and an infeasible multiplier of one. Successful candidates update the retained solution and allocation. The returned voltages and allocated-power map always belong to the same accepted candidate.
 
@@ -539,6 +567,145 @@ These tests were inspected, not executed here. The supplied tests do not directl
 Joining positions ensures numerical continuity but does not verify that the workbooks refer to the same physical station. Correct BA track/timetable matching remains an input responsibility; a consistently shifted first leg is not repaired by joining later legs. Coordinate checks and the graphical timetable provide complementary validation.
 
 Resampling emits points on the simulation-anchored grid. An off-grid final endpoint is not guaranteed to appear as a separate output sample. Duplicate-time resolution deliberately replaces earlier boundary rows; it does not combine their powers. Changes to either behavior must account for downstream timestep and timetable consumers.
+
+### Story 6 — Describe the grid using electrical objects
+
+#### Problem
+
+An explicit grid repeats nodes, conductor lines and installation connections.
+A change to one station or line can require coordinated edits to several lists.
+Object input describes installations and their associations, then expands them
+into the same calculation model used by explicit input.
+
+#### Input and expansion
+
+The `dcsim` name remains the configuration namespace. Application classes are
+under `org.supply`; the namespace does not select the old simulator.
+
+Within `dcsim.grid`, `substationTypes` and `lineTypes` hold reusable parameters.
+`electricalObjects` defines named `POINT`, `SUBSTATION` and `LINE` objects.
+Points and substations provide railway positions per track side; line objects
+reference a type and can override its parameters. `electricalAssociations`
+connects objects and line ends such as `L01.L` and `L01.R`.
+
+A fragment from the two_sections object grid illustrates the association syntax:
+
+```hocon
+electricalObjects {
+  START { kind = POINT, positions { N = "101 2+000 N", S = "101 2+000 S" } }
+  L01 { kind = LINE, type = standard }
+  SS1 { kind = SUBSTATION, type = standard,
+        positions { N = "101 1+000 N", S = "101 1+000 S" } }
+}
+electricalAssociations = [
+  { from = START, to = "L01.L" },
+  { from = "L01.R", to = "SS1.L" }
+]
+```
+
+This fragment requires the type definitions and the remaining network. Expansion
+produces feeding and return nodes, installation connections and conductor lines.
+Routes must refer to the generated source line IDs, for example `L01.N.F` and
+`L01.N.R`. The reference node must also use the expanded ID, such as `START.N.R`.
+Track-side labels identify physical tracks; they do not define timetable axes.
+
+`ElectricalObjectExpander` performs the object expansion before the ordinary
+grid is loaded. `CompactGridExpander` provides the integration with the existing
+input path. Subsequent network building, train insertion and solving continue
+to use nodes, branches and installations. `DcStudyContext` puts the supplied
+expanded `dcsim` configuration back into `scenario.dcsim`, so loaders and
+reporting see the same grid. Tests constructing a context must supply that
+block rather than an empty configuration when a grid is required.
+
+The current comparison run files include an older study, reset `dcsim.grid`
+to `null`, and then include the object grid to avoid merging two descriptions.
+They override electrical route line IDs. Keep the included files until their
+track, traffic and study settings have been separated; removing them prematurely
+breaks the object study.
+
+#### Verification
+
+`ElectricalObjectExpanderTest`, route-check and named-node insertion tests
+cover expansion and placement cases. `TwoSectionsOrderDiagnosticTest` compares
+explicit and object networks and train attachments across 343 timesteps.
+Retain explicit test fixtures as reference inputs even when ordinary studies
+use objects. Structural equivalence alone does not establish numerical
+independence of node ordering; that distinction led to Story 7.
+
+### Story 7 — Solve the network and handle numerical boundaries
+
+#### Equations and iteration
+
+For each timestep, build the network at the supplied train positions. A branch
+with resistance R between nodes a and b has conductance g = 1/R and current
+I = g(Va - Vb). Its matrix contribution is:
+
+```math
+Y_{aa} += g,\quad Y_{bb} += g,\quad
+Y_{ab} -= g,\quad Y_{ba} -= g.
+```
+
+Norton sources add conductance to Y and signed injections to j. Kirchhoff's
+current law gives:
+
+```math
+Y(V^{(k)}) V^{*} = j(V^{(k)}).
+```
+
+One reference-node voltage is fixed at zero. Train voltage is the difference
+between its feeding and return nodes. Diodes and voltage-dependent train loads
+make the problem nonlinear: their stamps depend on the preceding voltage
+estimate. `AdmittanceSystemBuilder` assembles each linearized system and
+`LinearSystemSolver` solves the reduced system using Gaussian elimination.
+`SingleTimestepSolver` updates train voltage guesses with relaxation:
+
+```math
+U^{(k+1)} = U^{(k)} + 0.1\,(U_{target} - U^{(k)}).
+```
+
+The production iteration limit is 200 and the voltage convergence tolerance is
+1e-3 V. Convergence compares the target with the previous guess before relaxation.
+See Story 4 for the train characteristic, diode stamps, acceptance checks and
+regeneration fallback. Reported train power uses the accepted voltage and actual
+current, P = UI. Conductor losses are I squared times R. Monitor current and
+power balance independently of the convergence flag.
+
+#### Floating networks and the upper regeneration boundary
+
+When all relevant diodes block and regenerative trains stop injecting, a
+conductor component can lose its connection to the reference node. Its absolute
+voltage is then undefined. Small floating-point pivots must not be interpreted
+as a valid reference. `LinearSystemSolver` checks reference connectivity through
+nonzero off-diagonal matrix entries and rejects floating components. The timestep
+solver treats this singular-system result as non-convergence, allowing the
+existing fallback policy to handle it. This connectivity check applies to the
+current branch and two-terminal Norton model.
+
+In the two_sections diagnostic, the same network produced slightly different
+linear solutions near 3600 V depending on node order. One ordering pushed the
+train's iterative guess beyond the regeneration cutoff before convergence.
+Its generation stamp disappeared, the feeding component floated, and the solve
+failed. The other ordering converged before that switch. Cold runs reproduced
+the difference, and restoring node order removed it; branch order alone did not.
+
+`iterationVoltageTarget(...)` now uses `uMaxV` as the iteration target when a
+regenerating train's guess is below the maximum and its solved voltage overshoots
+by at most twice the convergence tolerance. The production numerical band is
+therefore 0.002 V. This target is used for convergence and relaxation; returned
+raw node voltages are retained. `DcSolver.isAcceptable(...)` uses the matching
+upper allowance of 0.002 V. The physical current characteristic and configured
+maximum are unchanged: current is zero at or above the physical upper limit.
+Larger overshoots are not covered by this boundary rule.
+
+#### Verified scope
+
+After the change, both cold diagnostic orderings converged in 142 iterations,
+with train voltages about 3600.001283 V and 3600.000634 V. No replayed difference
+above 1 V remained over the 343 compared timesteps. The full 169-test suite passed
+on the user's Windows build, and two_sections and WE object studies completed.
+These checks establish the observed regression result; they do not prove
+convergence for every possible network or loading condition. Keep diagnostics
+and inspect balances when introducing new cases.
 
 ## Part 3 — Future work
 
