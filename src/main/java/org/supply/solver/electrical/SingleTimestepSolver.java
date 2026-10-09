@@ -251,16 +251,23 @@ public final class SingleTimestepSolver {
                 double oldVoltageV =
                         voltageGuessByTrain.get(load.trainId());
 
+                // Use the limiting voltage as the iteration target for a small
+                // numerical overshoot. Keep the solved node voltages unchanged.
+                double iterationTargetV = iterationVoltageTarget(
+                        oldVoltageV, newVoltageV,
+                        requestedPowersW.getOrDefault(load.trainId(), load.pReqW().asDouble()),
+                        toleranceV);
+
                 maxVoltageChangeV =
                         Math.max(
                                 maxVoltageChangeV,
-                                Math.abs(newVoltageV - oldVoltageV)
+                                Math.abs(iterationTargetV - oldVoltageV)
                         );
 
                 double relaxedVoltageV =
                         oldVoltageV
                                 + RELAXATION
-                                * (newVoltageV - oldVoltageV);
+                                * (iterationTargetV - oldVoltageV);
 
                 newVoltageGuessByTrain.put(
                         load.trainId(),
@@ -285,6 +292,18 @@ public final class SingleTimestepSolver {
                 maxIterations,
                 false
         );
+    }
+
+
+    /** Boundary handling is numerical only; the physical current law is unchanged. */
+    private double iterationVoltageTarget(double guessV, double solvedV,
+                                          double requestedPowerW, double toleranceV) {
+        double maxV = systemParameters.uMaxV();
+        if (requestedPowerW < 0.0 && guessV < maxV
+                && solvedV >= maxV && solvedV - maxV <= 2.0 * toleranceV) {
+            return maxV;
+        }
+        return solvedV;
     }
 
     private Map<String, Double> initialVoltageGuesses(

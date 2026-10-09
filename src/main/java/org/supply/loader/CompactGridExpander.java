@@ -12,6 +12,7 @@ public final class CompactGridExpander {
     private CompactGridExpander() { }
 
     public static Config expand(Config dcsim) {
+        dcsim=ElectricalObjectExpander.expand(dcsim);
         if(!dcsim.hasPath("grid")) return dcsim;
         Config grid=dcsim.getConfig("grid");
         if(!grid.hasPath("points") && !grid.hasPath("links")

@@ -229,7 +229,7 @@ public final class DcSolver {
         }
 
         double maxVoltageV =
-                systemParameters.uMaxV() + 1e-3;
+                systemParameters.uMaxV() + 2e-3;
 
         for (CalculationTrainLoad load : network.trainLoads()) {
             Real feedingVoltage =

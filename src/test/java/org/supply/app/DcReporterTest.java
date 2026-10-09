@@ -219,7 +219,7 @@ public class DcReporterTest {
                 resultDirectory.resolve("study.conf"),
                 resultDirectory,
                 scenario,
-                empty,
+                scenario.getConfig("dcsim"),
                 studyId,
                 studyId,
                 "",

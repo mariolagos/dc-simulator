@@ -85,6 +85,17 @@ public final class ElectricalRouteCheck {
             }
         }
 
+        Set<String> feedingLines = new TreeSet<>();
+        Set<String> returnLines = new HashSet<>();
+        for (Route route : routes) {
+            feedingLines.addAll(route.feedingLineIds());
+            returnLines.addAll(route.returnLineIds());
+        }
+        feedingLines.retainAll(returnLines);
+        for (String line : feedingLines) {
+            errors.add("Line is configured as both feeding and return: " + line);
+        }
+
         Set<String> routeIds = new HashSet<>();
         List<Route> ordered = new ArrayList<>(routes);
         ordered.sort(Comparator.comparing(Route::id));
@@ -175,14 +186,7 @@ public final class ElectricalRouteCheck {
                 errors.add("Route " + routeId + " " + side + ": unknown line " + lineId);
                 continue;
             }
-            String prefix = "FEEDING".equals(side) ? "F" : "R";
-            for (CalculationBranch branch : branches) {
-                if (!branch.fromNodeId().startsWith(prefix) || !branch.toNodeId().startsWith(prefix)) {
-                    errors.add("Route " + routeId + " " + side + " line " + lineId
-                            + ": train placement requires both node IDs to start with " + prefix
-                            + " (" + branch.fromNodeId() + ", " + branch.toNodeId() + ")");
-                }
-            }
+
         }
         for (int i = 1; i < lineIds.size(); i++) {
             String previous = lineIds.get(i - 1);
@@ -234,7 +238,7 @@ public final class ElectricalRouteCheck {
     }
 
     private static Set<String> pathNodes(List<String> lines,
-                                          Map<String, List<CalculationBranch>> byLine) {
+                                         Map<String, List<CalculationBranch>> byLine) {
         Set<String> result = new LinkedHashSet<>();
         for (String line : lines) {
             for (CalculationBranch branch : byLine.getOrDefault(line, List.of())) {
@@ -246,7 +250,7 @@ public final class ElectricalRouteCheck {
     }
 
     private static boolean connected(Set<String> left, Set<String> right,
-                                      Map<String, Set<String>> graph) {
+                                     Map<String, Set<String>> graph) {
         Set<String> visited = new HashSet<>(left);
         Deque<String> pending = new ArrayDeque<>(left);
         while (!pending.isEmpty()) {

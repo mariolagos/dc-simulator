@@ -53,13 +53,12 @@ public class ElectricalRouteCheckTest {
     }
 
     @Test
-    public void reportsFeedingReturnShortCircuitAndWrongPlacementPrefix() {
+    public void reportsFeedingReturnShortCircuitRegardlessOfNodeNames() {
         Route route = new Route("RED", List.of("LF1"), List.of("LR1"));
         ElectricalRouteCheck.Result result = ElectricalRouteCheck.inspect(network(List.of(
                 branch("f1", "LF1", "F0", "R1"),
                 branch("r1", "LR1", "R1", "R2")
         )), List.of(route), null);
-        assertTrue(result.errors().stream().anyMatch(error -> error.contains("requires both node IDs to start with F")));
         assertTrue(result.errors().stream().anyMatch(error -> error.contains("electrically joined")));
     }
 
@@ -74,6 +73,30 @@ public class ElectricalRouteCheckTest {
         assertTrue(result.errors().stream().anyMatch(error -> error.contains("BLUE FEEDING: unknown line")));
         assertFalse(result.topology().contains("ROUTE BLUE"));
         assertTrue(result.topology().contains("ROUTE RED"));
+    }
+
+    @Test
+    public void acceptsObjectNamesAndInternalStationConnections() {
+        Route route = new Route("AD", List.of("L01.N.F", "L02.N.F"), List.of("L01.N.R", "L02.N.R"));
+        var result = ElectricalRouteCheck.inspect(network(List.of(
+                branch("f1", "L01.N.F", "START.N.F", "SS1.A"),
+                branch("f2", "L02.N.F", "SS1.B", "J101.N.F"),
+                branch("r1", "L01.N.R", "START.N.R", "SS1.N"),
+                branch("r2", "L02.N.R", "SS1.N", "J101.N.R"),
+                branch("bus", "internal_SS1", "SS1.A", "SS1.B")
+        )), List.of(route), null);
+        assertTrue(result.errors().toString(), result.errors().isEmpty());
+        assertTrue(result.topology().contains("internal_SS1: SS1.A <-> SS1.B"));
+    }
+
+    @Test
+    public void reportsAmbiguousLineRolesAcrossDifferentRoutes() {
+        var network = network(List.of(branch("one", "shared", "one", "two"),
+                branch("two", "otherF", "three", "four"), branch("three", "otherR", "five", "six")));
+        var routes = List.of(new Route("AD", List.of("shared"), List.of("otherR")),
+                new Route("DA", List.of("otherF"), List.of("shared")));
+        var result = ElectricalRouteCheck.inspect(network, routes, null);
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("both feeding and return: shared")));
     }
 
     private static CalculationBranch branch(String id, String source, String from, String to) {

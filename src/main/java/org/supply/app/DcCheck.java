@@ -64,7 +64,7 @@ public final class DcCheck {
             throw new IllegalArgumentException("Usage: DcCheck <study.conf> [--route <routeId>]");
         }
         CheckResult result = run(DcStudyContextLoader.load(conf), routeId);
-        System.out.print(result.report());
+        System.out.print(InputCheckDiagnostics.consoleSummary(result.report(), result.errors(), result.warnings()));
         System.out.println("Check report: " + result.reportPath());
         if (!result.valid()) {
             throw new IllegalArgumentException("Input check failed: " + result.errors().size() + " error(s)");
@@ -255,12 +255,13 @@ public final class DcCheck {
     }
 
     private static void checkPlacements(List<RunSample> samples, CalculationNetwork network,
-                                         TrackTransformService transform, SystemParameters parameters,
-                                         List<Route> routes, List<String> errors, StringBuilder detail) {
+                                        TrackTransformService transform, SystemParameters parameters,
+                                        List<Route> routes, List<String> errors, StringBuilder detail) {
         TrainPositionFactory positions = new TrainPositionFactory(transform);
         TrainNodeInserter inserter = new TrainNodeInserter(parameters, routes);
         Set<String> knownRoutes = new HashSet<>();
         for (Route route : routes) { knownRoutes.add(route.id()); }
+        int errorsBeforePlacement = errors.size();
         Set<PlacementKey> checked = new HashSet<>();
         Map<Double, Set<String>> trainIdsByTime = new HashMap<>();
         for (RunSample sample : samples) {
@@ -296,10 +297,11 @@ public final class DcCheck {
                 try {
                     inserter.insertTrainNodes(network, List.of(train));
                 } catch (Exception failure) {
-                    errors.add("Train placement at time_s=" + sample.timeS() + ": " + message(failure));
+                    errors.add(InputCheckDiagnostics.placementFailure(sample.timeS(), train, failure));
                 }
             }
         }
+        detail.append(errors.size() == errorsBeforePlacement ? "PASS Train placement\n" : "FAIL Train placement\n");
         detail.append("Traffic: ").append(samples.size()).append(" samples; ")
                 .append(checked.size()).append(" distinct route/track/position combinations checked\n");
     }
@@ -309,7 +311,7 @@ public final class DcCheck {
     private interface CheckedSupplier<T> { T get() throws Exception; }
 
     private static <T> T stage(String name, List<String> errors, StringBuilder detail,
-                                CheckedSupplier<T> action) {
+                               CheckedSupplier<T> action) {
         try {
             T result = action.get();
             detail.append("PASS ").append(name).append('\n');

@@ -10,6 +10,7 @@ public final class LinearSystemSolver {
     public Map<String, Real> solveVoltages(AdmittanceSystem system) {
         int n = system.size();
         int ref = system.referenceNodeIndex();
+        requireReferenceConnection(system, ref);
 
         int reducedSize = n - 1;
 
@@ -53,6 +54,35 @@ public final class LinearSystemSolver {
         }
 
         return voltageByNodeId;
+    }
+
+
+    /** Reject floating components before roundoff can make their matrix look invertible. */
+    private static void requireReferenceConnection(AdmittanceSystem system, int reference) {
+        int n = system.size();
+        boolean[] reached = new boolean[n];
+        int[] queue = new int[n];
+        int head = 0, tail = 0;
+        reached[reference] = true;
+        queue[tail++] = reference;
+        while (head < tail) {
+            int row = queue[head++];
+            for (int col = 0; col < n; col++) {
+                if (reached[col]) continue;
+                double forward = system.conductanceMatrix()[row][col].asDouble();
+                double reverse = system.conductanceMatrix()[col][row].asDouble();
+                if (forward != 0.0 || reverse != 0.0) {
+                    reached[col] = true;
+                    queue[tail++] = col;
+                }
+            }
+        }
+        for (int i = 0; i < n; i++) {
+            if (!reached[i]) {
+                throw new IllegalArgumentException("Singular admittance matrix: floating component at node "
+                        + system.nodeIds().get(i));
+            }
+        }
     }
 
     private static double[] solveDense(double[][] a, double[] b) {

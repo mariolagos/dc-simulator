@@ -14,6 +14,8 @@ public final class TrainNodeInserter {
 
     private final SystemParameters systemParameters;
     private final Map<String, Route> routesById;
+    private final Set<String> feedingLineIds = new HashSet<>();
+    private final Set<String> returnLineIds = new HashSet<>();
 
     public TrainNodeInserter(
             SystemParameters systemParameters,
@@ -29,6 +31,8 @@ public final class TrainNodeInserter {
         this.routesById = new LinkedHashMap<>();
         for (Route route : routes) {
             this.routesById.put(route.id(), route);
+            feedingLineIds.addAll(route.feedingLineIds());
+            returnLineIds.addAll(route.returnLineIds());
         }
     }
 
@@ -45,8 +49,18 @@ public final class TrainNodeInserter {
             CalculationNode from = findNode(nodes, branch.fromNodeId());
             CalculationNode to = findNode(nodes, branch.toNodeId());
 
-            boolean feedingBranch = from.id().startsWith("F") && to.id().startsWith("F");
-            boolean returnBranch = from.id().startsWith("R") && to.id().startsWith("R");
+            // Named routes define conductor roles independently of node identities.
+            // Preserve the historic naming fallback only for studies without routes.
+            boolean feedingBranch = routesById.isEmpty()
+                    ? from.id().startsWith("F") && to.id().startsWith("F")
+                    : feedingLineIds.contains(branch.sourceId());
+            boolean returnBranch = routesById.isEmpty()
+                    ? from.id().startsWith("R") && to.id().startsWith("R")
+                    : returnLineIds.contains(branch.sourceId());
+            if (feedingBranch && returnBranch) {
+                throw new IllegalArgumentException("Line is configured as both feeding and return: "
+                        + branch.sourceId());
+            }
 
             if (!feedingBranch && !returnBranch) {
                 outBranches.add(branch);
@@ -133,23 +147,9 @@ public final class TrainNodeInserter {
 
 
             if (feedingNodeId == null || returnNodeId == null) {
-                System.err.println(
-                        "FAILED train=" + train.trainId()
-                                + " route=" + train.routeId()
-                                + " pos=" + train.positionM()
-                );
-
-                for (CalculationBranch branch : outBranches) {
-                    System.err.println(
-                            "branch=" + branch.id()
-                                    + " sourceId=" + branch.sourceId()
-                                    + " from=" + branch.fromNodeId()
-                                    + " to=" + branch.toNodeId()
-                    );
-                }
-
                 throw new IllegalArgumentException(
                         "Could not connect train " + train.trainId()
+                                + " route=" + train.routeId()
                                 + " at " + train.sectionId()
                                 + "/" + train.trackId()
                                 + " position " + train.positionM()
