@@ -367,3 +367,21 @@ tasks.register<JavaExec>("trackExport") {
 
     jvmArgs("-Dfile.encoding=UTF-8")
 }
+
+// Separate branch-description preparation; existing study tasks are unchanged.
+tasks.register<JavaExec>("gridPreprocess") {
+    group = "application"
+    description = "Generate an editable grid_objects.conf from branch definitions"
+    mainClass.set("org.supply.app.GridPreprocessor")
+    classpath = sourceSets.main.get().runtimeClasspath
+    workingDir(studyWorkingDir.get())
+    doFirst {
+        val input = providers.gradleProperty("input").orNull
+            ?: throw GradleException("gridPreprocess requires -Pinput=<branches.conf>")
+        val output = providers.gradleProperty("output").orNull
+            ?: throw GradleException("gridPreprocess requires -Poutput=<grid_objects.conf>")
+        args(input, output)
+        if (providers.gradleProperty("overwrite").orNull == "true") args("--overwrite")
+    }
+    jvmArgs("-Dfile.encoding=UTF-8")
+}
