@@ -32,7 +32,15 @@ public final class TwoSectionsOrderDiagnostic {
             int metres = Integer.parseInt(parts[0]) * 1000 + Integer.parseInt(parts[1]);
             boards.add(new KilometerBoard(b.getString("section"), km, metres, (int)b.getDouble("length")));
         }
-        var transform = new DefaultTrackTransformService(new TrackLoader().load(boards, List.of(), List.of()));
+        List<TrackJunction> junctions = new ArrayList<>();
+        if (input.hasPath("track.junctions")) {
+            for (Config junction : input.getConfigList("track.junctions")) {
+                junctions.add(new TrackJunction(
+                        RwyCoordinateParser.parse(junction.getString("from_position_rwy")),
+                        RwyCoordinateParser.parse(junction.getString("to_position_rwy"))));
+            }
+        }
+        var transform = new DefaultTrackTransformService(new TrackLoader().load(boards, junctions, List.of()));
         var g = input.getConfig("grid");
         var parameters = new SystemParameters(g.getDouble("u_nominal_V"), g.getDouble("u_min_V"),
                 g.getDouble("u_cutoff_V"), g.getDouble("u_max_V"), g.getDouble("i_train_max_A"),
@@ -41,6 +49,27 @@ public final class TwoSectionsOrderDiagnostic {
     }
     private static Map<String,String> stringMap(Config config) {
         Map<String,String> out = new HashMap<>(); config.root().unwrapped().forEach((k,v) -> out.put(k,(String)v)); return out;
+    }
+    /** Generated boundary names include a branch index; compare their actual source and geometry. */
+    private static void mapGeneratedBoundaryNodes(CalculationNetwork old, CalculationNetwork newer) {
+        Set<String> mappedOldIds = new HashSet<>(nodeNames.values());
+        Set<String> explicitOldIds = new HashSet<>();
+        for (var n : old.nodes()) explicitOldIds.add(n.id());
+        for (var n : newer.nodes()) {
+            if (nodeNames.containsKey(n.id()) || explicitOldIds.contains(n.id())) continue;
+            var candidates = old.nodes().stream().filter(expected ->
+                    !mappedOldIds.contains(expected.id())
+                            && Objects.equals(expected.sourceId(), line(n.sourceId()))
+                            && Objects.equals(expected.sectionId(), n.sectionId())
+                            && Objects.equals(expected.trackId(), n.trackId())
+                            && expected.type() == n.type()
+                            && Math.abs(expected.positionM() - n.positionM()) <= 1e-9).toList();
+            if (candidates.size() != 1) throw new AssertionError(
+                    "Cannot uniquely map generated boundary node: " + n.id());
+            String originalId = candidates.get(0).id();
+            nodeNames.put(n.id(), originalId);
+            mappedOldIds.add(originalId);
+        }
     }
     private static String node(String id) { return nodeNames.getOrDefault(id,id); }
     private static String line(String id) { return lineNames.getOrDefault(id,id); }
@@ -121,6 +150,7 @@ public final class TwoSectionsOrderDiagnostic {
         Path output=Path.of(args.length==0?"build/diagnostics/two-sections-order":args[0]);Files.createDirectories(output);
         Config mapping=ConfigFactory.parseResources(ROOT+"mapping.conf");nodeNames=stringMap(mapping.getConfig("nodes"));lineNames=stringMap(mapping.getConfig("lines"));
         Infra old=infrastructure("original"),newer=infrastructure("objects");
+        mapGeneratedBoundaryNodes(old.base(), newer.base());
         Map<Double,List<Sample>> times=new LinkedHashMap<>();for(var s:samples())times.computeIfAbsent(s.time(),ignored->new ArrayList<>()).add(s);
         Map<String,Real> oldPrevious=Map.of(),newPrevious=Map.of(),orderedPrevious=Map.of();
         StringBuilder table=new StringBuilder("time_s,train_id,original_V,objects_V,objects_original_order_V,recorded_original_V,recorded_objects_V\n");

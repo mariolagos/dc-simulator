@@ -8,8 +8,15 @@ public record CalculationBranch(
         String sourceId,
         String fromNodeId,
         String toNodeId,
-        Real resistanceOhm
+        Real resistanceOhm,
+        boolean schematicConnector
 ) implements  ElectricalElement{
+
+    /** Existing branches remain ordinary external/internal lines. */
+    public CalculationBranch(String id, String sourceId, String fromNodeId,
+                             String toNodeId, Real resistanceOhm) {
+        this(id, sourceId, fromNodeId, toNodeId, resistanceOhm, false);
+    }
 
     @Override
     public void stamp(AdmittanceStamp stamp) {

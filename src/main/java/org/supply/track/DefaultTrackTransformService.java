@@ -89,6 +89,11 @@ public final class DefaultTrackTransformService implements TrackTransformService
     }
 
     @Override
+    public java.util.List<ModelCoordinate> linePath(ModelCoordinate from, ModelCoordinate to) {
+        return new TrackLinePath(trackModel).between(from, to);
+    }
+
+    @Override
     public double distanceOnRoute(String routeId, RwyCoordinate from, RwyCoordinate to) {
         ModelCoordinate a = toModel(routeId, from);
         ModelCoordinate b = toModel(routeId, to);

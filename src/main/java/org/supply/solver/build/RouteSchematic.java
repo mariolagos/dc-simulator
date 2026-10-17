@@ -236,6 +236,12 @@ public final class RouteSchematic {
             for(var node:nodes.values()) parent.put(RouteSchematic.place(node),RouteSchematic.place(node));
             for(var b:branches) {
                 if(!selected.contains(b.sourceId())) continue;
+                if (b.schematicConnector()) {
+                    String a=place(nodes.get(b.fromNodeId())),z=place(nodes.get(b.toNodeId()));
+                    if(!a.equals(z)) parent.put(z,a);
+                    connectors.add(b.id());
+                    continue;
+                }
                 Double r=ohmPerM.get(b.sourceId());
                 if(r==null||r>1e-8||r<=0||b.resistanceOhm().asDouble()>1e-8) continue;
                 var from=context.railwayPositions().get(b.fromNodeId());

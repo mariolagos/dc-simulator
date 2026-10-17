@@ -81,22 +81,39 @@ public final class CalculationNetworkBuilder {
             ModelCoordinate fromModel = coordByNodeId.get(from.getNodeId());
             ModelCoordinate toModel = coordByNodeId.get(to.getNodeId());
 
-            double lengthM = Math.abs(toModel.getPositionM() - fromModel.getPositionM());
-
-            double rawResistanceOhm =
-                    line.getResistanceOhmPerM().asDouble() * lengthM;
-
-            Real resistanceOhm = Real.fromDouble(
-                    Math.max(rawResistanceOhm, MIN_RESISTANCE_OHM)
-            );
-
-            branches.add(new CalculationBranch(
-                    line.getLineId() + "_" + branchIndex,
-                    line.getLineId(),
-                    from.getNodeId(),
-                    to.getNodeId(),
-                    resistanceOhm
-            ));
+            List<ModelCoordinate> path;
+            try {
+                path = trackTransform.linePath(fromModel, toModel);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Cannot resolve track path for line "
+                        + line.getLineId() + ": " + e.getMessage(), e);
+            }
+            String previousNodeId = from.getNodeId();
+            for (int i = 1; i < path.size(); i++) {
+                ModelCoordinate a = path.get(i - 1);
+                ModelCoordinate b = path.get(i);
+                String nextNodeId = i == path.size() - 1 ? to.getNodeId()
+                        : from.getNodeId() + "__line_" + branchIndex + "_boundary_" + i;
+                if (i < path.size() - 1) {
+                    if (coordByNodeId.containsKey(nextNodeId)) {
+                        throw new IllegalArgumentException("Generated boundary node ID collision: " + nextNodeId);
+                    }
+                    coordByNodeId.put(nextNodeId, b);
+                    nodes.add(new CalculationNode(nextNodeId, line.getLineId(),
+                            b.getSectionId(), b.getTrackId(), b.getPositionM(),
+                            CalculationNodeType.GRID_NODE));
+                }
+                // Different-section endpoints here are two representations of one junction.
+                double lengthM = a.getSectionId().equals(b.getSectionId())
+                        ? Math.abs(b.getPositionM() - a.getPositionM()) : 0.0;
+                Real resistanceOhm = Real.fromDouble(Math.max(
+                        line.getResistanceOhmPerM().asDouble() * lengthM, MIN_RESISTANCE_OHM));
+                String branchId = line.getLineId() + "_" + branchIndex
+                        + (path.size() == 2 ? "" : "_section_" + i);
+                branches.add(new CalculationBranch(branchId, line.getLineId(),
+                        previousNodeId, nextNodeId, resistanceOhm, path.size() > 2 && lengthM == 0.0));
+                previousNodeId = nextNodeId;
+            }
         }
 
         addSixTerminalInternalBranches(
