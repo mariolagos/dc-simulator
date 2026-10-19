@@ -45,7 +45,7 @@ public final class TrackRouteDiagram {
         add(rows,samples.get(0).getPathPositionM(),new Event("boundary","Route start",samples.get(0).getRailwayCoordinate()));
         PathSample end=samples.get(samples.size()-1);
         add(rows,end.getPathPositionM(),new Event("boundary","Route end (not necessarily end of track)",end.getRailwayCoordinate()));
-        for(Station station:model.getStations()) {
+        for(Station station:model.getStationsForRoute(route.getRouteId())) {
             for(double p:positions(route,station.getPosition())) add(rows,p,new Event("station",station.getName(),station.getPosition()));
         }
         for(TrackJunction junction:model.getJunctions()) {
@@ -234,7 +234,7 @@ public final class TrackRouteDiagram {
         double first = samples.get(0).getPathPositionM();
         double last = samples.get(samples.size()-1).getPathPositionM();
         List<String> events = new ArrayList<>();
-        for (Station station : model.getStations()) {
+        for (Station station : model.getStationsForRoute(route.getRouteId())) {
             for (double position : positions(route, station.getPosition())) {
                 events.add("Station " + station.getName() + " | " + number(position) + " m | " + station.getPosition());
             }
@@ -260,7 +260,7 @@ public final class TrackRouteDiagram {
                     .append("\" y2=\"120\" stroke=\"").append(sameTrack(a.getRailwayCoordinate(),b.getRailwayCoordinate())?"#175cd3":"#b42318")
                     .append("\" stroke-width=\"4\"><title>").append(xml(a.getRailwayCoordinate()+" -> "+b.getRailwayCoordinate())).append("</title></line>\n");
         }
-        for (Station station : model.getStations()) {
+        for (Station station : model.getStationsForRoute(route.getRouteId())) {
             for (double position : positions(route,station.getPosition())) {
                 double x=60+1080*(position-first)/(last-first);
                 out.append("<circle cx=\"").append(x).append("\" cy=\"120\" r=\"6\" fill=\"#067647\"><title>")
