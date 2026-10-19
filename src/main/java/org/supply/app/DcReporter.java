@@ -124,6 +124,7 @@ public final class DcReporter {
                         .resolve(context.studyId() + "_deviations.xlsx");
 
         writeDeviationWorkbook(rows, metadata, deviations);
+        TrainCurrentDiagram.write(rows, context.resultDirectory(), context.studyId());
     }
 
     static List<DcStudyContext> graphicalTimetableContexts(DcStudyContext context) {
