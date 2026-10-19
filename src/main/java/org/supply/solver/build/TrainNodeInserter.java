@@ -2,9 +2,9 @@ package org.supply.solver.build;
 
 import org.supply.domain.Route;
 import org.supply.domain.SystemParameters;
+import org.supply.domain.TrainCurrentCurve;
 import org.supply.math.Real;
 import org.supply.solver.model.*;
-
 
 import java.util.*;
 
@@ -15,6 +15,7 @@ public final class TrainNodeInserter {
 
     private final SystemParameters systemParameters;
     private final Map<String, Double> currentLimitsByTrain;
+    private final Map<String, TrainCurrentCurve> currentCurvesByTrain;
     private final Map<String, Route> routesById;
     private final Set<String> feedingLineIds = new HashSet<>();
     private final Set<String> returnLineIds = new HashSet<>();
@@ -28,6 +29,13 @@ public final class TrainNodeInserter {
 
     public TrainNodeInserter(SystemParameters systemParameters, List<Route> routes,
                              Map<String, Double> currentLimitsByTrain) {
+        this(systemParameters, routes, currentLimitsByTrain, Map.of());
+    }
+
+    public TrainNodeInserter(SystemParameters systemParameters, List<Route> routes,
+                             Map<String, Double> currentLimitsByTrain,
+                             Map<String, TrainCurrentCurve> currentCurvesByTrain) {
+        this.currentCurvesByTrain = Map.copyOf(currentCurvesByTrain);
         this.currentLimitsByTrain = Map.copyOf(currentLimitsByTrain);
         this.currentLimitsByTrain.forEach((id, limit) -> {
             if (!Double.isFinite(limit) || limit <= 0)
@@ -175,7 +183,8 @@ public final class TrainNodeInserter {
                     feedingNodeId,
                     returnNodeId,
                     train.pReqW(),
-                    currentLimitsByTrain.get(train.trainId())
+                    currentLimitsByTrain.get(train.trainId()),
+                    currentCurvesByTrain.get(train.trainId())
             ));
         }
 
@@ -196,7 +205,8 @@ public final class TrainNodeInserter {
                     load.pReqW().asDouble(),
                     systemParameters.uNominalV(),
                     systemParameters,
-                    load.iTrainMaxA()
+                    load.iTrainMaxA(),
+                    load.currentCurve()
             ));
         }
 

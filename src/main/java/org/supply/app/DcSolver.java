@@ -4,6 +4,7 @@ import com.typesafe.config.Config;
 import org.supply.domain.Route;
 import org.supply.domain.RunSample;
 import org.supply.domain.SystemParameters;
+import org.supply.domain.TrainCurrentCurve;
 import org.supply.loader.GridModelLoader;
 import org.supply.loader.RouteFactory;
 import org.supply.loader.RunSampleLoader;
@@ -93,7 +94,7 @@ public final class DcSolver {
                     writer,
                     runCsv,
                     routes,
-                    new TrainCurrentLimitFactory().build(solverContext.dcsim().getConfig("traffic"),
+                    new TrainCurrentLimitFactory().buildForStudy(solverContext.dcsim(),
                             solverContext.systemParameters().iMaxA()),
                     resultIntervalSec(solverContext.dcsim())
             );
@@ -149,7 +150,7 @@ public final class DcSolver {
             LongTableWriter writer,
             Path runCsv,
             List<Route> routes,
-            Map<String, Double> currentLimitsByTrain,
+            TrainCurrentLimitFactory.Limits currentLimits,
             double resultIntervalSec
     ) throws Exception {
 
@@ -160,9 +161,11 @@ public final class DcSolver {
                 new TrainPositionFactory(trackTransform);
 
         TrainNodeInserter trainNodeInserter =
-                new TrainNodeInserter(systemParameters, routes, currentLimitsByTrain);
+                new TrainNodeInserter(systemParameters, routes, currentLimits.maxima(), currentLimits.curves());
 
-        currentLimitsByTrain.forEach((id, limit) -> writer.signalRow(null, "TRAIN", id,
+        currentLimits.curves().forEach((id, curve) -> writer.signalRow(null, "TRAIN", id,
+                "i_train_limit_curve", curve.describe(), "V:A", "STATIC", null, "Effective traction current curve"));
+        currentLimits.maxima().forEach((id, limit) -> writer.signalRow(null, "TRAIN", id,
                 "i_train_max_A", limit, "A", "STATIC", null, "Effective traction current limit"));
 
         Map<Double, List<RunSample>> samplesByTime =
@@ -742,7 +745,8 @@ public final class DcSolver {
                         systemParameters,
                         allocatedPowerW,
                         voltageV,
-                        train.iTrainMaxA()
+                        train.iTrainMaxA(),
+                        train.currentCurve()
                 );
                 trainPowersW.put(train.trainId(), actualPowerW);
             } else if (element instanceof DiodeSubstationElement substation) {
@@ -1160,6 +1164,11 @@ public final class DcSolver {
 
     static double trainCurrentA(SystemParameters systemParameters, double allocatedPowerW,
                                 double terminalVoltageV, Double iTrainMaxA) {
+        return trainCurrentA(systemParameters, allocatedPowerW, terminalVoltageV, iTrainMaxA, null);
+    }
+
+    static double trainCurrentA(SystemParameters systemParameters, double allocatedPowerW,
+                                double terminalVoltageV, Double iTrainMaxA, TrainCurrentCurve currentCurve) {
         if (allocatedPowerW < 0.0) {
             return -RegenerativeTrainElement.regenerativeCurrentA(
                     allocatedPowerW,
@@ -1177,7 +1186,8 @@ public final class DcSolver {
                         allocatedPowerW,
                         terminalVoltageV,
                         systemParameters,
-                        iTrainMaxA
+                        iTrainMaxA,
+                        currentCurve
                 );
 
         return load.currentA();

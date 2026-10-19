@@ -102,9 +102,9 @@ public final class DcCheck {
         List<Route> routes = stage("Route definitions", errors, detail,
                 () -> new RouteFactory().build(context.dcsim().getConfig("traffic")));
 
-        Map<String, Double> currentLimits = parameters == null ? null
+        TrainCurrentLimitFactory.Limits currentLimits = parameters == null ? null
                 : stage("Train current limits", errors, detail,
-                () -> new TrainCurrentLimitFactory().build(context.dcsim().getConfig("traffic"), parameters.iMaxA()));
+                () -> new TrainCurrentLimitFactory().buildForStudy(context.dcsim(), parameters.iMaxA()));
 
         TrackTransformService transform = track == null ? null : new DefaultTrackTransformService(track);
         CalculationNetwork network = null;
@@ -261,9 +261,9 @@ public final class DcCheck {
 
     private static void checkPlacements(List<RunSample> samples, CalculationNetwork network,
                                         TrackTransformService transform, SystemParameters parameters,
-                                        List<Route> routes, Map<String, Double> currentLimits, List<String> errors, StringBuilder detail) {
+                                        List<Route> routes, TrainCurrentLimitFactory.Limits currentLimits, List<String> errors, StringBuilder detail) {
         TrainPositionFactory positions = new TrainPositionFactory(transform);
-        TrainNodeInserter inserter = new TrainNodeInserter(parameters, routes, currentLimits);
+        TrainNodeInserter inserter = new TrainNodeInserter(parameters, routes, currentLimits.maxima(), currentLimits.curves());
         Set<String> knownRoutes = new HashSet<>();
         for (Route route : routes) { knownRoutes.add(route.id()); }
         int errorsBeforePlacement = errors.size();

@@ -1,6 +1,7 @@
 package org.supply.solver.model;
 
 import org.supply.domain.SystemParameters;
+import org.supply.domain.TrainCurrentCurve;
 import org.supply.solver.electrical.AdmittanceStamp;
 
 public final class TrainLoadElement implements ElectricalElement {
@@ -15,6 +16,7 @@ public final class TrainLoadElement implements ElectricalElement {
 
     private final SystemParameters systemParameters;
     private final double iTrainMaxA;
+    private final TrainCurrentCurve currentCurve;
 
     private static final double REGEN_DERATING_START_V = 850.0;
 
@@ -32,7 +34,15 @@ public final class TrainLoadElement implements ElectricalElement {
     public TrainLoadElement(String trainId, String feedingNodeId, String returnNodeId,
                             double requestedPowerW, double voltageV,
                             SystemParameters systemParameters, Double iTrainMaxA) {
-        this.iTrainMaxA = iTrainMaxA == null ? systemParameters.iMaxA() : iTrainMaxA;
+        this(trainId, feedingNodeId, returnNodeId, requestedPowerW, voltageV, systemParameters, iTrainMaxA, null);
+    }
+
+    public TrainLoadElement(String trainId, String feedingNodeId, String returnNodeId,
+                            double requestedPowerW, double voltageV, SystemParameters systemParameters,
+                            Double iTrainMaxA, TrainCurrentCurve currentCurve) {
+        this.currentCurve = currentCurve;
+        this.iTrainMaxA = currentCurve != null ? currentCurve.maximumA()
+                : iTrainMaxA == null ? systemParameters.iMaxA() : iTrainMaxA;
         if (!Double.isFinite(this.iTrainMaxA) || this.iTrainMaxA <= 0)
             throw new IllegalArgumentException("i_train_max_A must be finite and > 0 for train " + trainId);
         this.trainId = trainId;
@@ -80,6 +90,7 @@ public final class TrainLoadElement implements ElectricalElement {
     }
 
     public double iTrainMaxA() { return iTrainMaxA; }
+    public TrainCurrentCurve currentCurve() { return currentCurve; }
 
     private double tractionCurrentA(
             double requestedPowerW,
@@ -99,6 +110,7 @@ public final class TrainLoadElement implements ElectricalElement {
             double voltageV,
             SystemParameters systemParameters
     ) {
+        if (currentCurve != null) return currentCurve.currentLimitA(voltageV);
         double uMinV = systemParameters.uMinV();
         double uCutoffV = systemParameters.uCutoffV();
         double iTrainMaxA = this.iTrainMaxA;

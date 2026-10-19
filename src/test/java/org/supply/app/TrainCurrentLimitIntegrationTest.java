@@ -53,6 +53,42 @@ public class TrainCurrentLimitIntegrationTest {
             assertEquals(u*limits.get(load.trainId()),powers.get(load.trainId()),1e-5);
         }
     }
+    @Test public void keepsVoltageDependentCurvesThroughIterationsAndReporting() throws Exception {
+        var single = org.supply.solver.model.TrainCurrentCurveTest.single();
+        var coupled = org.supply.solver.model.TrainCurrentCurveTest.coupled();
+        var curves = Map.of("S",single,"D",coupled);
+        var limits = Map.of("S",6000.,"D",7000.);
+        var nodes = List.of(node("F0",0),node("F1",1000),node("R0",0),node("R1",1000));
+        var branches = List.of(new CalculationBranch("f","feed","F0","F1",new Real(.0001)),
+                new CalculationBranch("r","return","R0","R1",new Real(.0001)));
+        List<ElectricalElement> elements = new ArrayList<>(branches);
+        elements.add(new DiodeSubstationElement("SS","F0","R0",new Real(580),new Real(.0001),true));
+        var base = new CalculationNetwork(nodes,branches,List.of(),elements);
+        var network = new TrainNodeInserter(PARAMETERS,
+                List.of(new Route("route",List.of("feed"),List.of("return"))),limits,curves)
+                .insertTrainNodes(base,List.of(train("S",200),train("D",800)));
+        var requested = Map.of("S",1e7,"D",1e7);
+        var solved = DcSolver.solveWithFallback(PARAMETERS,network,requested,Map.of());
+        assertTrue(solved.networkResult().converged());
+        var volts=solved.networkResult().voltages();
+        var method=DcSolver.class.getDeclaredMethod("powerSnapshot",CalculationNetwork.class,Map.class,Map.class,SystemParameters.class);
+        method.setAccessible(true);Object snapshot=method.invoke(null,network,volts,requested,PARAMETERS);
+        var getP=snapshot.getClass().getDeclaredMethod("trainPowersW");getP.setAccessible(true);
+        @SuppressWarnings("unchecked") Map<String,Double> powers=(Map<String,Double>)getP.invoke(snapshot);
+        for(var load:network.trainLoads()) {
+            double v=volts.get(load.feedingNodeId()).asDouble();
+            double u=v-volts.get(load.returnNodeId()).asDouble();
+            assertTrue(u>560 && u<600);
+            double expected=curves.get(load.trainId()).currentLimitA(u);
+            double outgoing=0;
+            for(var b:network.branches()) {
+                if(b.fromNodeId().equals(load.feedingNodeId()))outgoing+=(v-volts.get(b.toNodeId()).asDouble())/b.resistanceOhm().asDouble();
+                if(b.toNodeId().equals(load.feedingNodeId()))outgoing+=(v-volts.get(b.fromNodeId()).asDouble())/b.resistanceOhm().asDouble();
+            }
+            assertEquals(expected,-outgoing,.2);
+            assertEquals(expected*u,powers.get(load.trainId()),1e-5);
+        }
+    }
     @Test public void appliesVoltageDeratingToEachLimitAndPreservesLegacyDefault() {
         assertEquals(50,new TrainLoadElement("S","F","R",1e6,550,PARAMETERS,100.).currentA(),1e-9);
         assertEquals(200,new TrainLoadElement("D","F","R",1e6,750,PARAMETERS,200.).currentA(),1e-9);

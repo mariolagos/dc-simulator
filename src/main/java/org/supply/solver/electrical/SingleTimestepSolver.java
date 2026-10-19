@@ -123,7 +123,8 @@ public final class SingleTimestepSolver {
                         requestedPowerW,
                         voltageV,
                         systemParameters,
-                        load.iTrainMaxA()
+                        load.iTrainMaxA(),
+                        load.currentCurve()
                 ));
             }
         }
