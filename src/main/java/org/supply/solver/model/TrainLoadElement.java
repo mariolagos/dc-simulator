@@ -14,6 +14,7 @@ public final class TrainLoadElement implements ElectricalElement {
     private final double voltageV;
 
     private final SystemParameters systemParameters;
+    private final double iTrainMaxA;
 
     private static final double REGEN_DERATING_START_V = 850.0;
 
@@ -25,6 +26,15 @@ public final class TrainLoadElement implements ElectricalElement {
             double voltageV,
             SystemParameters systemParameters
     ) {
+        this(trainId, feedingNodeId, returnNodeId, requestedPowerW, voltageV, systemParameters, null);
+    }
+
+    public TrainLoadElement(String trainId, String feedingNodeId, String returnNodeId,
+                            double requestedPowerW, double voltageV,
+                            SystemParameters systemParameters, Double iTrainMaxA) {
+        this.iTrainMaxA = iTrainMaxA == null ? systemParameters.iMaxA() : iTrainMaxA;
+        if (!Double.isFinite(this.iTrainMaxA) || this.iTrainMaxA <= 0)
+            throw new IllegalArgumentException("i_train_max_A must be finite and > 0 for train " + trainId);
         this.trainId = trainId;
         this.feedingNodeId = feedingNodeId;
         this.returnNodeId = returnNodeId;
@@ -69,7 +79,9 @@ public final class TrainLoadElement implements ElectricalElement {
         return 0.0;
     }
 
-    private static double tractionCurrentA(
+    public double iTrainMaxA() { return iTrainMaxA; }
+
+    private double tractionCurrentA(
             double requestedPowerW,
             double voltageV,
             SystemParameters systemParameters
@@ -83,13 +95,13 @@ public final class TrainLoadElement implements ElectricalElement {
         );
     }
 
-    private static double tractionCurrentLimitA(
+    private double tractionCurrentLimitA(
             double voltageV,
             SystemParameters systemParameters
     ) {
         double uMinV = systemParameters.uMinV();
         double uCutoffV = systemParameters.uCutoffV();
-        double iTrainMaxA = systemParameters.iMaxA();
+        double iTrainMaxA = this.iTrainMaxA;
 
         if (voltageV <= uMinV) {
             return 0.0;

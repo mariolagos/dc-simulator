@@ -9,6 +9,7 @@ import org.supply.loader.GridModelLoader;
 import org.supply.loader.RouteFactory;
 import org.supply.loader.RunSampleLoader;
 import org.supply.loader.SystemParametersFactory;
+import org.supply.loader.TrainCurrentLimitFactory;
 import org.supply.model.GridModel;
 import org.supply.solver.build.CalculationNetworkBuilder;
 import org.supply.solver.build.ElectricalRouteCheck;
@@ -101,6 +102,10 @@ public final class DcCheck {
         List<Route> routes = stage("Route definitions", errors, detail,
                 () -> new RouteFactory().build(context.dcsim().getConfig("traffic")));
 
+        Map<String, Double> currentLimits = parameters == null ? null
+                : stage("Train current limits", errors, detail,
+                () -> new TrainCurrentLimitFactory().build(context.dcsim().getConfig("traffic"), parameters.iMaxA()));
+
         TrackTransformService transform = track == null ? null : new DefaultTrackTransformService(track);
         CalculationNetwork network = null;
         if (grid != null && transform != null) {
@@ -192,8 +197,8 @@ public final class DcCheck {
                 if (samples != null) {
                     if (samples.isEmpty()) {
                         warnings.add("No train samples in the simulation window; train placement was not checked");
-                    } else if (network != null && parameters != null && routes != null) {
-                        checkPlacements(samples, network, transform, parameters, routes,
+                    } else if (network != null && parameters != null && routes != null && currentLimits != null) {
+                        checkPlacements(samples, network, transform, parameters, routes, currentLimits,
                                 errors, detail);
                     } else {
                         detail.append("SKIP Train placement: network, routes or parameters unavailable\n");
@@ -256,9 +261,9 @@ public final class DcCheck {
 
     private static void checkPlacements(List<RunSample> samples, CalculationNetwork network,
                                         TrackTransformService transform, SystemParameters parameters,
-                                        List<Route> routes, List<String> errors, StringBuilder detail) {
+                                        List<Route> routes, Map<String, Double> currentLimits, List<String> errors, StringBuilder detail) {
         TrainPositionFactory positions = new TrainPositionFactory(transform);
-        TrainNodeInserter inserter = new TrainNodeInserter(parameters, routes);
+        TrainNodeInserter inserter = new TrainNodeInserter(parameters, routes, currentLimits);
         Set<String> knownRoutes = new HashSet<>();
         for (Route route : routes) { knownRoutes.add(route.id()); }
         int errorsBeforePlacement = errors.size();

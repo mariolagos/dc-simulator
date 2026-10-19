@@ -122,7 +122,8 @@ public final class SingleTimestepSolver {
                         load.returnNodeId(),
                         requestedPowerW,
                         voltageV,
-                        systemParameters
+                        systemParameters,
+                        load.iTrainMaxA()
                 ));
             }
         }

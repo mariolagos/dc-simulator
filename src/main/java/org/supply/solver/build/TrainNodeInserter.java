@@ -5,6 +5,7 @@ import org.supply.domain.SystemParameters;
 import org.supply.math.Real;
 import org.supply.solver.model.*;
 
+
 import java.util.*;
 
 
@@ -13,6 +14,7 @@ public final class TrainNodeInserter {
     private static final double EPS = 1e-9;
 
     private final SystemParameters systemParameters;
+    private final Map<String, Double> currentLimitsByTrain;
     private final Map<String, Route> routesById;
     private final Set<String> feedingLineIds = new HashSet<>();
     private final Set<String> returnLineIds = new HashSet<>();
@@ -21,6 +23,16 @@ public final class TrainNodeInserter {
             SystemParameters systemParameters,
             List<Route> routes
     ) {
+        this(systemParameters, routes, Map.of());
+    }
+
+    public TrainNodeInserter(SystemParameters systemParameters, List<Route> routes,
+                             Map<String, Double> currentLimitsByTrain) {
+        this.currentLimitsByTrain = Map.copyOf(currentLimitsByTrain);
+        this.currentLimitsByTrain.forEach((id, limit) -> {
+            if (!Double.isFinite(limit) || limit <= 0)
+                throw new IllegalArgumentException("i_train_max_A must be finite and > 0 for train " + id);
+        });
         this.systemParameters = Objects.requireNonNull(
                 systemParameters,
                 "systemParameters"
@@ -162,7 +174,8 @@ public final class TrainNodeInserter {
                     train.trainId(),
                     feedingNodeId,
                     returnNodeId,
-                    train.pReqW()
+                    train.pReqW(),
+                    currentLimitsByTrain.get(train.trainId())
             ));
         }
 
@@ -182,7 +195,8 @@ public final class TrainNodeInserter {
                     load.returnNodeId(),
                     load.pReqW().asDouble(),
                     systemParameters.uNominalV(),
-                    systemParameters
+                    systemParameters,
+                    load.iTrainMaxA()
             ));
         }
 
