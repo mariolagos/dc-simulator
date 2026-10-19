@@ -9,7 +9,9 @@ import java.util.*;
 public final class TrackRouteDiagram {
     private TrackRouteDiagram() { }
     public record ObjectPoint(String kind, String name, RwyCoordinate coordinate) { }
-    private record Event(String kind, String name, RwyCoordinate coordinate) { }
+    private record Event(String kind, String name, RwyCoordinate coordinate, List<RwyCoordinate> references) {
+        Event(String kind,String name,RwyCoordinate coordinate) {this(kind,name,coordinate,List.of(coordinate));}
+    }
 
     public static void write(LoadedTrackModel model, String selected, Path directory,
                              StringBuilder detail, List<String> warnings) throws IOException {
@@ -54,12 +56,12 @@ public final class TrackRouteDiagram {
                 var a=samples.get(i).getRailwayCoordinate();
                 var b=samples.get(i+1).getRailwayCoordinate();
                 if((at(a,junction.getFrom())&&at(b,junction.getTo())) ||
-                   (at(b,junction.getFrom())&&at(a,junction.getTo()))) transition=true;
+                        (at(b,junction.getFrom())&&at(a,junction.getTo()))) transition=true;
             }
             if(!transition) {
                 String name="Connection: "+coordinate(junction.getFrom())+" <-> "+coordinate(junction.getTo());
-                for(double p:positions(route,junction.getFrom())) add(rows,p,new Event("junction",name,junction.getFrom()));
-                for(double p:positions(route,junction.getTo())) add(rows,p,new Event("junction",name,junction.getTo()));
+                for(double p:positions(route,junction.getFrom())) add(rows,p,new Event("junction",name,junction.getFrom(),List.of(junction.getFrom(),junction.getTo())));
+                for(double p:positions(route,junction.getTo())) add(rows,p,new Event("junction",name,junction.getTo(),List.of(junction.getFrom(),junction.getTo())));
             }
         }
         for(ObjectPoint object:objects) {
@@ -68,17 +70,21 @@ public final class TrackRouteDiagram {
         for(int i=0;i<samples.size()-1;i++) {
             PathSample a=samples.get(i),b=samples.get(i+1);
             if(!sameTrack(a.getRailwayCoordinate(),b.getRailwayCoordinate())) {
-                // Keep a real intervening route distance explicit; co-located
-                // references (including the synthetic 1 mm offset) form one marker.
-                if(b.getPathPositionM()-a.getPathPositionM()<=0.002) {
-                    add(rows,b.getPathPositionM(),new Event("junction",
-                            "Junction: "+coordinate(a.getRailwayCoordinate())+" / "+coordinate(b.getRailwayCoordinate()),b.getRailwayCoordinate()));
+                // The traffic importer permits section/track transitions up to one metre.
+                // Show that transition once; larger gaps keep their entry and exit.
+                if(b.getPathPositionM()-a.getPathPositionM()<=1.000001) {
+                    String ta=a.getRailwayCoordinate().getTrackId(),tb=b.getRailwayCoordinate().getTrackId();
+                    boolean trackChange=ta!=null&&!ta.isBlank()&&tb!=null&&!tb.isBlank()&&!ta.equals(tb);
+                    add(rows,b.getPathPositionM(),new Event(trackChange?"track-change":"section-change",
+                            trackChange?"Track change":"Section change",b.getRailwayCoordinate(),
+                            List.of(a.getRailwayCoordinate(),b.getRailwayCoordinate())));
                 } else {
                     add(rows,a.getPathPositionM(),new Event("transition","Section/track exit",a.getRailwayCoordinate()));
                     add(rows,b.getPathPositionM(),new Event("transition","Section/track entry",b.getRailwayCoordinate()));
                 }
             }
         }
+        consolidateJunctions(rows);
         double first=samples.get(0).getPathPositionM();
         double length=end.getPathPositionM()-first;
         // A common scale across routes: 60 SVG pixels per kilometre of route distance.
@@ -97,7 +103,7 @@ public final class TrackRouteDiagram {
         out.append(height).append("\" viewBox=\"0 0 1100 ").append(height).append("\"><rect width=\"100%\" height=\"100%\" fill=\"white\"/><g font-family=\"Arial\">\n");
         text(out,30,30,"Track route: "+route.getRouteId(),18);
         text(out,30,54,"Top to bottom: route direction. Scale: 60 SVG px / km. Symbols at exact route distances; labels may be offset.",12);
-        text(out,30,76,"Circle: station | square: substation | slash: connection | bar: route boundary | diamond: coordinate transition",11);
+        text(out,30,76,"Circle: station | square: substation | diamond: section change | diamond + arrow: track change | bar: route boundary",11);
         out.append("<line x1=\"370\" y1=\"").append(top).append("\" x2=\"370\" y2=\"").append(bottom).append("\" stroke=\"#333\" stroke-width=\"2\"/>\n");
         // Configured board coordinates are retained at section segment boundaries.
         TreeMap<Double,Set<String>> boards=new TreeMap<>();
@@ -131,14 +137,20 @@ public final class TrackRouteDiagram {
         for(var row:rows.entrySet()) {
             double y=top+(row.getKey()-first)*scale;
             for(Event event:row.getValue()) {
-                double ey=labelPositions.get(event);symbol(out,event.kind(),y);
+                double ey=labelPositions.get(event);
+                if(junctionEvent(event))out.append("<g class=\"junction-event\"><title>")
+                        .append(xml(event.references().stream().map(TrackRouteDiagram::coordinate).distinct()
+                                .reduce((a,b)->a+" / "+b).orElse("")+" | "+number(row.getKey())+" m"))
+                        .append("</title>");
+                symbol(out,event.kind(),y);
                 if(Math.abs(ey-y)>0.1) {
                     out.append("<path d=\"M 361 ").append(y).append(" L 350 ").append(ey)
                             .append(" M 379 ").append(y).append(" L 390 ").append(ey)
                             .append("\" fill=\"none\" stroke=\"#bbb\" stroke-width=\"0.8\"/>\n");
                 }
                 out.append("<text x=\"340\" y=\"").append(ey+4).append("\" text-anchor=\"end\" font-size=\"12\">").append(xml(event.name())).append("</text>\n");
-                text(out,400,ey+4,coordinate(event.coordinate())+"  "+number(row.getKey())+" m",14);
+                text(out,400,ey+4,(junctionEvent(event)?junctionReference(event):coordinate(event.coordinate()))+"  "+number(row.getKey())+" m",14);
+                if(junctionEvent(event))out.append("</g>\n");
             }
         }
         return out.append("</g></svg>\n").toString();
@@ -152,14 +164,67 @@ public final class TrackRouteDiagram {
                 (c.getTrackId()==null||c.getTrackId().isBlank()?"":" "+c.getTrackId());
     }
     private static void add(TreeMap<Double,LinkedHashSet<Event>> rows,double position,Event event) {
+        // Collapse the same station at a single route occurrence, including
+        // repeated samples separated only by the synthetic 1 mm join offset.
+        if(event.kind().equals("station")) {
+            for(var row:rows.subMap(position-0.002,true,position+0.002,true).values())
+                if(row.stream().anyMatch(e->e.kind().equals("station")&&e.name().equals(event.name())))return;
+        }
         var set=rows.computeIfAbsent(position,k->new LinkedHashSet<>());
         if(set.stream().noneMatch(e->e.kind().equals(event.kind())&&e.name().equals(event.name()))) set.add(event);
+    }
+    private static String junctionReference(Event event) {
+        List<String> refs=event.references().stream()
+                .filter(c->c.getTrackId()!=null&&!c.getTrackId().isBlank() ||
+                        event.references().stream().noneMatch(other->other.getSectionId().equals(c.getSectionId())&&
+                                other.getTrackId()!=null&&!other.getTrackId().isBlank()))
+                .map(c->c.getSectionId()+
+                        (c.getTrackId()==null||c.getTrackId().isBlank()?"":" "+c.getTrackId())).distinct().toList();
+        if(refs.size()<2)return String.join(" / ",refs);
+        String result=refs.get(0)+" → "+refs.get(1);
+        return refs.size()>2?result+" ("+String.join(", ",refs.subList(2,refs.size()))+")":result;
+    }
+    private static boolean junctionEvent(Event e) {
+        return Set.of("junction","section-change","track-change").contains(e.kind());
+    }
+    private static void consolidateJunctions(TreeMap<Double,LinkedHashSet<Event>> rows) {
+        Double anchor=null;List<Event> pending=new ArrayList<>();
+        TreeMap<Double,List<Event>> groups=new TreeMap<>();
+        for(var row:rows.entrySet()) {
+            List<Event> events=row.getValue().stream().filter(TrackRouteDiagram::junctionEvent).toList();
+            if(events.isEmpty())continue;
+            if(anchor==null||row.getKey()-anchor>1.000001) {
+                anchor=row.getKey();pending=new ArrayList<>();groups.put(anchor,pending);
+            }
+            pending.addAll(events);row.getValue().removeAll(events);
+        }
+        for(var group:groups.entrySet()) {
+            List<Event> events=group.getValue();Map<String,RwyCoordinate> refs=new LinkedHashMap<>();
+            Event traversal=events.stream().filter(e->!e.kind().equals("junction")).findFirst().orElse(events.get(0));
+            traversal.references().forEach(c->refs.putIfAbsent(coordinate(c),c));
+            events.forEach(e->e.references().forEach(c->refs.putIfAbsent(coordinate(c),c)));
+            boolean track=events.stream().anyMatch(e->e.kind().equals("track-change"));
+            boolean section=events.stream().anyMatch(e->e.kind().equals("section-change"));
+            if(!track)track=refs.values().stream().map(RwyCoordinate::getTrackId)
+                    .filter(t->t!=null&&!t.isBlank()).distinct().count()>1;
+            if(!section)section=refs.values().stream().map(RwyCoordinate::getSectionId).distinct().count()>1;
+            Event first=events.get(0);
+            add(rows,group.getKey(),new Event(track?"track-change":section?"section-change":"junction",
+                    track?"Track change":section?"Section change":"Connection:",first.coordinate(),List.copyOf(refs.values())));
+        }
+        rows.entrySet().removeIf(e->e.getValue().isEmpty());
     }
     private static void symbol(StringBuilder out,String kind,double y) {
         switch(kind) {
             case "station" -> out.append("<circle cx=\"370\" cy=\"").append(y).append("\" r=\"6\" fill=\"white\" stroke=\"#067647\" stroke-width=\"2\"/>\n");
             case "substation" -> out.append("<rect x=\"363\" y=\"").append(y-7).append("\" width=\"14\" height=\"14\" fill=\"#fff4ed\" stroke=\"#b42318\" stroke-width=\"2\"/>\n");
-            case "junction" -> out.append("<path d=\"M 360 ").append(y+8).append(" L 380 ").append(y-8).append("\" stroke=\"#175cd3\" stroke-width=\"3\"/>\n");
+            case "track-change" -> {
+                symbol(out,"section-change",y);
+                out.append("<path class=\"track-change-arrow\" d=\"M 366 ").append(y)
+                        .append(" h 8 m -3 -3 l 3 3 -3 3\" fill=\"none\" stroke=\"#175cd3\"/>\n");
+            }
+            case "junction", "section-change" -> out.append("<path class=\"junction-marker\" d=\"M 370 ").append(y-8).append(" L 378 ").append(y)
+                    .append(" L 370 ").append(y+8).append(" L 362 ").append(y).append(" Z\" fill=\"white\" stroke=\"#175cd3\" stroke-width=\"1.5\"/>\n");
             case "boundary" -> out.append("<path d=\"M 359 ").append(y).append(" H 381\" stroke=\"#333\" stroke-width=\"4\"/>\n");
             default -> out.append("<path d=\"M 370 ").append(y-6).append(" L 376 ").append(y).append(" L 370 ").append(y+6).append(" L 364 ").append(y).append(" Z\" fill=\"white\" stroke=\"#666\"/>\n");
         }

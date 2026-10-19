@@ -45,9 +45,9 @@ public class RouteTopologyOutputTest {
         var context=new RouteSchematic.Context(Map.of("j1",a,"j2",b),List.of(new TrackJunction(a,b)));
         String svg=RouteSchematic.svg(network,new Route("AD",List.of(),List.of("r1","bridge","r2")),
                 Map.of("bridge",1e-15),context);
-        assertEquals(1,svg.split(">Junction<",-1).length-1);
-        assertTrue(svg.contains("y=\"370\" font-size=\"12\" fill=\"#175cd3\" text-anchor=\"middle\">101 2+000 N<"));
-        assertTrue(svg.contains("y=\"388\" font-size=\"12\" fill=\"#175cd3\" text-anchor=\"middle\">102 0+000 N<"));
+        assertEquals(1,svg.split(">Section change<",-1).length-1);
+        assertEquals(1,svg.split(">101 2\\+000 N<",-1).length-1);
+        assertEquals(1,svg.split(">102 0\\+000 N<",-1).length-1);
         assertEquals(4,network.nodes().size());
         assertEquals(3,network.branches().size());
     }

@@ -12,7 +12,8 @@ public class TrackRouteDiagramCompactTest {
         LoadedTrackModel model=new LoadedTrackModel(Map.of(),
                 List.of(new TrackJunction(c("23",3576),c("21",3576))),List.of());
         String svg=TrackRouteDiagram.svg(model,route);
-        assertTrue(svg.contains("Junction: 23 3+576 / 21 3+576"));
+        assertTrue(svg.contains(">Section change<"));
+        assertTrue(svg.contains("23 3+576 / 21 3+576"));
         assertFalse(svg.contains("Section/track exit"));assertFalse(svg.contains("Section/track entry"));
         assertFalse(svg.contains("Connection:"));assertFalse(svg.contains("| route"));
         assertTrue(svg.contains("23 8+070  0.0 m"));assertTrue(svg.contains("width=\"1100\""));

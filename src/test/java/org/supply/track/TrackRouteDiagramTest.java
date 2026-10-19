@@ -39,7 +39,7 @@ public class TrackRouteDiagramTest {
         LoadedTrackModel model=new LoadedTrackModel(Map.of(),List.of(new TrackJunction(coordinate(1000,"U"),coordinate(1000,"D"))),List.of(new Station("Station",coordinate(500,"U"))));
         String svg=TrackRouteDiagram.bandSvg(model,route,List.of(new TrackRouteDiagram.ObjectPoint("substation","SS",coordinate(1500,"U"))));
         var document=DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new InputSource(new StringReader(svg)));
-        assertTrue(svg.contains("Station"));assertTrue(svg.contains("SS"));assertTrue(svg.contains("Connection:"));
+        assertTrue(svg.contains("Station"));assertTrue(svg.contains("SS"));assertTrue(svg.contains("Track change"));
         assertTrue(svg.contains("Route start"));assertTrue(svg.contains("Route end"));
         var line=document.getElementsByTagName("line").item(0).getAttributes();
         assertEquals(line.getNamedItem("x1").getNodeValue(),line.getNamedItem("x2").getNodeValue());

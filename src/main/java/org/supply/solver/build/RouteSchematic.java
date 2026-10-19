@@ -157,6 +157,34 @@ public final class RouteSchematic {
                 }
             }
         }
+        // One physical transition symbol per drawing column; feeding and return
+        // keep their own ports, but no longer repeat coordinate descriptions.
+        Set<String> junctionColumns=new HashSet<>();
+        for(String id:routeNodes) {
+            CalculationNode node=nodes.get(id);
+            if(!layout.isJunction(node))continue;
+            String column=layout.place(node);
+            if(!junctionColumns.add(column))continue;
+            int jx=x.get(column),jy=(FEED+returnY)/2+(southOnly?80:0);
+            boolean trackChange=false;
+            for(var branch:network.branches()) {
+                if(!layout.connectors.contains(branch.id()))continue;
+                var a=nodes.get(branch.fromNodeId());var z=nodes.get(branch.toNodeId());
+                if(!layout.place(a).equals(column))continue;
+                var ca=context.railwayPositions().get(a.id());var cz=context.railwayPositions().get(z.id());
+                String ta=ca==null?a.trackId():ca.getTrackId(),tz=cz==null?z.trackId():cz.getTrackId();
+                if(ta!=null&&!ta.isBlank()&&tz!=null&&!tz.isBlank()&&!ta.equals(tz))trackChange=true;
+            }
+            out.append("<g class=\"physical-junction\"><title>")
+                    .append(xml(String.join(" / ",columnReferences.getOrDefault(column,List.of()))))
+                    .append("</title><path d=\"M ").append(jx).append(' ').append(jy-9)
+                    .append(" L ").append(jx+9).append(' ').append(jy).append(" L ").append(jx).append(' ').append(jy+9)
+                    .append(" L ").append(jx-9).append(' ').append(jy).append(" Z\" fill=\"white\" stroke=\"#475467\" stroke-width=\"1.5\"/>");
+            if(trackChange)out.append("<path class=\"track-change-arrow\" d=\"M ").append(jx-5).append(' ').append(jy)
+                    .append(" h 10 m -4 -3 l 4 3 -4 3\" fill=\"none\" stroke=\"#475467\"/>");
+            text(out,jx,jy+27,trackChange?"Track change":"Section change",11,"#475467","middle");
+            out.append("</g>\n");
+        }
         for(Station s:stations) {
             int sx=x.get(layout.place(nodes.get(s.from())));
             out.append("<g><title>").append(xml(s.id()+" | "+s.type()+" | terminals: "+s.terminals())).append("</title><rect x=\"").append(sx-HALF).append("\" y=\"125\" width=\"160\" height=\"").append(height-180).append("\" rx=\"6\" fill=\"#f0fdf4\" stroke=\"#067647\"/></g>\n");
@@ -209,14 +237,8 @@ public final class RouteSchematic {
     private static void endpoint(StringBuilder out,String id,int x,int y,int direction,boolean station,String color,Set<String> labels,boolean junction,List<String> references) {
         String key=(junction?"junction":id)+":"+x+":"+y;
         if(labels.add(key)) {
-            if(junction && references!=null) {
-                int labelY=y-12-18*Math.max(0,references.size()-1);
-                for(String reference:references) {
-                    text(out,x,labelY,reference,12,color,"middle");labelY+=18;
-                }
-            }
             point(out,x,y,color,junction?"Physical junction; separate solver nodes retained":id);
-            text(out,x+(station?-direction*4:0),y+15,junction?"Junction":id,12,color,station?(direction>0?"end":"start"):"middle");
+            if(!junction)text(out,x+(station?-direction*4:0),y+15,id,12,color,station?(direction>0?"end":"start"):"middle");
         }
     }
     private static String metreLabel(double m) {
@@ -231,6 +253,7 @@ public final class RouteSchematic {
     private static final class Layout {
         final Map<String,String> parent=new LinkedHashMap<>();
         final Set<String> connectors=new HashSet<>();
+        final Set<String> junctionNodeIds=new HashSet<>();
         Layout(Map<String,CalculationNode> nodes,List<CalculationBranch> branches,Set<String> selected,
                Map<String,Double> ohmPerM,Context context) {
             for(var node:nodes.values()) parent.put(RouteSchematic.place(node),RouteSchematic.place(node));
@@ -239,7 +262,7 @@ public final class RouteSchematic {
                 if (b.schematicConnector()) {
                     String a=place(nodes.get(b.fromNodeId())),z=place(nodes.get(b.toNodeId()));
                     if(!a.equals(z)) parent.put(z,a);
-                    connectors.add(b.id());
+                    connectors.add(b.id());junctionNodeIds.add(b.fromNodeId());junctionNodeIds.add(b.toNodeId());
                     continue;
                 }
                 Double r=ohmPerM.get(b.sourceId());
@@ -259,7 +282,7 @@ public final class RouteSchematic {
                 if(!explicit && !gridSectionJoin) continue;
                 String a=place(nodes.get(b.fromNodeId())),z=place(nodes.get(b.toNodeId()));
                 if(!a.equals(z)) parent.put(z,a);
-                connectors.add(b.id());
+                connectors.add(b.id());junctionNodeIds.add(b.fromNodeId());junctionNodeIds.add(b.toNodeId());
             }
         }
         String place(CalculationNode node) {
@@ -268,6 +291,7 @@ public final class RouteSchematic {
             return key;
         }
         boolean isJunction(CalculationNode node) {
+            if(junctionNodeIds.contains(node.id()))return true;
             String root=place(node);int count=0;
             for(String key:parent.keySet()) {
                 String p=key;while(!parent.get(p).equals(p)) p=parent.get(p);
