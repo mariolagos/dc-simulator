@@ -328,6 +328,49 @@ public final class RunCsvFromExcelTest {
         );
     }
 
+    @Test
+    public void anchorsAbsoluteBaTimesIndependentlyForRepeatedTrainsAndTemplates() throws Exception {
+        Path dir = Files.createTempDirectory("run-ba-origin");
+        Path a = dir.resolve("a.xlsx"), b = dir.resolve("b.xlsx"), c = dir.resolve("c.xlsx");
+        writeWorkbookWithTimetableDeparture(a, 8 * 3600 + 510, 10);
+        writeWorkbookWithTimetableDeparture(b, 8 * 3600 + 525, 10);
+        writeWorkbookWithTimetableDeparture(c, 6 * 3600 + 398, 10);
+        Path csv = dir.resolve("run.csv");
+        RunCsvFromExcel.writeRunCsv(List.of(a,b,a,b,c),
+                List.of("+0sek","+0sek","+0sek","+0sek","+0sek"),
+                List.of("T1","T1","T2","T2","T3"),
+                List.of("","","","",""), List.of("","","","",""),
+                List.of("R","R","R","R","R"), csv,
+                List.of(18000,18000,18300,18300,18000),
+                java.util.Arrays.asList(null,null,null,null,null), 18000,19000,0);
+        List<String> rows = Files.readAllLines(csv);
+        assertEquals(List.of(18000.0,18010.0,18015.0,18025.0), timesFor(rows,"T1"));
+        assertEquals(List.of(18300.0,18310.0,18315.0,18325.0), timesFor(rows,"T2"));
+        assertEquals(List.of(18000.0,18010.0), timesFor(rows,"T3"));
+    }
+
+    @Test
+    public void establishesOriginBeforeWindowAndKeepsExplicitOverridesRelative() throws Exception {
+        Path dir = Files.createTempDirectory("run-ba-window");
+        Path a = dir.resolve("a.xlsx"), b = dir.resolve("b.xlsx"), c = dir.resolve("c.xlsx");
+        writeWorkbookWithTimetableDeparture(a, 28800, 10);
+        writeWorkbookWithTimetableDeparture(b, 28815, 10);
+        writeWorkbookWithTimetableDeparture(c, 28840, 10);
+        Path csv = dir.resolve("run.csv");
+        RunCsvFromExcel.writeRunCsv(List.of(a,b,c), List.of("+0sek","+0sek","+0sek"),
+                List.of("T1","T1","T1"), List.of("","",""), List.of("","",""),
+                List.of("R","R","R"), csv, List.of(18000,18000,18000),
+                java.util.Arrays.asList(2,20,null),18015,18100,0);
+        List<Double> times = timesFor(Files.readAllLines(csv), "T1");
+        // The clipped station dwell at window start must also remain in the export.
+        assertEquals(List.of(18015.0,18020.0,18030.0,18040.0,18050.0), times);
+    }
+
+    private static List<Double> timesFor(List<String> rows, String trainId) {
+        return rows.stream().skip(1).filter(row -> row.split(",",-1)[1].equals(trainId))
+                .map(RunCsvFromExcelTest::time).toList();
+    }
+
     private static void writeWorkbookWithTimes(
             Path path,
             double firstTimeS,

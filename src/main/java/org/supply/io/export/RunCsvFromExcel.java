@@ -832,6 +832,7 @@ public final class RunCsvFromExcel implements RunDataReader {
 
         List<Map<String, String>> allRows = new ArrayList<>();
         Map<String, LegEndState> previousLegEnds = new HashMap<>();
+        Map<String, Double> excelTimeOrigins = new HashMap<>();
 
         for (int i = 0; i < sources.size(); i++) {
             RunSource source = sources.get(i);
@@ -872,12 +873,17 @@ public final class RunCsvFromExcel implements RunDataReader {
             double runExcelStartS = points.get(0).timeS();
             Integer configuredRelativeDepartureS =
                     relativeLegDepartureTimes.get(i);
-            double relativeDepartureS =
-                    configuredRelativeDepartureS != null
-                            ? configuredRelativeDepartureS
-                            : readResult.relativeDepartureS() != null
-                            ? readResult.relativeDepartureS()
-                            : runExcelStartS;
+            double sourceDepartureS = readResult.relativeDepartureS() != null
+                    ? readResult.relativeDepartureS() : runExcelStartS;
+            double sourceOffsetS = sourceDepartureS;
+            if (source.type() == RunSourceType.EXCEL) {
+                // Each expanded train has its own BA origin, established before clipping
+                // and even when its first leg has an explicit departure override.
+                double originS = excelTimeOrigins.computeIfAbsent(trainId, ignored -> sourceDepartureS);
+                sourceOffsetS = sourceDepartureS - originS;
+            }
+            double relativeDepartureS = configuredRelativeDepartureS != null
+                    ? configuredRelativeDepartureS : sourceOffsetS;
             double absoluteLegStartS =
                     departureTimes.get(i) + relativeDepartureS;
 
