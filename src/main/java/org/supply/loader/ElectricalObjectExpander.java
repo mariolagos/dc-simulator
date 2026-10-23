@@ -93,6 +93,10 @@ public final class ElectricalObjectExpander {
                     addresses.put(name+".R",reversed?List.of(name+".D",name+".B",name+".S",name+".N"):List.of(name+".B",name+".D",name+".N",name+".S"));
                     if(spec.containsKey("switchgear")) {
                         var names=SwitchGearCompiler.terminalIds(map(spec.get("switchgear"),"switchgear"));
+                        if(!SwitchGearCompiler.hasFeedingGap(map(spec.get("switchgear"),"switchgear"))) {
+                            // Continuous contact rail: a single electrical node per track, no artificial resistor.
+                            union(parent,name+".A",name+".B");union(parent,name+".C",name+".D");
+                        }
                         for(int i=0;i<LEGACY_TERMINALS.size();i++) {
                             String alias=name+"."+names.get(LEGACY_TERMINALS.get(i));
                             String port=name+"."+STATION_TERMINALS.get(i);

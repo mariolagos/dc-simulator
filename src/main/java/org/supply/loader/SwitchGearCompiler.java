@@ -3,7 +3,7 @@ package org.supply.loader;
 import org.supply.domain.*;
 import java.util.*;
 
-/** Compiler for the first, double-track gap layout; wiring itself has no terminal-count limit. */
+/** Compiles double-track layouts with or without a feeding gap. */
 public final class SwitchGearCompiler {
     private static final List<String> ROLES = List.of("NORTH_POWER_LEFT", "NORTH_POWER_RIGHT",
             "SOUTH_POWER_LEFT", "SOUTH_POWER_RIGHT", "NORTH_RETURN", "SOUTH_RETURN");
@@ -11,10 +11,16 @@ public final class SwitchGearCompiler {
     public record Result(WiredSwitchGear gear, Map<String, String> additionalNodePositions) { }
     private SwitchGearCompiler() { }
 
+    public static boolean hasFeedingGap(Map<String, Object> spec) {
+        String model = text(spec, "model");
+        if (!Set.of("DOUBLE_TRACK_GAP", "DOUBLE_TRACK_NO_GAP").contains(model))
+            throw bad("Unsupported switchgear model: " + model);
+        return model.equals("DOUBLE_TRACK_GAP");
+    }
+
     public static Map<String, String> terminalIds(Map<String, Object> spec) {
         fields(spec, Set.of("model", "terminal_ids", "busbars", "connections"), "switchgear");
-        if (!"DOUBLE_TRACK_GAP".equals(text(spec, "model")))
-            throw bad("First switchgear layout requires model = DOUBLE_TRACK_GAP");
+        hasFeedingGap(spec);
         Map<String, Object> overrides = spec.containsKey("terminal_ids") ? map(spec.get("terminal_ids")) : Map.of();
         if (!ROLES.containsAll(overrides.keySet())) throw bad("Unknown standard terminal role");
         Map<String, String> result = new LinkedHashMap<>();
@@ -33,6 +39,12 @@ public final class SwitchGearCompiler {
                                  Map<String, Object> conductorTypes, Map<String, String> externalNodes,
                                  String busPosition) {
         var ids = terminalIds(spec);
+        boolean gap = hasFeedingGap(spec);
+        for (String side : List.of("NORTH", "SOUTH")) {
+            String left = externalNodes.get(side + "_POWER_LEFT"), right = externalNodes.get(side + "_POWER_RIGHT");
+            if (left == null || right == null || left.equals(right) == gap)
+                throw bad("Inconsistent feeding nodes for " + installationId + ": " + side + " requires " + (gap ? "separate nodes" : "one shared node"));
+        }
         List<SwitchGearTerminal> terminals = new ArrayList<>();
         Set<String> used = new HashSet<>(ids.values());
         for (String role : ROLES) {
@@ -81,6 +93,11 @@ public final class SwitchGearCompiler {
         // Every declared terminal/bus must have a cable path to the appropriate rectifier pole.
         Map<String, Set<String>> graph = new HashMap<>();
         terminals.forEach(t -> graph.put(t.id(), new HashSet<>()));
+        Map<String, String> firstTerminalByNode = new HashMap<>();
+        for (var terminal : terminals) {
+            String first = firstTerminalByNode.putIfAbsent(terminal.nodeId(), terminal.id());
+            if (first != null) { graph.get(first).add(terminal.id()); graph.get(terminal.id()).add(first); }
+        }
         cables.forEach(c -> { graph.get(c.fromTerminalId()).add(c.toTerminalId()); graph.get(c.toTerminalId()).add(c.fromTerminalId()); });
         for (ConnectionType type : ConnectionType.values()) {
             Set<String> seen = new HashSet<>();

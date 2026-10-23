@@ -41,9 +41,15 @@ public final class SwitchGearFactory {
         Map<String, SwitchGearTerminal> byNode = new HashMap<>();
         Map<String, Set<String>> graph = new HashMap<>();
         for (var terminal : gear.terminals()) {
-            if (byNode.putIfAbsent(terminal.nodeId(), terminal) != null)
-                throw new IllegalArgumentException("Switchgear terminals require distinct nodes: " + terminal.nodeId());
+            byNode.putIfAbsent(terminal.nodeId(), terminal);
             graph.put(terminal.id(), new HashSet<>());
+        }
+        // Different terminal labels may identify the same continuous rail node.
+        for (var terminal : gear.terminals()) {
+            var first = byNode.get(terminal.nodeId());
+            if (!first.id().equals(terminal.id())) {
+                graph.get(first.id()).add(terminal.id());graph.get(terminal.id()).add(first.id());
+            }
         }
         for (var cable : gear.cables()) {
             graph.get(cable.fromTerminalId()).add(cable.toTerminalId());

@@ -50,18 +50,20 @@ public final class SwitchGearConnectionReport {
                         .append(" | ").append(model.getNode(terminal.nodeId()).getPositionRwy()).append(" | ")
                         .append(lines.isEmpty() ? "(none)" : String.join(", ", lines)).append('\n');
             }
-            text.append("\nFEEDING GAPS\n");
+            boolean gap = SwitchGearCompiler.hasFeedingGap(spec.getConfig("switchgear").root().unwrapped());
+            text.append(gap ? "\nFEEDING GAPS\n" : "\nCONTINUOUS FEEDING (NO GAP)\n");
             for (String pair : List.of("NORTH", "SOUTH")) {
                 var left = terminals.get(names.get(pair + "_POWER_LEFT"));
                 var right = terminals.get(names.get(pair + "_POWER_RIGHT"));
                 var coordinate = RwyCoordinateParser.parse(model.getNode(left.nodeId()).getPositionRwy());
                 text.append("Track ").append(coordinate.getTrackId()).append(": ").append(left.id()).append(" [")
-                        .append(left.nodeId()).append("] | GAP | ").append(right.id()).append(" [").append(right.nodeId())
+                        .append(left.nodeId()).append(gap ? "] | GAP | " : "] | CONTINUOUS | ").append(right.id()).append(" [").append(right.nodeId())
                         .append("]; distinct_nodes=").append(!left.nodeId().equals(right.nodeId()))
                         .append("; same_railway_position=").append(model.getNode(left.nodeId()).getPositionRwy()
                                 .equals(model.getNode(right.nodeId()).getPositionRwy())).append('\n');
             }
-            text.append("Gap terminals are separate nodes. Electrical paths through the declared cables and busbars remain present.\n")
+            text.append(gap ? "Gap terminals are separate nodes. Electrical paths through the declared cables and busbars remain present.\n"
+                            : "Left and right feeding terminals share one electrical node on each track. N and S remain separate rail nodes. No bypass resistor is added.\n")
                     .append("Bus node railway positions are drawing/localization anchors, not cable lengths.\n")
                     .append("\nINTERNAL CABLES\n");
             for (var cable : cables) text.append(cable.id()).append(": ").append(cable.fromTerminalId()).append(" -> ")
