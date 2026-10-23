@@ -32,6 +32,7 @@ public final class ElectricalObjectExpander {
 
     /** Description inspection permits declared but unconnected lines. */
     public static Inspection inspect(Map<String,Object> input) {
+        input=SwitchGearTypeExpander.expand(ConfigFactory.parseMap(input)).root().unwrapped();
         for(String key:List.of("nodes","lines","power_installations","installation_connections","points","links","switchgears"))
             if(input.containsKey(key)) throw new IllegalArgumentException("electricalObjects cannot be mixed with "+key);
         var objects=map(input.get("electricalObjects"),"electricalObjects");
@@ -177,7 +178,7 @@ public final class ElectricalObjectExpander {
         output.put("nodes",nodes);output.put("lines",lines);output.put("power_installations",stations);output.put("installation_connections",connections);
         if(!switchgears.isEmpty()) output.put("switchgears",switchgears);
         if(reference!=null) output.put("reference_node_id",reference);
-        for(String key:List.of("electricalObjects","electricalAssociations","substationTypes","lineTypes","conductorTypes")) output.remove(key);
+        for(String key:List.of("electricalObjects","electricalAssociations","substationTypes","lineTypes","conductorTypes","switchgearTypes")) output.remove(key);
         List<Island> islands=new ArrayList<>();Set<String> seen=new HashSet<>();
         for(String start:graph.keySet()) if(seen.add(start)) {
             Set<String> component=new TreeSet<>(),objectNames=new TreeSet<>();Deque<String> queue=new ArrayDeque<>();queue.add(start);

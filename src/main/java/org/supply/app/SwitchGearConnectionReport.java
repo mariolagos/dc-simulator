@@ -12,6 +12,7 @@ public final class SwitchGearConnectionReport {
     private SwitchGearConnectionReport() { }
 
     public static Map<String, String> render(GridModel model, Config objectGrid) {
+        objectGrid = org.supply.loader.SwitchGearTypeExpander.expand(objectGrid);
         Map<String, String> reports = new TreeMap<>();
         for (var gear : model.getSwitchGears()) {
             String id = gear.installationId();
