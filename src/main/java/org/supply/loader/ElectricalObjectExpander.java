@@ -55,7 +55,7 @@ public final class ElectricalObjectExpander {
             Set<String> allowed=new HashSet<>(List.of("kind","id","type"));
             if(kind.equals("LINE")) allowed.addAll(List.of("conductors","feeding_resistance_ohm_per_m","return_resistance_ohm_per_m"));
             else allowed.add("positions");
-            if(kind.equals("SUBSTATION")) allowed.addAll(List.of("terminal_model","emf_V","internal_resistance_ohm","rectifier_type","enabled","switchgear","orientation"));
+            if(kind.equals("SUBSTATION")) allowed.addAll(List.of("terminal_model","emf_V","internal_resistance_ohm","rectifier_type","enabled","switchgear","orientation","branch_positions"));
             for(String field:spec.keySet()) if(!allowed.contains(field)) throw new IllegalArgumentException("Unknown field "+field+" for "+name);
             String id=spec.containsKey("id")?string(spec,"id"):name;identifier(id,"id");
             if(!ids.add(id)) throw new IllegalArgumentException("Duplicate object id: "+id);
@@ -83,26 +83,32 @@ public final class ElectricalObjectExpander {
                     positive(spec,"emf_V");positive(spec,"internal_resistance_ohm");
                     if(!Set.of("DIODE","THYRISTOR").contains(string(spec,"rectifier_type"))) throw new IllegalArgumentException("Unknown rectifier_type for "+name);
                     if(spec.containsKey("enabled")&&!(spec.get("enabled") instanceof Boolean)) throw new IllegalArgumentException("enabled must be boolean: "+name);
-                    for(String terminal:STATION_TERMINALS) {String key=name+"."+terminal;String track=Set.of("A","B","N").contains(terminal)?"N":"S";
-                        String orientation=spec.containsKey("orientation")?string(spec,"orientation"):"NORMAL";
-                        if(!Set.of("NORMAL","REVERSED").contains(orientation)) throw new IllegalArgumentException("Unknown orientation: "+orientation);
-                        if(orientation.equals("REVERSED")) track=track.equals("N")?"S":"N";
-                        addPort(ports,parent,addresses,new Port(key,Set.of("N","S").contains(terminal)?"R":"F",string(positions,track),name,kind));}
-                    boolean reversed="REVERSED".equals(spec.get("orientation"));
-                    addresses.put(name+".L",reversed?List.of(name+".C",name+".A",name+".S",name+".N"):List.of(name+".A",name+".C",name+".N",name+".S"));
-                    addresses.put(name+".R",reversed?List.of(name+".D",name+".B",name+".S",name+".N"):List.of(name+".B",name+".D",name+".N",name+".S"));
-                    if(spec.containsKey("switchgear")) {
-                        var names=SwitchGearCompiler.terminalIds(map(spec.get("switchgear"),"switchgear"));
-                        if(!SwitchGearCompiler.hasFeedingGap(map(spec.get("switchgear"),"switchgear"))) {
-                            // Continuous contact rail: a single electrical node per track, no artificial resistor.
-                            union(parent,name+".A",name+".B");union(parent,name+".C",name+".D");
-                        }
-                        for(int i=0;i<LEGACY_TERMINALS.size();i++) {
-                            String alias=name+"."+names.get(LEGACY_TERMINALS.get(i));
-                            String port=name+"."+STATION_TERMINALS.get(i);
-                            if(addresses.containsKey(alias)&&!addresses.get(alias).equals(List.of(port)))
-                                throw new IllegalArgumentException("Terminal alias collides with existing address: "+alias);
-                            addresses.put(alias,List.of(port));
+                    boolean branchGear=spec.containsKey("switchgear")&&SwitchGearCompiler.isBranch(map(spec.get("switchgear"),"switchgear"));
+                    if(branchGear!=spec.containsKey("branch_positions")) throw new IllegalArgumentException("BRANCH_GAP requires branch_positions: "+name);
+                    if(branchGear) {
+                        branchPorts(name,spec,ports,parent,addresses);
+                    } else {
+                        for(String terminal:STATION_TERMINALS) {String key=name+"."+terminal;String track=Set.of("A","B","N").contains(terminal)?"N":"S";
+                            String orientation=spec.containsKey("orientation")?string(spec,"orientation"):"NORMAL";
+                            if(!Set.of("NORMAL","REVERSED").contains(orientation)) throw new IllegalArgumentException("Unknown orientation: "+orientation);
+                            if(orientation.equals("REVERSED")) track=track.equals("N")?"S":"N";
+                            addPort(ports,parent,addresses,new Port(key,Set.of("N","S").contains(terminal)?"R":"F",string(positions,track),name,kind));}
+                        boolean reversed="REVERSED".equals(spec.get("orientation"));
+                        addresses.put(name+".L",reversed?List.of(name+".C",name+".A",name+".S",name+".N"):List.of(name+".A",name+".C",name+".N",name+".S"));
+                        addresses.put(name+".R",reversed?List.of(name+".D",name+".B",name+".S",name+".N"):List.of(name+".B",name+".D",name+".N",name+".S"));
+                        if(spec.containsKey("switchgear")) {
+                            var names=SwitchGearCompiler.terminalIds(map(spec.get("switchgear"),"switchgear"));
+                            if(!SwitchGearCompiler.hasFeedingGap(map(spec.get("switchgear"),"switchgear"))) {
+                                // Continuous contact rail: a single electrical node per track, no artificial resistor.
+                                union(parent,name+".A",name+".B");union(parent,name+".C",name+".D");
+                            }
+                            for(int i=0;i<LEGACY_TERMINALS.size();i++) {
+                                String alias=name+"."+names.get(LEGACY_TERMINALS.get(i));
+                                String port=name+"."+STATION_TERMINALS.get(i);
+                                if(addresses.containsKey(alias)&&!addresses.get(alias).equals(List.of(port)))
+                                    throw new IllegalArgumentException("Terminal alias collides with existing address: "+alias);
+                                addresses.put(alias,List.of(port));
+                            }
                         }
                     }
                 }
@@ -145,7 +151,10 @@ public final class ElectricalObjectExpander {
                 }
             } else if(kind.equals("SUBSTATION")&&spec.containsKey("switchgear")) {
                 Map<String,String> external=new LinkedHashMap<>();
-                for(int i=0;i<LEGACY_TERMINALS.size();i++) external.put(LEGACY_TERMINALS.get(i),nodeForPort.get(name+"."+STATION_TERMINALS.get(i)));
+                if(SwitchGearCompiler.isBranch(map(spec.get("switchgear"),"switchgear"))) {
+                    for(String role:SwitchGearCompiler.terminalIds(map(spec.get("switchgear"),"switchgear")).keySet())
+                        external.put(role,nodeForPort.get(name+"."+role));
+                } else for(int i=0;i<LEGACY_TERMINALS.size();i++) external.put(LEGACY_TERMINALS.get(i),nodeForPort.get(name+"."+STATION_TERMINALS.get(i)));
                 var compiled=SwitchGearCompiler.compile(id,map(spec.get("switchgear"),"switchgear"),
                         optionalMap(input,"conductorTypes"),external,string(map(spec.get("positions"),"positions"),"N"));
                 for(var node:compiled.additionalNodePositions().entrySet()) {
@@ -192,6 +201,38 @@ public final class ElectricalObjectExpander {
         }
         return new Inspection(Collections.unmodifiableMap(output),List.copyOf(new TreeSet<>(incomplete)),List.copyOf(islands));
     }
+    private static void branchPorts(String name,Map<String,Object> spec,Map<String,Port> ports,
+                                    Map<String,String> parent,Map<String,List<String>> addresses) {
+        if(spec.containsKey("orientation")&&!"NORMAL".equals(spec.get("orientation")))
+            throw new IllegalArgumentException("BRANCH_GAP uses explicit terminal mapping, not reversed orientation: "+name);
+        var gear=map(spec.get("switchgear"),"switchgear");
+        var ids=SwitchGearCompiler.terminalIds(gear);
+        var positions=map(spec.get("branch_positions"),"branch_positions");
+        if(!positions.keySet().equals(map(gear.get("branch_terminals"),"branch_terminals").keySet()))
+            throw new IllegalArgumentException("branch_positions must match branch_terminals: "+name);
+        for(String section:new TreeSet<>(positions.keySet())) {
+            var pair=map(positions.get(section),"branch position");
+            if(!pair.keySet().equals(Set.of("N","S"))) throw new IllegalArgumentException("Branch positions require N and S: "+name);
+            List<String> group=new ArrayList<>();
+            for(String role:ROLES) {
+                String track=role.substring(0,1),position=string(pair,track);
+                var c=RwyCoordinateParser.parse(position);
+                if(!section.equals(c.getSectionId())||!track.equals(c.getTrackId()))
+                    throw new IllegalArgumentException("Branch position section/track mismatch: "+name+"."+section+"."+track);
+                String key=name+"."+section+"."+role;
+                addPort(ports,parent,addresses,new Port(key,role.endsWith("F")?"F":"R",position,name,"SUBSTATION"));
+                group.add(key);
+            }
+            addresses.put(name+"."+section,List.copyOf(group));
+        }
+        for(var entry:ids.entrySet()) {
+            String alias=name+"."+entry.getValue(),key=name+"."+entry.getKey();
+            if(addresses.containsKey(alias)&&!addresses.get(alias).equals(List.of(key)))
+                throw new IllegalArgumentException("Branch terminal alias collides: "+alias);
+            addresses.put(alias,List.of(key));
+        }
+    }
+
     private static void addPort(Map<String,Port> ports,Map<String,String> parent,Map<String,List<String>> addresses,Port p) {ports.put(p.key(),p);parent.put(p.key(),p.key());addresses.put(p.key(),List.of(p.key()));}
     private static String root(Map<String,String> parent,String key) {String p=parent.get(key);while(!p.equals(parent.get(p))) p=parent.get(p);return p;}
     private static void union(Map<String,String> parent,String a,String b) {String x=root(parent,a),y=root(parent,b);if(!x.equals(y)) parent.put(x.compareTo(y)<0?y:x,x.compareTo(y)<0?x:y);}

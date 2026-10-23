@@ -41,7 +41,8 @@ public final class BranchRouteGenerator {
             }
             Map<String,Object> result = new LinkedHashMap<>();
             for (String kind : List.of("F","R")) {
-                Map<String,List<Edge>> junctions = junctionGraph(model,internal,track,kind);
+                Map<String,List<Edge>> junctions = junctionGraph(model,internal,track,kind,true);
+                Map<String,List<Edge>> physicalJunctions = junctionGraph(model,internal,track,kind,false);
                 List<String> selected = new ArrayList<>(); String previousEnd = null;
                 for (Step step : steps) {
                     for (int j = 0; j < step.lineCount(); j++) {
@@ -49,9 +50,9 @@ public final class BranchRouteGenerator {
                         String id = "B__" + step.branch() + "__" + i + "." + track + "." + kind;
                         Line line = lines.get(id);
                         if (line == null) throw bad("Missing generated line for route " + route + ": " + id);
-                        String start = internal.root(step.reverse() ? line.getToNode().getNodeId() : line.getFromNode().getNodeId());
-                        String end = internal.root(step.reverse() ? line.getFromNode().getNodeId() : line.getToNode().getNodeId());
-                        if (previousEnd != null) selected.addAll(connect(route,previousEnd,start,junctions));
+                        String start = step.reverse() ? line.getToNode().getNodeId() : line.getFromNode().getNodeId();
+                        String end = step.reverse() ? line.getFromNode().getNodeId() : line.getToNode().getNodeId();
+                        if (previousEnd != null) selected.addAll(connectWithPhysicalJunction(route,previousEnd,start,physicalJunctions,junctions,internal));
                         selected.add(id); previousEnd = end;
                     }
                 }
@@ -63,17 +64,30 @@ public final class BranchRouteGenerator {
         return Collections.unmodifiableMap(routes);
     }
 
-    private static Map<String,List<Edge>> junctionGraph(GridModel model, Components internal, String track, String kind) {
+    private static Map<String,List<Edge>> junctionGraph(GridModel model, Components internal, String track, String kind, boolean collapse) {
         Map<String,List<Edge>> graph = new TreeMap<>();
         model.getLines().stream().sorted(Comparator.comparing(Line::getLineId))
                 .filter(l -> l.getLineId().startsWith("J__") && l.getLineId().endsWith("."+track+"."+kind))
                 .forEach(l -> {
-                    String a=internal.root(l.getFromNode().getNodeId()), b=internal.root(l.getToNode().getNodeId());
+                    String a=l.getFromNode().getNodeId(), b=l.getToNode().getNodeId();
+                    if(collapse) { a=internal.root(a);b=internal.root(b); }
                     graph.computeIfAbsent(a,k->new ArrayList<>()).add(new Edge(b,l.getLineId()));
                     graph.computeIfAbsent(b,k->new ArrayList<>()).add(new Edge(a,l.getLineId()));
                 });
         return graph;
     }
+    private static List<String> connectWithPhysicalJunction(String route, String from, String to,
+                                                            Map<String,List<Edge>> physical, Map<String,List<Edge>> collapsed, Components internal) {
+        if (from.equals(to)) return List.of();
+        // Retain the actual rail-junction traversal even when station return cables
+        // also connect its endpoints through the common return busbar.
+        List<List<String>> paths = new ArrayList<>();
+        search(from,to,physical,new HashSet<>(),new ArrayList<>(),paths);
+        if (paths.size()>1) throw bad("Route " + route + ": ambiguous physical junction connection");
+        if (paths.size()==1) return paths.get(0);
+        return connect(route,internal.root(from),internal.root(to),collapsed);
+    }
+
     private static List<String> connect(String route, String from, String to, Map<String,List<Edge>> graph) {
         if (from.equals(to)) return List.of();
         List<List<String>> paths = new ArrayList<>();

@@ -258,11 +258,14 @@ public final class RouteSchematic {
                Map<String,Double> ohmPerM,Context context) {
             for(var node:nodes.values()) parent.put(RouteSchematic.place(node),RouteSchematic.place(node));
             for(var b:branches) {
-                if(!selected.contains(b.sourceId())) continue;
+                // A station at a junction can have terminals on an unselected third leg.
+                // Collapse all declared physical connector positions for layout, while
+                // retaining selected-only connector counts and unchanged solver nodes.
+                boolean visibleConnector = selected.contains(b.sourceId());
                 if (b.schematicConnector()) {
                     String a=place(nodes.get(b.fromNodeId())),z=place(nodes.get(b.toNodeId()));
                     if(!a.equals(z)) parent.put(z,a);
-                    connectors.add(b.id());junctionNodeIds.add(b.fromNodeId());junctionNodeIds.add(b.toNodeId());
+                    if(visibleConnector) connectors.add(b.id());junctionNodeIds.add(b.fromNodeId());junctionNodeIds.add(b.toNodeId());
                     continue;
                 }
                 Double r=ohmPerM.get(b.sourceId());
@@ -282,7 +285,7 @@ public final class RouteSchematic {
                 if(!explicit && !gridSectionJoin) continue;
                 String a=place(nodes.get(b.fromNodeId())),z=place(nodes.get(b.toNodeId()));
                 if(!a.equals(z)) parent.put(z,a);
-                connectors.add(b.id());junctionNodeIds.add(b.fromNodeId());junctionNodeIds.add(b.toNodeId());
+                if(visibleConnector) connectors.add(b.id());junctionNodeIds.add(b.fromNodeId());junctionNodeIds.add(b.toNodeId());
             }
         }
         String place(CalculationNode node) {

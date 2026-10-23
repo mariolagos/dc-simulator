@@ -51,8 +51,15 @@ public final class SwitchGearConnectionReport {
                         .append(lines.isEmpty() ? "(none)" : String.join(", ", lines)).append('\n');
             }
             boolean gap = SwitchGearCompiler.hasFeedingGap(spec.getConfig("switchgear").root().unwrapped());
-            text.append(gap ? "\nFEEDING GAPS\n" : "\nCONTINUOUS FEEDING (NO GAP)\n");
-            for (String pair : List.of("NORTH", "SOUTH")) {
+            boolean branch = SwitchGearCompiler.isBranch(spec.getConfig("switchgear").root().unwrapped());
+            text.append(branch ? "\nBRANCH FEEDING GAPS\n" : gap ? "\nFEEDING GAPS\n" : "\nCONTINUOUS FEEDING (NO GAP)\n");
+            if (branch) {
+                for (var entry : names.entrySet()) if (SwitchGearCompiler.connectionType(entry.getKey()) == ConnectionType.FEEDING) {
+                    var terminal = terminals.get(entry.getValue());
+                    text.append(entry.getKey()).append(" | terminal ").append(terminal.id()).append(" | node ").append(terminal.nodeId())
+                            .append(" | ").append(model.getNode(terminal.nodeId()).getPositionRwy()).append('\n');
+                }
+            } else for (String pair : List.of("NORTH", "SOUTH")) {
                 var left = terminals.get(names.get(pair + "_POWER_LEFT"));
                 var right = terminals.get(names.get(pair + "_POWER_RIGHT"));
                 var coordinate = RwyCoordinateParser.parse(model.getNode(left.nodeId()).getPositionRwy());
@@ -62,7 +69,8 @@ public final class SwitchGearConnectionReport {
                         .append("; same_railway_position=").append(model.getNode(left.nodeId()).getPositionRwy()
                                 .equals(model.getNode(right.nodeId()).getPositionRwy())).append('\n');
             }
-            text.append(gap ? "Gap terminals are separate nodes. Electrical paths through the declared cables and busbars remain present.\n"
+            text.append(branch ? "Branch feeding ports are separate nodes; inter-branch feeding uses only the declared station cables. Return junction links, if present, are listed with the external terminal references.\n"
+                            : gap ? "Gap terminals are separate nodes. Electrical paths through the declared cables and busbars remain present.\n"
                             : "Left and right feeding terminals share one electrical node on each track. N and S remain separate rail nodes. No bypass resistor is added.\n")
                     .append("Bus node railway positions are drawing/localization anchors, not cable lengths.\n")
                     .append("\nINTERNAL CABLES\n");

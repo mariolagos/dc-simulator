@@ -20,6 +20,7 @@ public final class BranchGridGenerator {
         Map<String, Object> source = input.getConfig("electricalObjects").root().unwrapped();
         Map<String, Object> objects = new LinkedHashMap<>();
         Map<String, Map<String, String>> addresses = new TreeMap<>();
+        Map<String, String> stationAtJunction = new TreeMap<>();
         List<Map<String, Object>> associations = new ArrayList<>();
         Set<String> used = new HashSet<>();
         for (String name : new TreeSet<>(source.keySet())) {
@@ -45,6 +46,24 @@ public final class BranchGridGenerator {
                 if (object.containsKey("id")) throw bad("Use the object name instead of id in branch input: " + name);
                 objects.put(name, new LinkedHashMap<>(object));
             } else throw bad("Branch input supports POINT, SUBSTATION and JUNCTION: " + name);
+        }
+        for (var entry : source.entrySet()) {
+            var station = map(entry.getValue(), entry.getKey());
+            if (!station.containsKey("junction")) continue;
+            String name = entry.getKey(), junction = text(station.get("junction"), name + ".junction");
+            if (!"SUBSTATION".equals(station.get("kind")) || !addresses.containsKey(junction))
+                throw bad("junction requires a SUBSTATION and a known positioned JUNCTION: " + name);
+            var gear = map(station.get("switchgear"), name + ".switchgear");
+            if (!SwitchGearCompiler.isBranch(gear)) throw bad("Junction station requires BRANCH_GAP: " + name);
+            if (station.containsKey("orientation") && !"NORMAL".equals(station.get("orientation")))
+                throw bad("Junction station uses explicit branch terminal mapping, not reversed orientation: " + name);
+            if (stationAtJunction.putIfAbsent(junction,name) != null) throw bad("Only one station per junction is supported: " + junction);
+            var spec = map(objects.get(name), name);
+            var positions = map(map(source.get(junction),junction).get("positions"),junction + ".positions");
+            spec.remove("junction");spec.put("branch_positions",positions);objects.put(name,spec);
+            if (!positions.keySet().equals(map(gear.get("branch_terminals"),"branch_terminals").keySet()))
+                throw bad("Junction positions and branch_terminals must have identical section groups: " + name);
+            for (String section : positions.keySet()) associations.add(link(name + "." + section,addresses.get(junction).get(section)));
         }
         Map<String, Boolean> orientations = new HashMap<>();
         Set<String> lineIds = new HashSet<>();
@@ -98,6 +117,7 @@ public final class BranchGridGenerator {
                         throw bad("Conflicting station orientation: " + name);
                     stationSpec.put("orientation", "REVERSED"); objects.put(name, stationSpec);
                 }
+                if (originalHasJunction(source,name)) throw bad("Use junction " + map(source.get(name),name).get("junction") + " in the branch chain, not its attached station " + name);
                 used.add(name);
                 Map<String, Object> original = map(source.get(name), name);
                 String resolved = name;
@@ -106,10 +126,14 @@ public final class BranchGridGenerator {
                     if (section == null) throw bad("Branch " + branch + " must specify section when using junction " + name);
                     resolved = addresses.get(name).get(section);
                     if (resolved == null) throw bad("Junction " + name + " has no position for section " + section);
-                    usedJunctionSections.computeIfAbsent(name, k -> new HashSet<>()).add(section);
+                    boolean firstSectionUse = usedJunctionSections.computeIfAbsent(name, k -> new HashSet<>()).add(section);
+                    if (!firstSectionUse && stationAtJunction.containsKey(name))
+                        throw bad("Junction station requires one branch endpoint per section: " + name + "." + section);
                 } else validatePositions(map(original.get("positions"), name), section, name);
                 ends.add(new Endpoint(name, resolved, station, in, out));
             }
+            for (int i = 1; i + 1 < ends.size(); i++) if (stationAtJunction.containsKey(ends.get(i).name))
+                throw bad("Junction station must occur at a branch endpoint: " + ends.get(i).name);
             int junctionCount = (int) ends.stream().filter(e -> addresses.containsKey(e.name)).count();
             if (section != null) sectionJunctionCounts.merge(section, junctionCount, Math::max);
             for (int i = 0; i + 1 < ends.size(); i++) {
@@ -125,7 +149,10 @@ public final class BranchGridGenerator {
             String name = junction.getKey();
             if (!junction.getValue().keySet().equals(usedJunctionSections.getOrDefault(name, Set.of())))
                 throw bad("Every junction section must be used by a branch: " + name);
-            // Star links retain separate railway positions, as in existing section-transition lines.
+            boolean owned = stationAtJunction.containsKey(name);
+            if (owned) used.add(stationAtJunction.get(name));
+            // At a junction station, feeding ports connect ONLY through the station cables.
+            // Return rails retain the same positioned junction links as before.
             String hubSection = junction.getValue().keySet().stream().sorted(
                     Comparator.<String>comparingInt(s -> sectionJunctionCounts.getOrDefault(s, 0))
                             .reversed().thenComparing(Comparator.naturalOrder())).findFirst().orElseThrow();
@@ -134,11 +161,18 @@ public final class BranchGridGenerator {
             junction.getValue().forEach((section, point) -> { if (!section.equals(hubSection)) points.add(point); });
             for (int i = 1; i < points.size(); i++) {
                 String line = "J__" + name + "__" + i;
-                addLine(objects, source, lineIds, line, Map.of("kind", "LINE",
+                Map<String,Object> spec = new LinkedHashMap<>(Map.of("kind", "LINE",
                         "feeding_resistance_ohm_per_m", JUNCTION_RESISTANCE,
                         "return_resistance_ohm_per_m", JUNCTION_RESISTANCE));
-                associations.add(link(points.get(0), line + ".L"));
-                associations.add(link(line + ".R", points.get(i)));
+                if (owned) spec.put("conductors",List.of("N.R","S.R"));
+                addLine(objects, source, lineIds, line, spec);
+                if (owned) for (String role : List.of("N.R","S.R")) {
+                    associations.add(link(points.get(0) + "." + role,line + ".L." + role));
+                    associations.add(link(line + ".R." + role,points.get(i) + "." + role));
+                } else {
+                    associations.add(link(points.get(0), line + ".L"));
+                    associations.add(link(line + ".R", points.get(i)));
+                }
             }
         }
         Set<String> unused = new TreeSet<>(source.keySet());
@@ -158,6 +192,8 @@ public final class BranchGridGenerator {
         }
         return ConfigFactory.parseMap(result);
     }
+
+    private static boolean originalHasJunction(Map<String,Object> source,String name) { return map(source.get(name),name).containsKey("junction"); }
 
     private record Endpoint(String name, String resolved, boolean station, String in, String out) {
         String port(boolean incoming) { return resolved + (station ? "." + (incoming ? in : out) : ""); }
