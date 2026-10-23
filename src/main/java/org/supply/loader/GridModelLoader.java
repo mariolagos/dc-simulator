@@ -23,6 +23,7 @@ public class GridModelLoader {
         lineFactory.build(model, grid);
         installationFactory.build(model, grid);
         fixedLoadFactory.build(model, grid);
+        new SwitchGearFactory().build(model, grid);
 
         validator.validate(model);
 

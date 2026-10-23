@@ -121,6 +121,21 @@ public final class CalculationNetworkBuilder {
                 branches
         );
 
+        for (var gear : gridModel.getSwitchGears()) {
+            Map<String, String> terminalNodes = new HashMap<>();
+            for (var terminal : gear.terminals()) terminalNodes.put(terminal.id(), terminal.nodeId());
+            for (var cable : gear.cables()) {
+                branches.add(new CalculationBranch("internal_" + gear.installationId() + "_" + cable.id(),
+                        "internal_" + gear.installationId(), terminalNodes.get(cable.fromTerminalId()),
+                        terminalNodes.get(cable.toTerminalId()), Real.fromDouble(cable.resistanceOhm())));
+            }
+        }
+
+        Set<String> branchIds = new HashSet<>();
+        for (var branch : branches) {
+            if (!branchIds.add(branch.id())) throw new IllegalArgumentException("Duplicate calculation branch id: " + branch.id());
+        }
+
         List<ElectricalElement> elements = new ArrayList<>();
         elements.addAll(branches);
 

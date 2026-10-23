@@ -45,6 +45,7 @@ public final class BranchGridGenerator {
                 objects.put(name, new LinkedHashMap<>(object));
             } else throw bad("Branch input supports POINT, SUBSTATION and JUNCTION: " + name);
         }
+        Map<String, Boolean> orientations = new HashMap<>();
         Set<String> lineIds = new HashSet<>();
         Map<String, Set<String>> usedJunctionSections = new TreeMap<>();
         Map<String, Integer> sectionJunctionCounts = new TreeMap<>();
@@ -68,9 +69,10 @@ public final class BranchGridGenerator {
             if (!input.hasPath("lineTypes." + type)) throw bad("Unknown line type: " + type);
             List<Endpoint> ends = new ArrayList<>();
             for (Object entry : list) {
+                boolean reversed = entry instanceof String v && v.startsWith("-");
                 String name;
                 String in = "L", out = "R";
-                if (entry instanceof String string) name = string;
+                if (entry instanceof String string) name = reversed ? string.substring(1) : string;
                 else {
                     Map<String, Object> endpoint = map(entry, branch + " endpoint");
                     checkFields(endpoint, Set.of("object", "in", "out"), branch);
@@ -82,6 +84,19 @@ public final class BranchGridGenerator {
                         throw bad("Explicit sides require a SUBSTATION: " + name);
                 }
                 if (!source.containsKey(name)) throw bad("Unknown object " + name + " in branch " + branch);
+                if ("SUBSTATION".equals(map(source.get(name), name).get("kind"))) {
+                    boolean effectiveReversed = reversed || "REVERSED".equals(map(source.get(name), name).get("orientation"));
+                    Boolean previous = orientations.putIfAbsent(name, effectiveReversed);
+                    if (previous != null && previous != effectiveReversed) throw bad("Conflicting station orientation: " + name);
+                }
+                if (reversed) {
+                    if (!"SUBSTATION".equals(map(source.get(name), name).get("kind")))
+                        throw bad("- orientation requires a SUBSTATION: " + name);
+                    var stationSpec = map(objects.get(name), name);
+                    if (stationSpec.containsKey("orientation") && !"REVERSED".equals(stationSpec.get("orientation")))
+                        throw bad("Conflicting station orientation: " + name);
+                    stationSpec.put("orientation", "REVERSED"); objects.put(name, stationSpec);
+                }
                 used.add(name);
                 Map<String, Object> original = map(source.get(name), name);
                 String resolved = name;

@@ -14,6 +14,11 @@ import java.util.List;
 import java.util.Map;
 
 public class GridModel {
+    private final List<org.supply.domain.SwitchGear> switchGears = new ArrayList<>();
+
+    public void addSwitchGear(org.supply.domain.SwitchGear switchGear) { switchGears.add(switchGear); }
+    public List<org.supply.domain.SwitchGear> getSwitchGears() { return List.copyOf(switchGears); }
+
 
     private final Map<String, Node> nodes = new HashMap<>();
     private final List<Line> lines = new ArrayList<>();
