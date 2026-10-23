@@ -7,6 +7,7 @@ import com.typesafe.config.ConfigRenderOptions;
 import org.supply.loader.BranchGridGenerator;
 import org.supply.loader.ElectricalObjectExpander;
 import org.supply.loader.GridModelLoader;
+import org.supply.loader.BranchRouteGenerator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.nio.charset.StandardCharsets;
@@ -35,11 +36,23 @@ public final class GridPreprocessor {
                 .setFormatted(true).setComments(false).setOriginComments(false)) + "\n";
         var model = new GridModelLoader().load(ConfigFactory.empty().withValue("grid", grid.root()));
         var reports = SwitchGearConnectionReport.render(model, grid);
+        var routes = BranchRouteGenerator.generate(description.getConfig("dcsim.grid"), model);
         String filename = output.getFileName().toString();
         String stem = filename.endsWith(".conf") ? filename.substring(0, filename.length() - 5) : filename;
         Path reportDirectory = output.resolveSibling(stem + "_checks");
         Map<Path, String> files = new LinkedHashMap<>();
         files.put(output, content);
+        Path routesOutput = null;
+        if (!routes.isEmpty()) {
+            String routeStem = stem.endsWith("_grid_generated")
+                    ? stem.substring(0, stem.length() - "_grid_generated".length()) + "_routes_generated"
+                    : stem + "_routes";
+            routesOutput = output.resolveSibling(routeStem + ".conf");
+            Config routeConfig = ConfigFactory.empty().withValue("dcsim.traffic.routes", com.typesafe.config.ConfigValueFactory.fromMap(routes));
+            files.put(routesOutput, "# Generated electrical routes; timetable and templates are defined separately.\n"
+                    + routeConfig.root().render(ConfigRenderOptions.defaults().setJson(false)
+                    .setFormatted(true).setComments(false).setOriginComments(false)) + "\n");
+        }
         reports.forEach((name, report) -> files.put(reportDirectory.resolve(name), report));
         // Detect ordinary collisions before changing any output in this generation.
         // CREATE_NEW still protects against concurrent creators when overwrite is not requested.
@@ -59,6 +72,7 @@ public final class GridPreprocessor {
                     StandardOpenOption.WRITE, args.length == 3 ? StandardOpenOption.CREATE : StandardOpenOption.CREATE_NEW,
                     args.length == 3 ? StandardOpenOption.TRUNCATE_EXISTING : StandardOpenOption.WRITE);
         }
+        if (routesOutput != null) System.out.println("Generated routes: " + routesOutput + " (" + routes.size() + " routes)");
         if (!reports.isEmpty()) System.out.println("Switchgear reports: " + reportDirectory + " (" + reports.size() + " files)");
         System.out.println("Generated grid: " + output);
         System.out.println("Objects: " + grid.getConfig("electricalObjects").root().size()

@@ -11,6 +11,7 @@ public final class BranchGridGenerator {
 
     /** Accepts a grid configuration, preserves parameters/types, and never modifies the input. */
     public static Config generate(Config input) {
+        input = SwitchGearTypeExpander.expand(input);
         if (!input.hasPath("branches")) throw bad("Missing branches");
         for (String legacy : List.of("electricalAssociations", "nodes", "lines", "points", "links",
                 "power_installations", "installation_connections", "electricalBranches")) {
@@ -145,6 +146,7 @@ public final class BranchGridGenerator {
         if (!unused.isEmpty()) throw bad("Objects not used by any branch: " + unused);
         Map<String, Object> result = new LinkedHashMap<>(input.root().unwrapped());
         result.remove("branches");
+        result.remove("routeDefinitions");
         result.put("electricalObjects", objects);
         result.put("electricalAssociations", associations);
         if (result.containsKey("reference_node_id")) {
