@@ -15,8 +15,7 @@ public final class SwitchGearFactory {
             if (!ids.add(id)) throw new IllegalArgumentException("Duplicate switchgear: " + id);
             var source = model.getInstallations().stream().filter(i -> i.getInstallationId().equals(id))
                     .findFirst().orElseThrow(() -> new IllegalArgumentException("Unknown switchgear installation: " + id));
-            if (!source.isSubstation() || model.getSixTerminalRectifierInstallations().stream()
-                    .anyMatch(i -> i.installationId().equals(id)))
+            if (!source.isSubstation())
                 throw new IllegalArgumentException("Switchgear requires a plain SUBSTATION: " + id);
             List<SwitchGearTerminal> terminals = new ArrayList<>();
             for (Config terminal : spec.getConfigList("terminals")) {

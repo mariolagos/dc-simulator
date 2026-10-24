@@ -14,12 +14,11 @@ public class GridModelLoader {
     private final FixedLoadFactory fixedLoadFactory = new FixedLoadFactory();
 
     public GridModel load(Config config) {
-        Config grid = CompactGridExpander.expand(config).getConfig("grid");
+        Config grid = ElectricalObjectExpander.expand(config).getConfig("grid");
 
         GridModel model = new GridModel();
 
         nodeFactory.build(model, grid);
-        installationFactory.prepareTerminalNodes(model, grid);
         lineFactory.build(model, grid);
         installationFactory.build(model, grid);
         fixedLoadFactory.build(model, grid);

@@ -33,4 +33,16 @@ public class SwitchGearModelTest {
         assertThrows(UnsupportedOperationException.class, () -> gear.cables().clear());
         assertThrows(UnsupportedOperationException.class, () -> gear.terminals().clear());
     }
+    @Test public void copiesCallerCollectionsAndRejectsMissingCableEndpoints() {
+        var terminals=new java.util.ArrayList<>(List.of(new SwitchGearTerminal("A","node",ConnectionType.FEEDING)));
+        var cables=new java.util.ArrayList<CableConnection>();var gear=new WiredSwitchGear("SS",terminals,cables);
+        terminals.clear();cables.add(new CableConnection("bad","missing","A",1,new ConductorType("wire",1),1));
+        assertEquals(1,gear.terminals().size());assertTrue(gear.cables().isEmpty());
+        assertThrows(IllegalArgumentException.class,()->new WiredSwitchGear("SS",gear.terminals(),cables));
+    }
+    @Test public void rejectsMissingRequiredWiringValues() {
+        assertThrows(IllegalArgumentException.class,()->new WiredSwitchGear(null,List.of(),List.of()));
+        assertThrows(NullPointerException.class,()->new WiredSwitchGear("SS",null,List.of()));
+        assertThrows(NullPointerException.class,()->new WiredSwitchGear("SS",List.of(),null));
+    }
 }

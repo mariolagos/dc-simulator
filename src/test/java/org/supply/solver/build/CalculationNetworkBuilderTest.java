@@ -17,10 +17,7 @@ import org.supply.solver.model.CalculationNodeType;
 import org.supply.solver.model.DiodeSubstationElement;
 import org.supply.solver.model.FixedLoadElement;
 import org.supply.track.*;
-import org.supply.domain.SixTerminalRectifierInstallation;
-import org.supply.domain.SixTerminalRectifierTerminal;
 
-import java.util.EnumMap;
 import java.util.Map;
 
 import java.util.ArrayList;
@@ -223,136 +220,28 @@ public class CalculationNetworkBuilderTest {
     }
 
     @Test
-    public void connectsSixTerminalRectifierWithInternalBranches() {
-        Map<SixTerminalRectifierTerminal, String>
-                terminalNodeIds =
-                new EnumMap<>(
-                        SixTerminalRectifierTerminal.class
-                );
-
-        terminalNodeIds.put(
-                SixTerminalRectifierTerminal.NORTH_POWER_LEFT,
-                "F_N_LEFT"
-        );
-        terminalNodeIds.put(
-                SixTerminalRectifierTerminal.NORTH_POWER_RIGHT,
-                "F_N_RIGHT"
-        );
-        terminalNodeIds.put(
-                SixTerminalRectifierTerminal.SOUTH_POWER_LEFT,
-                "F_S_LEFT"
-        );
-        terminalNodeIds.put(
-                SixTerminalRectifierTerminal.SOUTH_POWER_RIGHT,
-                "F_S_RIGHT"
-        );
-        terminalNodeIds.put(
-                SixTerminalRectifierTerminal.NORTH_RETURN,
-                "R_N"
-        );
-        terminalNodeIds.put(
-                SixTerminalRectifierTerminal.SOUTH_RETURN,
-                "R_S"
-        );
-
-        GridModel gridModel = new GridModel();
-
-        for (String nodeId : terminalNodeIds.values()) {
-            gridModel.addNode(
-                    new Node(nodeId, "1 0+000")
-            );
-        }
-
-        PowerInstallation powerInstallation =
-                new PowerInstallation(
-                        "SS0",
-                        InstallationCategory.SUBSTATION,
-                        true,
-                        Real.fromDouble(3120.0),
-                        Real.fromDouble(0.08),
-                        RectifierType.DIODE
-                );
-
-        gridModel.addInstallation(powerInstallation);
-
-        gridModel.addSixTerminalRectifierInstallation(
-                new SixTerminalRectifierInstallation(
-                        "SS0",
-                        true,
-                        3120.0,
-                        0.08,
-                        RectifierType.DIODE,
-                        terminalNodeIds
-                )
-        );
-
-        for (Map.Entry<
-                SixTerminalRectifierTerminal,
-                String> entry : terminalNodeIds.entrySet()) {
-
-            gridModel.addInstallationConnection(
-                    new InstallationConnection(
-                            "SS0",
-                            entry.getValue(),
-                            entry.getKey().connectionType()
-                    )
-            );
-        }
-
-        assertEquals(
-                6,
-                gridModel.getNodes().size()
-        );
-
-        CalculationNetwork network =
-                new CalculationNetworkBuilder(
-                        new FakeTrackTransformService()
-                ).buildBase(gridModel);
-
-        assertEquals(6, network.nodes().size());
-        assertEquals(4, network.branches().size());
-
-        Set<String> calculationNodeIds =
-                network.nodes().stream()
-                        .map(CalculationNode::id)
-                        .collect(Collectors.toSet());
-
-        assertEquals(
-                Set.of(
-                        "F_N_LEFT",
-                        "F_N_RIGHT",
-                        "F_S_LEFT",
-                        "F_S_RIGHT",
-                        "R_N",
-                        "R_S"
-                ),
-                calculationNodeIds
-        );
-
-        assertEquals(5, network.elements().size());
-
-        DiodeSubstationElement diode =
-                network.elements().stream()
-                        .filter(
-                                DiodeSubstationElement.class::isInstance
-                        )
-                        .map(
-                                DiodeSubstationElement.class::cast
-                        )
-                        .findFirst()
-                        .orElseThrow();
-
-        assertEquals("SS0", diode.id());
-        assertEquals(
-                "F_N_LEFT",
-                diode.feedingNodeId()
-        );
-        assertEquals(
-                "R_N",
-                diode.returnNodeId()
-        );
+    public void buildsOnlyDeclaredSwitchGearCablesAndSelectedSourcePoles() {
+        var grid=new GridModel();
+        var ids=List.of("F_N_LEFT","F_N_RIGHT","F_S_LEFT","F_S_RIGHT","R_N","R_S");
+        for(String id:ids)grid.addNode(new Node(id,"1 0+000"));
+        grid.addInstallation(new PowerInstallation("SS0",InstallationCategory.SUBSTATION,true,Real.fromDouble(3120),Real.fromDouble(0.08),RectifierType.DIODE));
+        var terminals=new ArrayList<org.supply.domain.SwitchGearTerminal>();
+        for(int i=0;i<ids.size();i++)terminals.add(new org.supply.domain.SwitchGearTerminal("T"+i,ids.get(i),i<4?ConnectionType.FEEDING:ConnectionType.RETURN));
+        var wire=new org.supply.domain.ConductorType("wire",0.01);
+        var cables=List.of(new org.supply.domain.CableConnection("right","T0","T1",1,wire,1),
+                new org.supply.domain.CableConnection("south_left","T0","T2",1,wire,1),
+                new org.supply.domain.CableConnection("south_right","T0","T3",1,wire,1),
+                new org.supply.domain.CableConnection("south_return","T4","T5",1,wire,1));
+        grid.addSwitchGear(new org.supply.domain.WiredSwitchGear("SS0",terminals,cables));
+        grid.addInstallationConnection(new InstallationConnection("SS0","F_N_LEFT",ConnectionType.FEEDING));
+        grid.addInstallationConnection(new InstallationConnection("SS0","R_N",ConnectionType.RETURN));
+        var network=new CalculationNetworkBuilder(new FakeTrackTransformService()).buildBase(grid);
+        assertEquals(6,network.nodes().size());assertEquals(4,network.branches().size());assertEquals(5,network.elements().size());
+        assertEquals(Set.copyOf(ids),network.nodes().stream().map(CalculationNode::id).collect(Collectors.toSet()));
+        assertTrue(network.branches().stream().allMatch(b->Math.abs(b.resistanceOhm().asDouble()-0.00001)<1e-15));
+        var diode=network.elements().stream().filter(DiodeSubstationElement.class::isInstance).map(DiodeSubstationElement.class::cast).findFirst().orElseThrow();
+        assertEquals("SS0",diode.id());assertEquals("F_N_LEFT",diode.feedingNodeId());assertEquals("R_N",diode.returnNodeId());
     }
-
 
     private static CalculationNetwork networkWithNodes(String... nodeIds) {
         List<CalculationNode> nodes = new ArrayList<>();

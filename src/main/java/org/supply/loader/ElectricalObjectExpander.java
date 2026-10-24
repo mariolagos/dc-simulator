@@ -21,6 +21,8 @@ public final class ElectricalObjectExpander {
     private ElectricalObjectExpander() { }
 
     public static Config expand(Config dcsim) {
+        for (String field : List.of("points", "links", "link_defaults")) if (dcsim.hasPath("grid." + field))
+            throw new IllegalArgumentException("Use electricalObjects and electricalAssociations instead of grid." + field);
         if(!dcsim.hasPath("grid.electricalObjects")) return dcsim;
         Inspection result=inspect(dcsim.getConfig("grid").root().unwrapped());
         result.requireCalculationReady();

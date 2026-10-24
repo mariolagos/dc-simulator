@@ -24,7 +24,7 @@ public final class TwoSectionsOrderDiagnostic {
     private TwoSectionsOrderDiagnostic() { }
 
     private static Infra infrastructure(String name) {
-        Config input = CompactGridExpander.expand(ConfigFactory.parseResources(ROOT + name + ".conf").getConfig("dcsim"));
+        Config input = ElectricalObjectExpander.expand(ConfigFactory.parseResources(ROOT + name + ".conf").getConfig("dcsim"));
         var grid = new GridModelLoader().load(input);
         List<KilometerBoard> boards = new ArrayList<>();
         for (Config b : input.getConfigList("track.kilometer_boards")) {

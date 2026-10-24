@@ -18,6 +18,6 @@ public final class DcSimConfigLoader {
         if (!scenario.hasPath("dcsim")) {
             throw new IllegalArgumentException("Missing required root object 'dcsim' in " + confFile);
         }
-        return CompactGridExpander.expand(scenario.getConfig("dcsim"));
+        return ElectricalObjectExpander.expand(scenario.getConfig("dcsim"));
     }
 }

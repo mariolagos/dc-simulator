@@ -37,7 +37,6 @@ public class SwitchGearIntegrationTest {
         assertEquals(11, gear.cables().size());
         assertEquals(13, gear.terminals().size());
         assertEquals(2, model.getInstallationConnections().size());
-        assertTrue(model.getSixTerminalRectifierInstallations().isEmpty());
         var net = network(model);
         assertEquals(19, net.branches().size());
         var cable = net.branches().stream().filter(b -> b.id().equals("internal_SS0_FP3")).findFirst().orElseThrow();

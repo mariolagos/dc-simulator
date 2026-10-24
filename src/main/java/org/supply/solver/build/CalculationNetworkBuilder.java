@@ -6,8 +6,6 @@ import org.supply.domain.Line;
 import org.supply.domain.Load;
 import org.supply.domain.Node;
 import org.supply.domain.PowerInstallation;
-import org.supply.domain.SixTerminalRectifierInstallation;
-import org.supply.domain.SixTerminalRectifierTerminal;
 import org.supply.math.Real;
 import org.supply.model.GridModel;
 import org.supply.solver.model.CalculationBranch;
@@ -40,9 +38,6 @@ public final class CalculationNetworkBuilder {
         List<CalculationNode> nodes = new ArrayList<>();
         List<CalculationBranch> branches = new ArrayList<>();
         Map<String, ModelCoordinate> coordByNodeId = new LinkedHashMap<>();
-
-        ElectricalNodeAliases aliases =
-                ElectricalNodeAliases.from(gridModel);
 
 
         for (Node node : gridModel.getNodes()) {
@@ -116,11 +111,6 @@ public final class CalculationNetworkBuilder {
             }
         }
 
-        addSixTerminalInternalBranches(
-                gridModel,
-                branches
-        );
-
         for (var gear : gridModel.getSwitchGears()) {
             Map<String, String> terminalNodes = new HashMap<>();
             for (var terminal : gear.terminals()) terminalNodes.put(terminal.id(), terminal.nodeId());
@@ -139,91 +129,20 @@ public final class CalculationNetworkBuilder {
         List<ElectricalElement> elements = new ArrayList<>();
         elements.addAll(branches);
 
-        addSubstationElements(gridModel, elements, aliases);
+        addSubstationElements(gridModel, elements);
 
-        addFixedLoadElements(gridModel, elements, aliases);
+        addFixedLoadElements(gridModel, elements);
 
         return new CalculationNetwork(nodes, branches, List.of(), elements);
     }
 
-    private static void addSixTerminalInternalBranches(
-            GridModel gridModel,
-            List<CalculationBranch> branches
-    ) {
-        for (SixTerminalRectifierInstallation installation
-                : gridModel.getSixTerminalRectifierInstallations()) {
-            Map<SixTerminalRectifierTerminal, String> terminals =
-                    installation.terminalNodeIds();
 
-            String powerBus = terminals.get(
-                    SixTerminalRectifierTerminal.NORTH_POWER_LEFT
-            );
 
-            addInternalBranch(
-                    branches,
-                    installation.installationId(),
-                    "north_power_right",
-                    powerBus,
-                    terminals.get(
-                            SixTerminalRectifierTerminal.NORTH_POWER_RIGHT
-                    )
-            );
 
-            addInternalBranch(
-                    branches,
-                    installation.installationId(),
-                    "south_power_left",
-                    powerBus,
-                    terminals.get(
-                            SixTerminalRectifierTerminal.SOUTH_POWER_LEFT
-                    )
-            );
-
-            addInternalBranch(
-                    branches,
-                    installation.installationId(),
-                    "south_power_right",
-                    powerBus,
-                    terminals.get(
-                            SixTerminalRectifierTerminal.SOUTH_POWER_RIGHT
-                    )
-            );
-
-            addInternalBranch(
-                    branches,
-                    installation.installationId(),
-                    "south_return",
-                    terminals.get(
-                            SixTerminalRectifierTerminal.NORTH_RETURN
-                    ),
-                    terminals.get(
-                            SixTerminalRectifierTerminal.SOUTH_RETURN
-                    )
-            );
-        }
-    }
-
-    private static void addInternalBranch(
-            List<CalculationBranch> branches,
-            String installationId,
-            String connectionId,
-            String fromNodeId,
-            String toNodeId
-    ) {
-        branches.add(new CalculationBranch(
-                "internal_" + installationId
-                        + "_" + connectionId,
-                "internal_" + installationId,
-                fromNodeId,
-                toNodeId,
-                Real.fromDouble(MIN_RESISTANCE_OHM)
-        ));
-    }
 
     private void addFixedLoadElements(
             GridModel gridModel,
-            List<ElectricalElement> elements,
-            ElectricalNodeAliases aliases
+            List<ElectricalElement> elements
     ) {
         for (Load.FixedLoad load : gridModel.fixedLoads()) {
 
@@ -237,10 +156,10 @@ public final class CalculationNetworkBuilder {
                     );
 
             InstallationConnection feeding =
-                    singleConnection(gridModel, inst, ConnectionType.FEEDING, aliases);
+                    singleConnection(gridModel, inst, ConnectionType.FEEDING);
 
             InstallationConnection returning =
-                    singleConnection(gridModel, inst, ConnectionType.RETURN, aliases);
+                    singleConnection(gridModel, inst, ConnectionType.RETURN);
 
             elements.add(new FixedLoadElement(
                     load.id(),
@@ -251,16 +170,11 @@ public final class CalculationNetworkBuilder {
         }
     }
 
-    private record FixedLoadConnection(
-            String feedingNodeId,
-            String returnNodeId
-    ) {
-    }
+
 
     private static void addSubstationElements(
             GridModel gridModel,
-            List<ElectricalElement> elements,
-            ElectricalNodeAliases aliases
+            List<ElectricalElement> elements
     ) {
         for (PowerInstallation inst : gridModel.getInstallations()) {
             if (!inst.isSubstation()) {
@@ -268,10 +182,10 @@ public final class CalculationNetworkBuilder {
             }
 
             InstallationConnection feeding =
-                    singleConnection(gridModel, inst, ConnectionType.FEEDING, aliases);
+                    singleConnection(gridModel, inst, ConnectionType.FEEDING);
 
             InstallationConnection returning =
-                    singleConnection(gridModel, inst, ConnectionType.RETURN, aliases);
+                    singleConnection(gridModel, inst, ConnectionType.RETURN);
 
             if (feeding.getNodeId().equals(returning.getNodeId())) {
                 throw new IllegalArgumentException(
@@ -314,26 +228,12 @@ public final class CalculationNetworkBuilder {
         }
     }
 
-    private static List<InstallationConnection> connectionsFor(
-            GridModel grid,
-            PowerInstallation installation
-    ) {
-        List<InstallationConnection> out = new ArrayList<>();
 
-        for (InstallationConnection c : grid.getInstallationConnections()) {
-            if (Objects.equals(c.getInstallationId(), installation.getInstallationId())) {
-                out.add(c);
-            }
-        }
-
-        return out;
-    }
 
     private static InstallationConnection singleConnection(
             GridModel gridModel,
             PowerInstallation inst,
-            ConnectionType type,
-            ElectricalNodeAliases aliases
+            ConnectionType type
     ) {
         String foundNodeId = null;
 
@@ -349,10 +249,7 @@ public final class CalculationNetworkBuilder {
                 continue;
             }
 
-            String canonicalNodeId =
-                    aliases.canonicalNodeId(
-                            connection.getNodeId()
-                    );
+            String canonicalNodeId = connection.getNodeId();
 
             if (foundNodeId != null
                     && !foundNodeId.equals(canonicalNodeId)) {

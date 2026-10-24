@@ -196,21 +196,8 @@ public class GridModelValidator {
                 }
             }
 
-            boolean sixTerminalRectifier =
-                    model.getSixTerminalRectifierInstallations()
-                            .stream()
-                            .anyMatch(modeledInstallation ->
-                                    installationId.equals(
-                                            modeledInstallation
-                                                    .installationId()
-                                    )
-                            );
-
-            int expectedFeedingCount =
-                    sixTerminalRectifier ? 4 : 1;
-
-            int expectedReturnCount =
-                    sixTerminalRectifier ? 2 : 1;
+            int expectedFeedingCount = 1;
+            int expectedReturnCount = 1;
 
             if (feedingCount != expectedFeedingCount
                     || returnCount != expectedReturnCount) {

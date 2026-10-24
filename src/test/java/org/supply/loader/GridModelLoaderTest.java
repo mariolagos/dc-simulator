@@ -6,9 +6,7 @@ import org.junit.Test;
 import org.supply.domain.ConnectionType;
 import org.supply.domain.InstallationCategory;
 import org.supply.domain.Load;
-import org.supply.domain.SixTerminalRectifierTerminal;
 import org.supply.model.GridModel;
-import org.supply.domain.SixTerminalRectifierInstallation;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
@@ -97,120 +95,23 @@ public final class GridModelLoaderTest {
     }
 
     @Test
-    public void loadsSixTerminalRectifierInstallation() {
-        Config config =
-                ConfigFactory.parseString("""
-                    grid {
-                      nodes = [
-                        {
-                          node_id = "F_N_LEFT"
-                          position_rwy = "200 4+000 U1"
-                        },
-                        {
-                          node_id = "F_N_RIGHT"
-                          position_rwy = "200 4+000 U1"
-                        },
-                        {
-                          node_id = "F_S_LEFT"
-                          position_rwy = "200 4+000 D1"
-                        },
-                        {
-                          node_id = "F_S_RIGHT"
-                          position_rwy = "200 4+000 D1"
-                        },
-                        {
-                          node_id = "R_N"
-                          position_rwy = "200 4+000 U1"
-                        },
-                        {
-                          node_id = "R_S"
-                          position_rwy = "200 4+000 D1"
-                        }
-                      ]
-
-                      power_installations = [
-                        {
-                          installation_id = "SS0"
-                          installation_category = SUBSTATION
-                          installation_model =
-                                  SIX_TERMINAL_RECTIFIER
-                          enabled = true
-                          emf_V = 3120.0
-                          internal_resistance_ohm = 0.08
-                          rectifier_type = DIODE
-
-                          terminals {
-                            NORTH_POWER_LEFT = "F_N_LEFT"
-                            NORTH_POWER_RIGHT = "F_N_RIGHT"
-                            SOUTH_POWER_LEFT = "F_S_LEFT"
-                            SOUTH_POWER_RIGHT = "F_S_RIGHT"
-                            NORTH_RETURN = "R_N"
-                            SOUTH_RETURN = "R_S"
-                          }
-                        }
-                      ]
-                    }
-                    """);
-
-        GridModel model =
-                new GridModelLoader().load(config);
-
-        assertEquals(
-                1,
-                model.getInstallations().size()
-        );
-        assertEquals(
-                1,
-                model.getSixTerminalRectifierInstallations()
-                        .size()
-        );
-        assertEquals(
-                6,
-                model.getInstallationConnections().size()
-        );
-
-        long feedingCount =
-                model.getInstallationConnections().stream()
-                        .filter(connection ->
-                                connection.getConnectionType()
-                                        == ConnectionType.FEEDING
-                        )
-                        .count();
-
-        long returnCount =
-                model.getInstallationConnections().stream()
-                        .filter(connection ->
-                                connection.getConnectionType()
-                                        == ConnectionType.RETURN
-                        )
-                        .count();
-
-        assertEquals(4L, feedingCount);
-        assertEquals(2L, returnCount);
-
-        SixTerminalRectifierInstallation installation =
-                model.getSixTerminalRectifierInstallations()
-                        .get(0);
-
-        assertEquals("SS0", installation.installationId());
-        assertEquals(
-                "F_N_LEFT",
-                installation.terminalNodeIds().get(
-                        SixTerminalRectifierTerminal
-                                .NORTH_POWER_LEFT
-                )
-        );
-        assertEquals(
-                "R_S",
-                installation.terminalNodeIds().get(
-                        SixTerminalRectifierTerminal
-                                .SOUTH_RETURN
-                )
-        );
+    public void loadsExplicitSwitchGearAndOneConnectionPerSourcePole() {
+        var grid=ConfigFactory.parseResources("electrical-objects/branched.conf").resolve().getConfig("dcsim.grid")
+                .withValue("electricalObjects.A1.emf_V",com.typesafe.config.ConfigValueFactory.fromAnyRef(3120))
+                .withValue("electricalObjects.A1.internal_resistance_ohm",com.typesafe.config.ConfigValueFactory.fromAnyRef(0.08));
+        var model=new GridModelLoader().load(ConfigFactory.empty().withValue("grid",grid.root()));
+        var source=model.getInstallations().stream().filter(i->i.getInstallationId().equals("A1")).findFirst().orElseThrow();
+        assertEquals(3120,source.getEmfV().asDouble(),0);assertEquals(0.08,source.getInternalResistanceOhm().asDouble(),0);
+        var gear=model.getSwitchGears().stream().filter(g->g.installationId().equals("A1")).findFirst().orElseThrow();
+        assertEquals(6,gear.terminals().size());assertEquals(4,gear.cables().size());
+        var connections=model.getInstallationConnections().stream().filter(c->c.getInstallationId().equals("A1")).toList();
+        assertEquals(2,connections.size());
+        assertTrue(connections.stream().anyMatch(c->c.getConnectionType()==ConnectionType.FEEDING&&c.getNodeId().equals("A1.L.N.F")));
+        assertTrue(connections.stream().anyMatch(c->c.getConnectionType()==ConnectionType.RETURN&&c.getNodeId().equals("A1.L.N.R")));
     }
 
     @Test
-    public void rejectsMultipleConnectionsForLegacySubstation() {
+    public void rejectsMultipleConnectionsForSubstation() {
         Config config =
                 ConfigFactory.parseString("""
                     grid {
