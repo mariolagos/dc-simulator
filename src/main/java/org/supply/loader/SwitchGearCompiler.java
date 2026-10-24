@@ -3,93 +3,84 @@ package org.supply.loader;
 import org.supply.domain.*;
 import java.util.*;
 
-/** Compiles double-track layouts with or without a feeding gap. */
+/** Compiles explicit port-to-terminal wiring, independent of station topology. */
 public final class SwitchGearCompiler {
-    private static final List<String> ROLES = List.of("NORTH_POWER_LEFT", "NORTH_POWER_RIGHT",
-            "SOUTH_POWER_LEFT", "SOUTH_POWER_RIGHT", "NORTH_RETURN", "SOUTH_RETURN");
-    private static final List<String> DEFAULT_IDS = List.of("1", "3", "2", "4", "R1", "R2");
-    public record Result(WiredSwitchGear gear, Map<String, String> additionalNodePositions) { }
+    public record Result(WiredSwitchGear gear, Map<String, String> additionalNodePositions, Map<ConnectionType,String> sourceNodes) { }
     private SwitchGearCompiler() { }
 
-    public static boolean hasFeedingGap(Map<String, Object> spec) {
-        String model = text(spec, "model");
-        if (!Set.of("DOUBLE_TRACK_GAP", "DOUBLE_TRACK_NO_GAP", "BRANCH_GAP").contains(model))
-            throw bad("Unsupported switchgear model: " + model);
-        return !model.equals("DOUBLE_TRACK_NO_GAP");
-    }
-
+    /** Keys are port.track.F/R; values are customer terminal identities. */
     public static Map<String, String> terminalIds(Map<String, Object> spec) {
-        fields(spec, Set.of("model", "terminal_ids", "busbars", "connections", "branch_terminals"), "switchgear");
-        hasFeedingGap(spec);
-        if (isBranch(spec)) return branchTerminalIds(spec);
-        if (spec.containsKey("branch_terminals")) throw bad("branch_terminals requires BRANCH_GAP");
-        Map<String, Object> overrides = spec.containsKey("terminal_ids") ? map(spec.get("terminal_ids")) : Map.of();
-        if (!ROLES.containsAll(overrides.keySet())) throw bad("Unknown standard terminal role");
-        Map<String, String> result = new LinkedHashMap<>();
-        Set<String> used = new HashSet<>(Set.of("POS", "NEG"));
-        for (int i = 0; i < ROLES.size(); i++) {
-            String role = ROLES.get(i);
-            String id = overrides.containsKey(role) ? text(overrides, role) : DEFAULT_IDS.get(i);
-            identifier(id);
-            if (!used.add(id)) throw bad("Duplicate/reserved terminal id: " + id);
-            result.put(role, id);
+        fields(spec, Set.of("terminals", "busbars", "connections", "joins", "source_terminals"), "switchgear");
+        var terminals = map(spec.get("terminals"));
+        if (terminals.isEmpty()) throw bad("switchgear.terminals must not be empty");
+        Map<String,String> result = new TreeMap<>();
+        Map<String,ConnectionType> types = new HashMap<>();
+        Map<String,Set<String>> ports = new TreeMap<>();
+        for (String role : terminals.keySet()) {
+            if (!role.matches("[A-Za-z0-9_-]+\\.[NS]\\.[FR]")) throw bad("Terminal address must be port.track.F/R: " + role);
+            String id = text(terminals,role); identifier(id);
+            var previous = types.putIfAbsent(id,connectionType(role));
+            if (previous != null && previous != connectionType(role)) throw bad("Feeding/return terminal alias: " + id);
+            result.put(role,id);
+            String port=role.substring(0,role.indexOf('.'));
+            ports.computeIfAbsent(port,k->new HashSet<>()).add(role.substring(role.indexOf('.')+1));
         }
+        for (var port : ports.entrySet()) if (!port.getValue().equals(Set.of("N.F","S.F","N.R","S.R")))
+            throw bad("Port requires N.F, S.F, N.R and S.R: " + port.getKey());
         return Collections.unmodifiableMap(result);
     }
-
-    public static boolean isBranch(Map<String, Object> spec) { return "BRANCH_GAP".equals(text(spec, "model")); }
     public static ConnectionType connectionType(String role) {
-        return role.endsWith("RETURN") || role.endsWith(".R") ? ConnectionType.RETURN : ConnectionType.FEEDING;
+        return role.endsWith(".R") ? ConnectionType.RETURN : ConnectionType.FEEDING;
     }
-    private static Map<String, String> branchTerminalIds(Map<String, Object> spec) {
-        if (spec.containsKey("terminal_ids")) throw bad("BRANCH_GAP uses branch_terminals instead of terminal_ids");
-        var branches = map(spec.get("branch_terminals"));
-        if (branches.size() < 2) throw bad("BRANCH_GAP requires at least two branch terminal groups");
-        Map<String,String> result = new LinkedHashMap<>();
-        Set<String> used = new HashSet<>(Set.of("POS", "NEG"));
-        for (String branch : new TreeSet<>(branches.keySet())) {
-            identifier(branch);var pair = map(branches.get(branch));
-            fields(pair, Set.of("N", "S", "N_RETURN", "S_RETURN"), "branch terminal " + branch);
-            for (String kind : List.of("F", "R")) for (String track : List.of("N", "S")) {
-                String field = kind.equals("F") ? track : track + "_RETURN";
-                String id = kind.equals("F") || pair.containsKey(field) ? text(pair,field) : "R_" + branch + "_" + track;
-                identifier(id);if (!used.add(id)) throw bad("Duplicate/reserved terminal id: " + id);
-                result.put(branch + "." + track + "." + kind,id);
+    /** Ideal continuity is declared explicitly; cable resistance remains separate. */
+    public static List<List<String>> joins(Map<String,Object> spec) {
+        if (!spec.containsKey("joins")) return List.of();
+        if (!(spec.get("joins") instanceof List<?> list)) throw bad("switchgear.joins must be a list");
+        var ids=terminalIds(spec);
+        List<List<String>> result=new ArrayList<>();
+        Set<Set<String>> seen=new HashSet<>();
+        for (Object value:list) {
+            if (!(value instanceof List<?> group) || group.size()<2) throw bad("A join needs at least two terminals");
+            List<String> members=new ArrayList<>();Set<ConnectionType> types=new HashSet<>();
+            for (Object item:group) {
+                if (!(item instanceof String id) || !ids.containsValue(id)) throw bad("Join must reference an external terminal: " + item);
+                if (members.contains(id)) throw bad("Repeated terminal in join: " + id);
+                members.add(id);
+                ids.forEach((role,terminal)->{if(terminal.equals(id))types.add(connectionType(role));});
             }
+            if (types.size()!=1) throw bad("Join cannot connect feeding to return");
+            if (!seen.add(Set.copyOf(members))) throw bad("Duplicate join");
+            result.add(List.copyOf(members));
         }
-        return Collections.unmodifiableMap(result);
+        return List.copyOf(result);
     }
 
     public static Result compile(String installationId, Map<String, Object> spec,
                                  Map<String, Object> conductorTypes, Map<String, String> externalNodes,
                                  String busPosition) {
         var ids = terminalIds(spec);
-        boolean gap = hasFeedingGap(spec);
-        if (isBranch(spec)) {
-            Set<String> feedingNodes = new HashSet<>();
-            for (String role : ids.keySet()) if (connectionType(role) == ConnectionType.FEEDING) {
-                String node = externalNodes.get(role);
-                if (node == null || !feedingNodes.add(node)) throw bad("BRANCH_GAP requires separate feeding nodes: " + role);
-            }
-        } else for (String side : List.of("NORTH", "SOUTH")) {
-            String left = externalNodes.get(side + "_POWER_LEFT"), right = externalNodes.get(side + "_POWER_RIGHT");
-            if (left == null || right == null || left.equals(right) == gap)
-                throw bad("Inconsistent feeding nodes for " + installationId + ": " + side + " requires " + (gap ? "separate nodes" : "one shared node"));
-        }
         List<SwitchGearTerminal> terminals = new ArrayList<>();
         Set<String> used = new HashSet<>(ids.values());
+        Map<String,String> nodeById = new HashMap<>();
         for (String role : ids.keySet()) {
-            String node = externalNodes.get(role);
+            String node = externalNodes.get(role), id=ids.get(role);
             if (node == null) throw bad("Missing external terminal node: " + role);
-            terminals.add(new SwitchGearTerminal(ids.get(role), node,
-                    connectionType(role)));
+            String previous=nodeById.putIfAbsent(id,node);
+            if (previous!=null && !previous.equals(node)) throw bad("Terminal maps to different physical nodes: " + id);
+            if (previous==null) terminals.add(new SwitchGearTerminal(id,node,connectionType(role)));
         }
-        Map<String, Object> buses = new LinkedHashMap<>();
-        buses.put("POS", "FEEDING"); buses.put("NEG", "RETURN");
+        Map<String,String> sourceIds=spec.containsKey("source_terminals") ? stringMap(map(spec.get("source_terminals")))
+                : Map.of("FEEDING","POS","RETURN","NEG");
+        if (!sourceIds.keySet().equals(Set.of("FEEDING","RETURN"))) throw bad("source_terminals requires FEEDING and RETURN");
+        Map<String,Object> buses=new LinkedHashMap<>();
+        for (var entry:sourceIds.entrySet()) {
+            identifier(entry.getValue());
+            if (!nodeById.containsKey(entry.getValue())) buses.put(entry.getValue(),entry.getKey());
+        }
         if (spec.containsKey("busbars")) {
             for (var entry : map(spec.get("busbars")).entrySet()) {
                 if (buses.putIfAbsent(entry.getKey(), entry.getValue()) != null)
-                    throw bad("POS and NEG are reserved rectifier connection points");
+                    throw bad("Busbar duplicates a source connection point: " + entry.getKey());
             }
         }
         Map<String, String> positions = new LinkedHashMap<>();
@@ -130,14 +121,18 @@ public final class SwitchGearCompiler {
             if (first != null) { graph.get(first).add(terminal.id()); graph.get(terminal.id()).add(first); }
         }
         cables.forEach(c -> { graph.get(c.fromTerminalId()).add(c.toTerminalId()); graph.get(c.toTerminalId()).add(c.fromTerminalId()); });
+        Map<ConnectionType,String> sourceNodes=new EnumMap<>(ConnectionType.class);
         for (ConnectionType type : ConnectionType.values()) {
+            var pole=terminals.stream().filter(t->t.id().equals(sourceIds.get(type.name()))).findFirst().orElseThrow();
+            if (pole.connectionType()!=type) throw bad("Source terminal polarity mismatch: "+pole.id());
+            sourceNodes.put(type,pole.nodeId());
             Set<String> seen = new HashSet<>();
-            Deque<String> queue = new ArrayDeque<>(); queue.add(type == ConnectionType.FEEDING ? "POS" : "NEG");
+            Deque<String> queue = new ArrayDeque<>(); queue.add(sourceIds.get(type.name()));
             while (!queue.isEmpty()) { String t = queue.removeFirst(); if (seen.add(t)) queue.addAll(graph.get(t)); }
             for (var terminal : terminals) if (terminal.connectionType() == type && !seen.contains(terminal.id()))
                 throw bad("Terminal has no cable path to rectifier: " + terminal.id());
         }
-        return new Result(gear, Collections.unmodifiableMap(positions));
+        return new Result(gear, Collections.unmodifiableMap(positions), Collections.unmodifiableMap(sourceNodes));
     }
 
     public static Map<String, Object> generated(WiredSwitchGear gear) {
@@ -147,6 +142,9 @@ public final class SwitchGearCompiler {
                 "length_m", c.lengthM(), "conductor_type", c.conductorType().id(),
                 "resistance_ohm_per_km", c.conductorType().resistanceOhmPerKm(), "multiplicity", c.multiplicity())));
         return Map.of("installation_id", gear.installationId(), "terminals", terminals, "cables", cables);
+    }
+    private static Map<String,String> stringMap(Map<String,Object> input) {
+        Map<String,String> result=new TreeMap<>();input.keySet().forEach(key->result.put(key,text(input,key)));return result;
     }
     private static void fields(Map<String, Object> map, Set<String> allowed, String label) {
         for (String key : map.keySet()) if (!allowed.contains(key)) throw bad("Unknown " + label + " field: " + key);

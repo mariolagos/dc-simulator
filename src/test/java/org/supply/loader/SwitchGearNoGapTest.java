@@ -16,7 +16,7 @@ import static org.junit.Assert.*;
 public class SwitchGearNoGapTest {
     private Config input(boolean gap) {
         var grid=ConfigFactory.parseResources("switchgear/double-track-gap.conf").resolve().getConfig("dcsim.grid");
-        return grid.withValue("substationTypes.standard.switchgear.model",ConfigValueFactory.fromAnyRef(gap?"DOUBLE_TRACK_GAP":"DOUBLE_TRACK_NO_GAP"));
+        return grid.withValue("substationTypes.standard.switchgear.joins",ConfigValueFactory.fromIterable(gap?List.of():List.of(List.of("1","3"),List.of("2","4"))));
     }
     private Config objects(Config input) { return BranchGridGenerator.generate(input); }
     private GridModel model(Config input) { return new GridModelLoader().load(ConfigFactory.empty().withValue("grid",objects(input).root())); }
@@ -43,8 +43,11 @@ public class SwitchGearNoGapTest {
         var right=lines.stream().filter(l->l.getLineId().equals("B__101__2.N.F")).findFirst().orElseThrow();
         assertEquals(left.getToNode().getNodeId(),right.getFromNode().getNodeId());
     }
-    @Test public void reversedOrientationKeepsSameTrackContinuity() {
-        var config=input(false).withValue("branches.101",ConfigValueFactory.fromIterable(List.of("P1","-SS0","P2")));
+    @Test public void explicitMappingKeepsSameTrackContinuity() {
+        var config=input(false);var terms=config.getConfig("substationTypes.standard.switchgear.terminals").root().unwrapped();
+        Map<String,Object> swapped=new LinkedHashMap<>();
+        terms.forEach((role,id)->swapped.put(role.replace(".N.",".X.").replace(".S.",".N.").replace(".X.",".S."),id));
+        config=config.withValue("substationTypes.standard.switchgear.terminals",ConfigValueFactory.fromMap(swapped));
         var model=model(config);var gear=model.getSwitchGears().get(0);
         assertEquals(node(gear,"1"),node(gear,"3"));assertEquals(node(gear,"2"),node(gear,"4"));
         assertEquals("101 14+000 S",model.getNode(node(gear,"1")).getPositionRwy());
@@ -53,9 +56,9 @@ public class SwitchGearNoGapTest {
     @Test public void textReportIdentifiesContinuousNodesWithoutClaimingGap() {
         var config=input(false);var grid=objects(config);
         var text=SwitchGearConnectionReport.render(model(config),grid).get("SS0_connections.txt");
-        assertTrue(text.contains("Layout: DOUBLE_TRACK_NO_GAP"));
-        assertTrue(text.contains("CONTINUOUS FEEDING (NO GAP)"));
-        assertTrue(text.contains("Track N: 1 [SS0.A] | CONTINUOUS | 3 [SS0.A]; distinct_nodes=false"));
+        assertFalse(text.contains("Layout:"));
+        assertTrue(text.contains("DIRECT CONTINUITY"));
+        assertTrue(text.contains("L.N.F=1, R.N.F=3"));
         assertFalse(text.contains("| GAP |"));assertFalse(text.contains("FEEDING GAPS"));
     }
     @Test public void solvedVoltageMatchesParallelFeederCircuit() {

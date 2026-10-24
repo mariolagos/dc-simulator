@@ -14,7 +14,7 @@ import static org.junit.Assert.*;
 
 public class SwitchGearIntegrationTest {
     private Config input() { return ConfigFactory.parseResources("switchgear/double-track-gap.conf").resolve().getConfig("dcsim.grid"); }
-    private Config objects(Config input) { return org.supply.loader.BranchGridGenerator.generate(input); }
+    private Config objects(Config input) { return BranchGridGenerator.generate(input); }
     private Config dcsim(Config input) { return ConfigFactory.empty().withValue("grid", objects(input).root()); }
     private GridModel load(Config input) { return new GridModelLoader().load(dcsim(input)); }
     private Config changed(String hocon) { return ConfigFactory.parseString(hocon).withFallback(input()).resolve(); }
@@ -64,22 +64,20 @@ public class SwitchGearIntegrationTest {
         // 0.01 source + 0.001 FC1 + 0.0002 FP1 + 0.0005 RC0 + 0.0002 RP1.
         assertEquals(750 - 1000 * 0.0119, voltages.get(feed).asDouble()-voltages.get(ret).asDouble(), 1e-6);
     }
-    @Test public void minusSwapsTracksAndPreservesCableCustomerIdentity() {
-        var model = load(changed("branches.\"101\"=[P1, \"-SS0\", P2]"));
-        var gear = model.getSwitchGears().get(0);
+    @Test public void explicitTerminalMappingSelectsPhysicalTrackWithoutOrientation() {
+        var config=input();var terms=config.getConfig("substationTypes.standard.switchgear.terminals").root().unwrapped();
+        Map<String,Object> swapped=new LinkedHashMap<>();
+        terms.forEach((role,id)->swapped.put(role.replace(".N.",".X.").replace(".S.",".N.").replace(".X.",".S."),id));
+        var model=load(config.withValue("substationTypes.standard.switchgear.terminals",ConfigValueFactory.fromMap(swapped)));
+        var gear=model.getSwitchGears().get(0);
         assertTrue(model.getNode(terminal(gear,"1").nodeId()).getPositionRwy().endsWith(" S"));
         assertTrue(model.getNode(terminal(gear,"2").nodeId()).getPositionRwy().endsWith(" N"));
-        var fp1 = gear.cables().stream().filter(c -> c.id().equals("FP1")).findFirst().orElseThrow();
-        assertEquals("1", fp1.toTerminalId());
-        var generated = ElectricalObjectExpander.expand(dcsim(changed("branches.\"101\"=[P1, \"-SS0\", P2]")));
-        var lines=generated.getConfigList("grid.lines");
-        assertTrue(lines.stream().filter(l -> l.getString("line_id").equals("B__101__1.N.F"))
-                .anyMatch(l -> l.getString("node_to_id").equals(terminal(gear,"2").nodeId())));
+        assertEquals("1",gear.cables().stream().filter(c->c.id().equals("FP1")).findFirst().orElseThrow().toTerminalId());
     }
     @Test public void allowsCustomerTerminalNumbersFiveToEight() {
         var config = input();
-        String[] roles={"NORTH_POWER_LEFT","SOUTH_POWER_LEFT","NORTH_POWER_RIGHT","SOUTH_POWER_RIGHT"};
-        for(int i=0;i<4;i++) config=config.withValue("substationTypes.standard.switchgear.terminal_ids."+roles[i],ConfigValueFactory.fromAnyRef(""+(i+5)));
+        String[] roles={"L.N.F","L.S.F","R.N.F","R.S.F"};
+        for(int i=0;i<4;i++) config=config.withValue("substationTypes.standard.switchgear.terminals."+ConfigUtil.quoteString(roles[i]),ConfigValueFactory.fromAnyRef(""+(i+5)));
         var cables=new ArrayList<Map<String,Object>>();
         for(var c:config.getConfigList("substationTypes.standard.switchgear.connections")) {
             var m=new LinkedHashMap<>(c.root().unwrapped());
@@ -88,8 +86,8 @@ public class SwitchGearIntegrationTest {
         }
         config=config.withValue("substationTypes.standard.switchgear.connections",ConfigValueFactory.fromAnyRef(cables));
         var gear=load(config).getSwitchGears().get(0);
-        assertEquals("SS0.A",terminal(gear,"5").nodeId());
-        assertEquals("SS0.D",terminal(gear,"8").nodeId());
+        assertEquals("SS0.L.N.F",terminal(gear,"5").nodeId());
+        assertEquals("SS0.R.S.F",terminal(gear,"8").nodeId());
     }
     @Test public void rejectsUnknownCableTypeAndFractionalMultiplicity() {
         var cable = input().getConfigList("substationTypes.standard.switchgear.connections").get(0);
@@ -113,13 +111,8 @@ public class SwitchGearIntegrationTest {
         var reloaded=new GridModelLoader().load(ConfigFactory.parseString(expanded.root().render()));
         assertEquals(11,reloaded.getSwitchGears().get(0).cables().size());
     }
-    @Test public void legacySixTerminalInputKeepsItsOriginalInternalBranches() {
-        var config=input().withoutPath("substationTypes.standard.switchgear")
-                .withValue("substationTypes.standard.terminal_model",ConfigValueFactory.fromAnyRef("SIX_TERMINAL_RECTIFIER"));
-        var model=load(config);
-        assertEquals(1,model.getSixTerminalRectifierInstallations().size());
-        assertTrue(model.getSwitchGears().isEmpty());
-        assertEquals(12,network(model).branches().size());
+    @Test public void stationRequiresExplicitWiring() {
+        assertThrows(IllegalArgumentException.class,()->load(input().withoutPath("substationTypes.standard.switchgear")));
     }
     @Test public void rejectsOrientationOnPointAndConflictingStationReferences() {
         assertThrows(IllegalArgumentException.class,()->objects(changed("branches.\"101\"=[\"-P1\",SS0,P2]")));

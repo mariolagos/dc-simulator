@@ -23,27 +23,23 @@ public class SwitchGearConnectionReportTest {
         var csv=reports.get("SS0_connections.csv");
         assertEquals(12,csv.lines().count());
         assertTrue(csv.contains("SS0,FC1,POS,PBB1,SS0.SG.POS,SS0.SG.PBB1,FEEDING"));
-        assertTrue(csv.contains("SS0,FP3,PBB3,3,SS0.SG.PBB3,SS0.B,FEEDING"));
+        assertTrue(csv.contains("SS0,FP3,PBB3,3,SS0.SG.PBB3,SS0.R.N.F,FEEDING"));
         assertTrue(csv.contains(",25.0,cable240,0.08,4,5.0E-4"));
         assertTrue(reports.get("SS0_connections.txt").contains("B__101__1.N.F"));
     }
-    @Test public void reversedOrientationIsVisibleWithPhysicalTrackAndGap() {
-        var conf=input().withValue("dcsim.grid.branches.101",ConfigValueFactory.fromIterable(List.of("P1","-SS0","P2")));
-        var txt=reports(conf).get("SS0_connections.txt");
-        assertTrue(txt.contains("Orientation: REVERSED"));
-        assertTrue(txt.contains("NORTH_POWER_LEFT | 1 | SS0.A | 101 14+000 S | B__101__1.S.F"));
-        assertTrue(txt.contains("Track S: 1 [SS0.A] | GAP | 3 [SS0.B]; distinct_nodes=true; same_railway_position=true"));
-        assertTrue(txt.contains("FEEDING -> SS0.SG.POS"));
-        assertTrue(txt.contains("RETURN -> SS0.SG.NEG"));
+    @Test public void reportShowsPhysicalPortsAndExplicitTerminalIdentity() {
+        var txt=reports(input()).get("SS0_connections.txt");
+        assertTrue(txt.contains("L.N.F | 1 | SS0.L.N.F | 101 14+000 N | B__101__1.N.F"));
+        assertTrue(txt.contains("R.N.F | 3 | SS0.R.N.F | 101 14+000 N | B__101__2.N.F"));
+        assertFalse(txt.contains("Orientation:"));assertFalse(txt.contains("Layout:"));
+        assertTrue(txt.contains("FEEDING -> SS0.SG.POS"));assertTrue(txt.contains("RETURN -> SS0.SG.NEG"));
     }
     @Test public void reportsUseEffectiveTypeDefaultsAndLocalCableOverrides() {
         var conf=input().withValue("dcsim.grid.electricalObjects.SS0.emf_V",ConfigValueFactory.fromAnyRef(800));
         assertTrue(reports(conf).get("SS0_connections.txt").contains("EMF_V: 800.0"));
     }
-    @Test public void legacyStationsDoNotProduceMisleadingCableReports() {
-        var conf=input().withoutPath("dcsim.grid.substationTypes.standard.switchgear")
-                .withValue("dcsim.grid.substationTypes.standard.terminal_model",ConfigValueFactory.fromAnyRef("SIX_TERMINAL_RECTIFIER"));
-        assertTrue(reports(conf).isEmpty());
+    @Test public void missingWiringIsRejectedRatherThanImplicitlySynthesized() {
+        assertThrows(IllegalArgumentException.class,()->reports(input().withoutPath("dcsim.grid.substationTypes.standard.switchgear")));
     }
     @Test public void commandWritesReportsNextToGeneratedGridAndHonorsOverwrite() throws Exception {
         Path folder=temporary.getRoot().toPath();

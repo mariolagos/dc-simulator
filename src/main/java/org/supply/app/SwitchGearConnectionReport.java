@@ -4,7 +4,6 @@ import com.typesafe.config.Config;
 import org.supply.domain.*;
 import org.supply.loader.SwitchGearCompiler;
 import org.supply.model.GridModel;
-import org.supply.track.RwyCoordinateParser;
 import java.util.*;
 
 /** Input verification, generated from the same loaded wiring used by the network builder. */
@@ -31,8 +30,7 @@ public final class SwitchGearConnectionReport {
                         cable.multiplicity(), cable.resistanceOhm());
             }
             StringBuilder text = new StringBuilder("SWITCHGEAR CONNECTION CHECK\nInstallation: ").append(id)
-                    .append("\nLayout: ").append(spec.getString("switchgear.model"))
-                    .append("\nOrientation: ").append(spec.hasPath("orientation") ? spec.getString("orientation") : "NORMAL")
+
                     .append("\nRectifier: ").append(source.getRectifierType()).append("; enabled=").append(source.isEnabled())
                     .append("\nEMF_V: ").append(source.getEmfV().asDouble())
                     .append("\nInternal_resistance_ohm: ").append(source.getInternalResistanceOhm().asDouble())
@@ -50,28 +48,11 @@ public final class SwitchGearConnectionReport {
                         .append(" | ").append(model.getNode(terminal.nodeId()).getPositionRwy()).append(" | ")
                         .append(lines.isEmpty() ? "(none)" : String.join(", ", lines)).append('\n');
             }
-            boolean gap = SwitchGearCompiler.hasFeedingGap(spec.getConfig("switchgear").root().unwrapped());
-            boolean branch = SwitchGearCompiler.isBranch(spec.getConfig("switchgear").root().unwrapped());
-            text.append(branch ? "\nBRANCH FEEDING GAPS\n" : gap ? "\nFEEDING GAPS\n" : "\nCONTINUOUS FEEDING (NO GAP)\n");
-            if (branch) {
-                for (var entry : names.entrySet()) if (SwitchGearCompiler.connectionType(entry.getKey()) == ConnectionType.FEEDING) {
-                    var terminal = terminals.get(entry.getValue());
-                    text.append(entry.getKey()).append(" | terminal ").append(terminal.id()).append(" | node ").append(terminal.nodeId())
-                            .append(" | ").append(model.getNode(terminal.nodeId()).getPositionRwy()).append('\n');
-                }
-            } else for (String pair : List.of("NORTH", "SOUTH")) {
-                var left = terminals.get(names.get(pair + "_POWER_LEFT"));
-                var right = terminals.get(names.get(pair + "_POWER_RIGHT"));
-                var coordinate = RwyCoordinateParser.parse(model.getNode(left.nodeId()).getPositionRwy());
-                text.append("Track ").append(coordinate.getTrackId()).append(": ").append(left.id()).append(" [")
-                        .append(left.nodeId()).append(gap ? "] | GAP | " : "] | CONTINUOUS | ").append(right.id()).append(" [").append(right.nodeId())
-                        .append("]; distinct_nodes=").append(!left.nodeId().equals(right.nodeId()))
-                        .append("; same_railway_position=").append(model.getNode(left.nodeId()).getPositionRwy()
-                                .equals(model.getNode(right.nodeId()).getPositionRwy())).append('\n');
-            }
-            text.append(branch ? "Branch feeding ports are separate nodes; inter-branch feeding uses only the declared station cables. Return junction links, if present, are listed with the external terminal references.\n"
-                            : gap ? "Gap terminals are separate nodes. Electrical paths through the declared cables and busbars remain present.\n"
-                            : "Left and right feeding terminals share one electrical node on each track. N and S remain separate rail nodes. No bypass resistor is added.\n")
+            text.append("\nDIRECT CONTINUITY (shared electrical nodes)\n");
+            Map<String,List<String>> shared=new TreeMap<>();
+            for(var entry:names.entrySet()) shared.computeIfAbsent(terminals.get(entry.getValue()).nodeId(),k->new ArrayList<>()).add(entry.getKey()+"="+entry.getValue());
+            shared.forEach((node,roles)->{if(roles.size()>1)text.append(node).append(" | ").append(String.join(", ",roles)).append('\n');});
+            text.append("Distinct nodes have no direct continuity; their cable paths are listed below.\n")
                     .append("Bus node railway positions are drawing/localization anchors, not cable lengths.\n")
                     .append("\nINTERNAL CABLES\n");
             for (var cable : cables) text.append(cable.id()).append(": ").append(cable.fromTerminalId()).append(" -> ")

@@ -39,7 +39,7 @@ public class BranchRouteGeneratorTest {
         var ids=route(conf,"X").feedingLineIds();
         assertEquals(List.of("B__101__1.N.F","B__101__2.N.F","B__101__3.N.F","J__J1__1.N.F","J__J1__2.N.F","B__201__1.N.F"),ids);
     }
-    @Test public void reverseBranchDirectionIsIndependentOfReversedStationOrientation() {
+    @Test public void reverseBranchDirectionIsIndependentOfTerminalNumbering() {
         var conf=input().withValue("routeDefinitions",ConfigFactory.parseString("X {branches=[\"-101\"],track=N}").root());
         assertEquals(List.of("B__101__3.N.F","B__101__2.N.F","B__101__1.N.F"),route(conf,"X").feedingLineIds());
     }
@@ -60,7 +60,7 @@ public class BranchRouteGeneratorTest {
         }
     }
     @Test public void supportsNamedBranchesWithExplicitSectionAndObjects() {
-        var conf=input().withValue("branches.west",ConfigFactory.parseString("section=\"101\"\nobjects=[P1,\"-SS0\",SS1,J1]").root()).withoutPath("branches.101")
+        var conf=input().withValue("branches.west",ConfigFactory.parseString("section=\"101\"\nobjects=[P1,SS0,SS1,J1]").root()).withoutPath("branches.101")
                 .withValue("routeDefinitions",ConfigFactory.parseString("X {branches=[west,\"200\",\"102\"],track=N}").root());
         assertEquals("B__west__1.N.F",route(conf,"X").feedingLineIds().get(0));
     }

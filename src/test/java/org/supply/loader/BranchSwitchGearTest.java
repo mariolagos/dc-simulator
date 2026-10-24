@@ -96,15 +96,15 @@ public class BranchSwitchGearTest {
         var reports=SwitchGearConnectionReport.render(model,grid);
         assertTrue(reports.get("SS1_connections.txt").contains("101.N.F | 1 | SS1.101.N.F | 101 18+750 N"));
         assertTrue(reports.get("SS1_connections.txt").contains("201.S.F | 6 | SS1.201.S.F | 201 14+000 S"));
-        assertTrue(reports.get("SS1_connections.txt").contains("BRANCH FEEDING GAPS"));
+        assertTrue(reports.get("SS1_connections.txt").contains("DIRECT CONTINUITY"));
         assertEquals(20,reports.get("SS1_connections.csv").lines().count());
         var expanded=ElectricalObjectExpander.expand(ConfigFactory.empty().withValue("grid",grid.root()));
         var reloaded=new GridModelLoader().load(ConfigFactory.parseString(expanded.root().render()));
         assertEquals(gear(model).terminals(),gear(reloaded).terminals());assertEquals(gear(model).cables(),gear(reloaded).cables());
     }
     @Test public void rejectsMissingOrDuplicateBranchTerminalMappings() {
-        assertThrows(IllegalArgumentException.class,()->model(input().withoutPath("switchgearTypes.branch_j1.branch_terminals.201")));
-        assertThrows(IllegalArgumentException.class,()->model(input().withValue("switchgearTypes.branch_j1.branch_terminals.201.N",ConfigValueFactory.fromAnyRef("1"))));
+        assertThrows(IllegalArgumentException.class,()->model(input().withoutPath("switchgearTypes.branch_j1.terminals."+ConfigUtil.quoteString("201.N.F"))));
+        assertThrows(IllegalArgumentException.class,()->model(input().withValue("switchgearTypes.branch_j1.terminals."+ConfigUtil.quoteString("201.N.F"),ConfigValueFactory.fromAnyRef("1"))));
     }
     @Test public void rejectsMissingFeederCable() {
         var input=input();var cables=new ArrayList<Config>(input.getConfigList("switchgearTypes.branch_j1.connections"));

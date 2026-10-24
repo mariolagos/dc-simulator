@@ -110,15 +110,6 @@ public final class BranchRouteGenerator {
         private final Map<String,String> parent = new HashMap<>();
         Components(GridModel model) {
             model.getNodes().forEach(n -> parent.put(n.getNodeId(),n.getNodeId()));
-            for (var station : model.getSixTerminalRectifierInstallations()) {
-                var terminals=station.terminalNodeIds();
-                for (var type : ConnectionType.values()) {
-                    String first=null;
-                    for (var entry : terminals.entrySet()) if (entry.getKey().connectionType()==type) {
-                        if (first==null) first=entry.getValue(); else join(first,entry.getValue());
-                    }
-                }
-            }
             for (var gear : model.getSwitchGears()) {
                 Map<String,String> nodes=new HashMap<>();gear.terminals().forEach(t->nodes.put(t.id(),t.nodeId()));
                 gear.cables().forEach(c->join(nodes.get(c.fromTerminalId()),nodes.get(c.toTerminalId())));

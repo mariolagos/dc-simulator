@@ -21,7 +21,7 @@ public class BranchGridGeneratorTest {
         assertTrue(input.hasPath("branches"));
         assertFalse(generated.hasPath("branches"));
         assertEquals(31, generated.getConfig("electricalObjects").root().size());
-        assertEquals(30, generated.getConfigList("electricalAssociations").size());
+        assertEquals(54, generated.getConfigList("electricalAssociations").size());
         var before = ElectricalObjectExpander.inspect(original.root().unwrapped());
         var after = ElectricalObjectExpander.inspect(generated.root().unwrapped());
         before.requireCalculationReady(); after.requireCalculationReady();
@@ -46,7 +46,7 @@ public class BranchGridGeneratorTest {
         }
         Collections.sort(lines); return lines;
     }
-    @Test public void supportsNamedBranchesParallelLinesLoopsAndReversedStation() {
+    @Test public void supportsNamedBranchesParallelLinesLoopsAndExplicitPortSelection() {
         Config source = fixture("WE_grid_branches.conf");
         Config input = source.withValue("branches", ConfigFactory.parseString("""
             main { section = "101", objects = [P1, { object = SS0, in = R, out = L }, SS1, J1] }
@@ -100,7 +100,8 @@ public class BranchGridGeneratorTest {
             }
             branches { route = [start, SS0, end] }
             """).withValue("lineTypes", types.getValue("lineTypes"))
-                .withValue("substationTypes", types.getValue("substationTypes"));
+                .withValue("substationTypes", types.getValue("substationTypes"))
+                .withValue("conductorTypes", types.getValue("conductorTypes"));
         Config result = BranchGridGenerator.generate(input);
         for (String name : List.of("start", "SS0", "end"))
             assertEquals(input.getValue("electricalObjects." + name + ".positions"),

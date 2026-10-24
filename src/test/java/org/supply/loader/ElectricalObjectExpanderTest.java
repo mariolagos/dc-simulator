@@ -8,16 +8,10 @@ import static org.junit.Assert.*;
 
 public class ElectricalObjectExpanderTest {
     public static Map<String,Object> sketch() {
-        Map<String,Object> objects=new LinkedHashMap<>();
-        objects.put("P1",point("1 0+000"));objects.put("A1",station("1 1+000"));objects.put("P2",point("1 2+000"));
-        objects.put("P3",point("1 3+000"));objects.put("A2",station("1 3+500"));objects.put("P4",point("1 4+500"));
-        for(String id:List.of("L1","L2","L3","L4","L5")) objects.put(id,Map.of("kind","LINE","type","standard"));
-        var associations=List.of(link("P1","L1.L"),link("L1.R","A1.L"),link("A1.R","L2.L"),link("L2.R","P2"),
-                link("P2","L3.L"),link("L3.R","P3"),link("P2","L4.L"),link("L4.R","A2.L"),link("A2.R","L5.L"),link("L5.R","P4"));
-        return new LinkedHashMap<>(Map.of("electricalObjects",objects,"electricalAssociations",associations,"reference_node_id","P1.N.R",
-                "substationTypes",Map.of("standard",Map.of("terminal_model","SIX_TERMINAL_RECTIFIER","emf_V",750.0,"internal_resistance_ohm",0.01,"rectifier_type","DIODE")),
-                "lineTypes",Map.of("standard",Map.of("feeding_resistance_ohm_per_m",0.000015,"return_resistance_ohm_per_m",0.00002))));
+        return new LinkedHashMap<>(ConfigFactory.parseResources("electrical-objects/branched.conf")
+                .resolve().getConfig("dcsim.grid").root().unwrapped());
     }
+
     private static Map<String,Object> point(String position) {return Map.of("kind","POINT","positions",positions(position));}
     private static Map<String,Object> station(String position) {return Map.of("kind","SUBSTATION","type","standard","positions",positions(position));}
     private static Map<String,Object> positions(String base) {return Map.of("N",base+" N","S",base+" S");}
@@ -36,11 +30,11 @@ public class ElectricalObjectExpanderTest {
         }
         assertFalse(node(lines,"L2.N.F","node_to_id").equals(node(lines,"L2.N.R","node_to_id")));
         assertFalse(node(lines,"L2.N.F","node_to_id").equals(node(lines,"L2.S.F","node_to_id")));
-        var model=new GridModelLoader().load(ConfigFactory.parseMap(Map.of("grid",sketch())));
-        assertEquals(28,model.getNodes().size());assertEquals(20,model.getLines().size());assertEquals(2,model.getSixTerminalRectifierInstallations().size());
+        var model=new GridModelLoader().load(com.typesafe.config.ConfigValueFactory.fromMap(Map.of("grid",sketch())).toConfig());
+        assertEquals(28,model.getNodes().size());assertEquals(20,model.getLines().size());assertEquals(2,model.getSwitchGears().size());
     }
     @Test public void buildsExistingCalculationNetworkWithExpectedResistances() {
-        var grid = new GridModelLoader().load(ConfigFactory.parseMap(Map.of("grid", sketch())));
+        var grid = new GridModelLoader().load(com.typesafe.config.ConfigValueFactory.fromMap(Map.of("grid", sketch())).toConfig());
         var track = new org.supply.track.TrackLoader().load(List.of(
                 new org.supply.track.KilometerBoard("1", "0+000", 0, 5000),
                 new org.supply.track.KilometerBoard("1", "5+000", 5000, 0)), List.of(), List.of());
@@ -89,7 +83,7 @@ public class ElectricalObjectExpanderTest {
         var grid=sketch();var links=new ArrayList<>(rows(grid.get("electricalAssociations")));links.removeIf(l->"A1.R".equals(l.get("from")));
         links.addAll(List.of(link("A1.B","L2.L.S.F"),link("A1.D","L2.L.N.F"),link("A1.N","L2.L.N.R"),link("A1.S","L2.L.S.R")));grid.put("electricalAssociations",links);
         var result=ElectricalObjectExpander.inspect(grid);result.requireCalculationReady();var lines=rows(result.expandedGrid().get("lines"));
-        assertEquals("A1.D",node(lines,"L2.N.F","node_from_id"));assertEquals("A1.B",node(lines,"L2.S.F","node_from_id"));assertEquals(20,lines.size());
+        assertEquals("A1.R.S.F",node(lines,"L2.N.F","node_from_id"));assertEquals("A1.R.N.F",node(lines,"L2.S.F","node_from_id"));assertEquals(20,lines.size());
     }
     @Test public void typeOverridesAndIdentityRemainStableWhenDescriptionsAreReordered() {
         var grid=sketch();var objs=objects(grid);var a=new LinkedHashMap<String,Object>((Map<String,Object>)objs.get("A1"));a.put("emf_V",800.0);a.put("id","SS1");objs.put("A1",a);grid.put("electricalObjects",objs);
