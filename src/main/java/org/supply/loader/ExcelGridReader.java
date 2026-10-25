@@ -16,6 +16,12 @@ public final class ExcelGridReader {
     private record InputRow(String location,Map<String,Object> cells) {
         Object value(String key) { return cells.get(key); }
         String text(String key) { Object v=value(key);if(!(v instanceof String s)||s.isBlank())throw bad(location+": text required in "+key);return s.trim(); }
+        String label(String key) {
+            Object v=value(key);
+            if(v instanceof Number n && Double.isFinite(n.doubleValue()) && n.doubleValue()==Math.rint(n.doubleValue()))
+                return java.math.BigDecimal.valueOf(n.doubleValue()).toBigIntegerExact().toString();
+            return text(key);
+        }
         String optional(String key) { return value(key)==null?"":text(key); }
         boolean flag(String key) { if(!(value(key) instanceof Boolean b))throw bad(location+": TRUE/FALSE required in "+key);return b; }
         double number(String key) { if(!(value(key) instanceof Number n)||!Double.isFinite(n.doubleValue()))throw bad(location+": finite number required in "+key);return n.doubleValue(); }
@@ -81,8 +87,8 @@ public final class ExcelGridReader {
             for(String track:List.of("N","S"))if(!RwyCoordinateParser.parse((String)pair.get(track)).getTrackId().equals(track))throw bad(r.location+": position track mismatch");
             if(kind.equals("JUNCTION")) {
                 Map<String,Object> spec=map(objects.computeIfAbsent(id,k->new LinkedHashMap<>(Map.of("kind","JUNCTION","positions",new LinkedHashMap<String,Object>()))));
-                var ports=map(spec.get("positions"));if(ports.containsKey(r.text("Port")))throw bad(r.location+": duplicate junction port");
-                ports.put(r.text("Port"),pair);spec.put("positions",ports);objects.put(id,spec);
+                var ports=map(spec.get("positions"));if(ports.containsKey(r.label("Port")))throw bad(r.location+": duplicate junction port");
+                ports.put(r.label("Port"),pair);spec.put("positions",ports);objects.put(id,spec);
                 if(!r.optional("Junction links").isEmpty())spec.put("conductors",Arrays.stream(r.text("Junction links").split(",")).map(String::trim).toList());
             } else {
                 if(objects.putIfAbsent(id,new LinkedHashMap<>(Map.of("kind","POINT","positions",pair)))!=null)throw bad(r.location+": duplicate object "+id);
@@ -91,8 +97,8 @@ public final class ExcelGridReader {
         Map<String,List<String>> branches=new LinkedHashMap<>();Map<String,List<InputRow>> branchRows=group(table("Branches","Branch","Section","Order","Object"),"Branch");
         Map<String,Object> branchSpecs=new LinkedHashMap<>();
         for(var e:branchRows.entrySet()) {
-            var sorted=ordered(e.getValue());String section=sorted.get(0).text("Section");
-            if(sorted.stream().anyMatch(r->!r.text("Section").equals(section)))throw bad("Conflicting branch sections: "+e.getKey());
+            var sorted=ordered(e.getValue());String section=sorted.get(0).label("Section");
+            if(sorted.stream().anyMatch(r->!r.label("Section").equals(section)))throw bad("Conflicting branch sections: "+e.getKey());
             List<String> chain=sorted.stream().map(r->r.text("Object")).toList();branches.put(e.getKey(),chain);
             branchSpecs.put(e.getKey(),Map.of("section",section,"objects",chain));
         }
@@ -100,6 +106,8 @@ public final class ExcelGridReader {
         for(var r:table("LineTypes","Line type","Feeding [ohm/m]","Return [ohm/m]")) {
             put(lineTypes,r.text("Line type"),Map.of("feeding_resistance_ohm_per_m",positive(r,"Feeding [ohm/m]"),"return_resistance_ohm_per_m",positive(r,"Return [ohm/m]")),r);
         }
+        // Expand reusable type rules into the same connection records used by the compiler.
+        if(tables.containsKey("SwitchgearConnections")) expandSwitchgearTypes(branches, metadata);
         Map<String,InputRow> stations=new LinkedHashMap<>();
         for(var r:table("Substations","Substation","Rectifier type","Switchgear type","Feeding gap")) {
             String id=r.text("Substation");if(stations.putIfAbsent(id,r)!=null)throw bad(r.location+": duplicate substation "+id);
@@ -188,7 +196,7 @@ public final class ExcelGridReader {
                 else cables.add(Map.of("id","to_"+terminal,"from",bus,"to",terminal,"length_m",length,"conductor_type","excel_"+id+"_"+terminal,"resistance_ohm_per_km",resistance*1000,"multiplicity",count));
             }
             if(!row.flag("Feeding gap")) {
-                if(!typeId.equals("Through_connection"))throw bad(row.location+": gap=FALSE currently requires Through_connection");
+                if(!type.keySet().containsAll(List.of("A","B","C","D")))throw bad(row.location+": no-gap type requires A/B and C/D terminal pairs");
                 for(var pair:List.of(List.of("A","B"),List.of("C","D"))) {
                     String a=positions.get(pair.get(0)),b=positions.get(pair.get(1));if(!a.equals(b))throw bad(row.location+": no-gap terminals must share positionRwy");
                     ideals.add(ideal(id+"__no_gap_"+pair.get(0),terminalNodes.get(pair.get(0)),terminalNodes.get(pair.get(1)),"FEEDING"));
@@ -207,14 +215,19 @@ public final class ExcelGridReader {
         for(var e:group(table("Routes","Route","Track","Order","Branch","Direction"),"Route").entrySet()) {
             Map<String,Object> route=new LinkedHashMap<>();
             for(String conductor:List.of("F","R")) {
-                List<String> ids=new ArrayList<>();String track=null;
+                List<String> ids=new ArrayList<>();String track=null;String previousEnd=null;
                 for(var r:ordered(e.getValue())) {
                     if(!Set.of("N","S").contains(r.text("Track")))throw bad(r.location+": invalid route track");
                     if(track!=null&&!track.equals(r.text("Track")))throw bad(r.location+": route track must be constant");track=r.text("Track");
                     List<String> chain=branches.get(r.text("Branch"));if(chain==null)throw bad(r.location+": unknown route branch");
                     String direction=r.text("Direction");if(!Set.of("FORWARD","REVERSE").contains(direction))throw bad(r.location+": invalid direction");
                     List<Integer> segments=new ArrayList<>();for(int i=1;i<chain.size();i++)segments.add(i);if(direction.equals("REVERSE"))Collections.reverse(segments);
+                    String firstId="B__"+r.text("Branch")+"__"+segments.get(0)+"."+track+"."+conductor;
+                    String start=(String)lines.get(firstId).get(direction.equals("FORWARD")?"node_from_id":"node_to_id");
+                    if(previousEnd!=null)ids.addAll(junctionPath(previousEnd,start,lines,ideals,cablesForRoutes(gears)));
                     for(int i:segments)ids.add("B__"+r.text("Branch")+"__"+i+"."+track+"."+conductor);
+                    String lastId="B__"+r.text("Branch")+"__"+segments.get(segments.size()-1)+"."+track+"."+conductor;
+                    previousEnd=(String)lines.get(lastId).get(direction.equals("FORWARD")?"node_to_id":"node_from_id");
                 }
                 route.put(conductor.equals("F")?"feeding_lines":"return_lines",ids);
             }
@@ -222,6 +235,109 @@ public final class ExcelGridReader {
         }
         return new Result(config(output),Collections.unmodifiableMap(routes),List.copyOf(bindings));
     }
+    /** BEFORE/AFTER follow the ordered branch, independently of railway kilometre direction. */
+    private void expandSwitchgearTypes(Map<String,List<String>> branches, Map<String,Map<String,Object>> metadata) {
+        if(tables.containsKey("TerminalConnections"))throw bad("Use SwitchgearConnections or TerminalConnections, not both");
+        Map<String,InputRow> definitions=new LinkedHashMap<>();
+        for(var r:table("SwitchgearTypes","Switchgear type","Feeding gap")) {
+            if(definitions.putIfAbsent(r.text("Switchgear type"),r)!=null)throw bad(r.location+": duplicate switchgear type");
+            r.flag("Feeding gap");
+        }
+        var rules=group(table("SwitchgearConnections","Switchgear type","Terminal","Side","Track","Conductor","Bus","Enabled","Length [m]","Resistance [ohm/m]","Multiplicity"),"Switchgear type");
+        if(!definitions.keySet().equals(rules.keySet()))throw bad("SwitchgearTypes and SwitchgearConnections must define the same types");
+        List<InputRow> stationRows=table("Substations","Substation","Rectifier type","Switchgear type");
+        List<InputRow> stations=new ArrayList<>(),connections=new ArrayList<>(),feeding=new ArrayList<>(),returns=new ArrayList<>();
+        for(var definition:definitions.entrySet()) {
+            Map<String,Object> f=new LinkedHashMap<>(),ret=new LinkedHashMap<>();f.put("Switchgear type",definition.getKey());ret.put("Switchgear type",definition.getKey());
+            Set<String> slots=new HashSet<>(),terminals=new HashSet<>(),sides=new HashSet<>();
+            for(var rule:rules.get(definition.getKey())) {
+                String terminal=rule.text("Terminal"),side=rule.text("Side"),track=rule.text("Track"),conductor=rule.text("Conductor");
+                identifier(side);sides.add(side);
+                if(!Set.of("N","S").contains(track)||!Set.of("F","R").contains(conductor))throw bad(rule.location+": expected N/S track and F/R conductor");
+                if(!terminals.add(terminal)||!slots.add(side+"|"+track+"|"+conductor))throw bad(rule.location+": duplicate terminal or connection slot");
+                (conductor.equals("F")?f:ret).put(terminal,rule.text("Bus"));rule.flag("Enabled");
+            }
+            for(String side:sides)for(String track:List.of("N","S"))for(String conductor:List.of("F","R"))
+                if(!slots.contains(side+"|"+track+"|"+conductor))throw bad(definition.getValue().location+": each switchgear side requires N/S × F/R connections: "+side);
+            feeding.add(new InputRow(definition.getValue().location,f));returns.add(new InputRow(definition.getValue().location,ret));
+        }
+        Map<String,Map<String,InputRow>> portMaps=new LinkedHashMap<>();
+        if(tables.containsKey("StationPorts"))for(var port:table("StationPorts","Substation","Side","Branch","Swap tracks")) {
+            port.flag("Swap tracks");
+            if(portMaps.computeIfAbsent(port.text("Substation"),k->new LinkedHashMap<>()).putIfAbsent(port.text("Side"),port)!=null)
+                throw bad(port.location+": duplicate station side mapping");
+        }
+        Set<String> stationIds=new HashSet<>();stationRows.forEach(r->stationIds.add(r.text("Substation")));
+        if(!stationIds.containsAll(portMaps.keySet()))throw bad("Unknown substation in StationPorts");
+        for(var station:stationRows) {
+            String id=station.text("Substation"),type=station.text("Switchgear type");
+            if(!definitions.containsKey(type))throw bad(station.location+": unknown switchgear type "+type);
+            if(!metadata.containsKey(id))throw bad(station.location+": station absent from Network: "+id);
+            boolean junction=metadata.get(id).containsKey("junction");
+            String owner=(String)metadata.get(id).getOrDefault("junction",id);
+            Map<String,InputRow> ports=portMaps.getOrDefault(id,Map.of());
+            Set<String> sides=new LinkedHashSet<>();rules.get(type).forEach(r->sides.add(r.text("Side")));
+            if(!sides.containsAll(ports.keySet()))throw bad(station.location+": StationPorts contains a side absent from switchgear type");
+            if(junction&&!ports.keySet().equals(sides))throw bad(station.location+": junction station requires one StationPorts row for each type side: "+sides);
+            var incident=new ArrayList<String>();
+            for(var e:branches.entrySet())if(e.getValue().contains(owner))incident.add(e.getKey());
+            if(!junction&&(incident.size()!=1||!sides.equals(Set.of("BEFORE","AFTER"))))
+                throw bad(station.location+": interior station requires one branch and BEFORE/AFTER sides");
+            Map<String,String> branchForSide=new LinkedHashMap<>();
+            for(String side:sides) {
+                String branch=ports.containsKey(side)?ports.get(side).label("Branch"):incident.get(0);
+                List<String> chain=branches.get(branch);
+                if(chain==null||Collections.frequency(chain,owner)!=1)throw bad(station.location+": side "+side+" must map to an incident branch containing "+owner+" exactly once");
+                int i=chain.indexOf(owner);
+                if(junction&&(i!=0&&i!=chain.size()-1))throw bad(station.location+": junction must be a branch endpoint");
+                if(!junction&&(i==0||i==chain.size()-1))throw bad(station.location+": BEFORE/AFTER requires a neighbour on both sides");
+                branchForSide.put(side,branch);
+            }
+            if(junction&&(new HashSet<>(branchForSide.values()).size()!=sides.size()||!new HashSet<>(branchForSide.values()).equals(new HashSet<>(incident))))
+                throw bad(station.location+": map every incident junction branch exactly once");
+            var values=new LinkedHashMap<>(station.cells);values.put("Feeding gap",definitions.get(type).flag("Feeding gap"));stations.add(new InputRow(station.location,values));
+            for(var rule:rules.get(type)) {
+                String side=rule.text("Side"),branch=branchForSide.get(side);var chain=branches.get(branch);int i=chain.indexOf(owner);
+                int segment=junction?(i==0?0:i-1):(side.equals("BEFORE")?i-1:i);
+                String track=rule.text("Track");
+                if(ports.containsKey(side)&&ports.get(side).flag("Swap tracks"))track=track.equals("N")?"S":"N";
+                var cells=new LinkedHashMap<>(rule.cells);cells.put("Substation",id);
+                cells.put("Connects to",branch+" / "+chain.get(segment)+" → "+chain.get(segment+1)+" / "+track+"."+rule.text("Conductor"));
+                connections.add(new InputRow(rule.location+" (station "+id+")",cells));
+            }
+        }
+        tables.put("Substations",stations);headers.put("Substations",List.of("Substation","Rectifier type","Switchgear type","Feeding gap"));
+        tables.put("TerminalConnections",connections);
+        headers.put("TerminalConnections",List.of("Substation","Terminal","Connects to","Enabled","Length [m]","Resistance [ohm/m]","Multiplicity"));
+        tables.put("FeedingTerminals",feeding);tables.put("ReturnTerminals",returns);
+        for(var pair:List.of(Map.entry("FeedingTerminals",feeding),Map.entry("ReturnTerminals",returns))) {
+            Set<String> columns=new LinkedHashSet<>();columns.add("Switchgear type");pair.getValue().forEach(r->columns.addAll(r.cells.keySet()));headers.put(pair.getKey(),List.copyOf(columns));
+        }
+    }
+    private record Link(String to,String line) { }
+    private static List<Map<String,Object>> cablesForRoutes(List<Map<String,Object>> gears) {
+        List<Map<String,Object>> result=new ArrayList<>();
+        for(var g:gears) {
+            Map<String,String> nodes=new HashMap<>();for(var t:list(g.get("terminals")))nodes.put((String)t.get("id"),(String)t.get("node_id"));
+            for(var c:list(g.get("cables")))result.add(Map.of("from",nodes.get(c.get("from")),"to",nodes.get(c.get("to"))));
+        }
+        return result;
+    }
+    private static List<String> junctionPath(String from,String to,Map<String,Map<String,Object>> lines,List<Map<String,Object>> ideals,List<Map<String,Object>> cables) {
+        Map<String,List<Link>> graph=new HashMap<>();
+        for(var line:lines.values())if(((String)line.get("line_id")).startsWith("J__"))link(graph,(String)line.get("node_from_id"),(String)line.get("node_to_id"),(String)line.get("line_id"));
+        for(var edge:ideals)link(graph,(String)edge.get("from"),(String)edge.get("to"),null);
+        for(var edge:cables)link(graph,(String)edge.get("from"),(String)edge.get("to"),null);
+        Map<String,List<String>> paths=new HashMap<>();paths.put(from,List.of());var queue=new ArrayDeque<String>();queue.add(from);
+        while(!queue.isEmpty()) {
+            String node=queue.remove();if(node.equals(to))return paths.get(node);
+            for(var edge:graph.getOrDefault(node,List.of()))if(!paths.containsKey(edge.to)) {
+                var path=new ArrayList<>(paths.get(node));if(edge.line!=null)path.add(edge.line);paths.put(edge.to,path);queue.add(edge.to);
+            }
+        }
+        throw bad("Route branches are not electrically connected between "+from+" and "+to);
+    }
+    private static void link(Map<String,List<Link>> graph,String a,String b,String line) {graph.computeIfAbsent(a,k->new ArrayList<>()).add(new Link(b,line));graph.computeIfAbsent(b,k->new ArrayList<>()).add(new Link(a,line));}
     private static List<InputRow> ordered(List<InputRow> rows) {var sorted=new ArrayList<>(rows);sorted.sort(Comparator.comparingInt(r->r.order("Order")));for(int i=0;i<sorted.size();i++)if(sorted.get(i).order("Order")!=i+1)throw bad(sorted.get(i).location+": Order must be unique and consecutive from 1");return sorted;}
     private static Map<String,List<InputRow>> group(List<InputRow> rows,String key) {Map<String,List<InputRow>> result=new LinkedHashMap<>();for(var r:rows)result.computeIfAbsent(r.text(key),k->new ArrayList<>()).add(r);return result;}
     private static double positive(InputRow r,String field){double v=r.number(field);if(v<=0)throw bad(r.location+": "+field+" must be positive");return v;}
