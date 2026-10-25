@@ -32,10 +32,18 @@ public final class AdmittanceSystemBuilder {
 
         Map<String, Integer> nodeIndexById = new LinkedHashMap<>();
 
-        for (int i = 0; i < nodeIds.size(); i++) {
-            nodeIndexById.put(nodeIds.get(i), i);
+        var groups = new org.supply.domain.IdealNodeGroups(network.nodes().stream().map(CalculationNode::id).toList());
+        for(var e:network.elements()) if(e instanceof org.supply.solver.model.IdealConnectionElement link)
+            groups.join(link.fromNodeId(),link.toNodeId());
+        Map<String,Integer> indexByGroup=new LinkedHashMap<>();
+        List<String> representatives=new java.util.ArrayList<>();
+        for(String id:nodeIds) {
+            String group=groups.group(id);
+            Integer index=indexByGroup.get(group);
+            if(index==null) { index=indexByGroup.size();indexByGroup.put(group,index);representatives.add(id); }
+            nodeIndexById.put(id,index);
         }
-
+        nodeIds=representatives;
         int size = nodeIds.size();
 
         if (!nodeIndexById.containsKey(referenceNodeId)) {
@@ -51,6 +59,7 @@ public final class AdmittanceSystemBuilder {
                 new AdmittanceStamp(matrix, vector, nodeIndexById, previousVoltages);
 
         for (ElectricalElement element : network.elements()) {
+            if (element instanceof org.supply.solver.model.IdealConnectionElement) continue;
             if (element instanceof SubstationElement substation
                     && !substation.enabled()) {
                 continue;
@@ -163,6 +172,9 @@ public final class AdmittanceSystemBuilder {
 
         for (CurrentInjection i : currentInjections) {
             ids.add(i.nodeId());
+        }
+        for(var e:network.elements()) if(e instanceof org.supply.solver.model.IdealConnectionElement link) {
+            ids.add(link.fromNodeId());ids.add(link.toNodeId());
         }
 
         return network.nodes().stream()

@@ -13,6 +13,10 @@ import java.util.List;
 import java.util.Map;
 
 public class GridModel {
+    private final List<org.supply.domain.IdealConnection> idealConnections = new ArrayList<>();
+    public void addIdealConnection(org.supply.domain.IdealConnection connection) { idealConnections.add(connection); }
+    public List<org.supply.domain.IdealConnection> getIdealConnections() { return List.copyOf(idealConnections); }
+
     private final List<org.supply.domain.SwitchGear> switchGears = new ArrayList<>();
 
     public void addSwitchGear(org.supply.domain.SwitchGear switchGear) { switchGears.add(switchGear); }

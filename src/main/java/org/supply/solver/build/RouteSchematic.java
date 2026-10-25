@@ -70,6 +70,10 @@ public final class RouteSchematic {
         for(var b:network.branches()) { byLine.computeIfAbsent(b.sourceId(),k->new ArrayList<>()).add(b); }
         Set<String> selected=new LinkedHashSet<>(route.feedingLineIds());selected.addAll(route.returnLineIds());
         Layout layout=new Layout(nodes,network.branches(),selected,ohmPerM,context);
+        for(var e:network.elements()) if(e instanceof IdealConnectionElement c)
+            layout.joinDrawing(nodes.get(c.fromNodeId()),nodes.get(c.toNodeId()));
+        for(var b:network.branches()) if(b.sourceId()!=null&&b.sourceId().startsWith("internal_"))
+            layout.joinDrawing(nodes.get(b.fromNodeId()),nodes.get(b.toNodeId()));
         LinkedHashSet<String> places=new LinkedHashSet<>();
         String previous=null;
         for(String id:route.feedingLineIds()) {
@@ -109,7 +113,12 @@ public final class RouteSchematic {
                 if(b.sourceId()!=null && b.sourceId().startsWith("internal_") && (terminals.contains(b.fromNodeId())||terminals.contains(b.toNodeId()))) {
                     changed|=terminals.add(b.fromNodeId());changed|=terminals.add(b.toNodeId());
                 }
-            } } while(changed);
+            }
+                for(var e2:network.elements()) if(e2 instanceof IdealConnectionElement c &&
+                        (terminals.contains(c.fromNodeId())||terminals.contains(c.toNodeId()))) {
+                    changed|=terminals.add(c.fromNodeId());changed|=terminals.add(c.toNodeId());
+                }
+            } while(changed);
             if(Collections.disjoint(terminals,routeNodes)) { continue; }
             Station station=new Station(id,from,to,type,terminals);
             for(String terminal:terminals) {
@@ -131,7 +140,9 @@ public final class RouteSchematic {
         out.append("<rect width=\"100%\" height=\"100%\" fill=\"white\"/><g font-family=\"Arial\">\n");
         text(out,20,28,"Route "+route.id()+(combined?" | combined topology":" | selected route, topology only"),14,"#222","start");
         text(out,20,50,combined?"Separate lanes per route in title order, alternating red/blue. Shared line IDs are views of the same solver branch.":"Red: feeding; blue: return. Layout not to distance scale.",12,"#333","start");
-        text(out,20,68,"Model assumption: all feeder breakers closed. Internal station connections not drawn.",9,"#555","start");
+        text(out,20,68,network.elements().stream().anyMatch(e->e instanceof IdealConnectionElement)
+                ? "Compiled station wiring; open internal connections remain disconnected. Internal wiring not drawn."
+                : "Model assumption: all feeder breakers closed. Internal station connections not drawn.",9,"#555","start");
         Map<String,List<String>> columnReferences=new LinkedHashMap<>();
         for(var entry:x.entrySet()) {
             Set<String> references=new LinkedHashSet<>();Set<Double> metres=new LinkedHashSet<>();
@@ -287,6 +298,9 @@ public final class RouteSchematic {
                 if(!a.equals(z)) parent.put(z,a);
                 if(visibleConnector) connectors.add(b.id());junctionNodeIds.add(b.fromNodeId());junctionNodeIds.add(b.toNodeId());
             }
+        }
+        void joinDrawing(CalculationNode from,CalculationNode to) {
+            String a=place(from),b=place(to);if(!a.equals(b))parent.put(b,a);
         }
         String place(CalculationNode node) {
             String key=RouteSchematic.place(node);

@@ -22,6 +22,23 @@ public class GridModelLoader {
         lineFactory.build(model, grid);
         installationFactory.build(model, grid);
         fixedLoadFactory.build(model, grid);
+        if (grid.hasPath("ideal_connections")) {
+            java.util.Set<String> ids=new java.util.HashSet<>();
+            java.util.Map<String,org.supply.domain.ConnectionType> polarity=new java.util.HashMap<>();
+            model.getInstallationConnections().forEach(c->polarity.put(c.getNodeId(),c.getConnectionType()));
+            for (Config c:grid.getConfigList("ideal_connections")) {
+                var connection=new org.supply.domain.IdealConnection(c.getString("id"),c.getString("from"),
+                        c.getString("to"),org.supply.domain.ConnectionType.valueOf(c.getString("connection_type")));
+                if(!ids.add(connection.id())) throw new IllegalArgumentException("Duplicate ideal connection: "+connection.id());
+                for(String node:java.util.List.of(connection.fromNodeId(),connection.toNodeId())) {
+                    model.getNode(node);
+                    var previous=polarity.putIfAbsent(node,connection.connectionType());
+                    if(previous!=null && previous!=connection.connectionType())
+                        throw new IllegalArgumentException("Ideal connection joins feeding and return: "+connection.id());
+                }
+                model.addIdealConnection(connection);
+            }
+        }
         new SwitchGearFactory().build(model, grid);
 
         validator.validate(model);

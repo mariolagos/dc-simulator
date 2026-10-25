@@ -129,6 +129,8 @@ public final class CalculationNetworkBuilder {
         List<ElectricalElement> elements = new ArrayList<>();
         elements.addAll(branches);
 
+        for(var connection:gridModel.getIdealConnections())
+            elements.add(new org.supply.solver.model.IdealConnectionElement(connection.id(),connection.fromNodeId(),connection.toNodeId()));
         addSubstationElements(gridModel, elements);
 
         addFixedLoadElements(gridModel, elements);

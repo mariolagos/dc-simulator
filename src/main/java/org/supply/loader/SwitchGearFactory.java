@@ -32,11 +32,12 @@ public final class SwitchGearFactory {
                         cable.getInt("multiplicity")));
             }
             var gear = new WiredSwitchGear(id, terminals, cables);
-            validateSourcePaths(model, gear);
+            validateSourcePaths(model, gear, spec.hasPath("disconnected_terminals")
+                    ? Set.copyOf(spec.getStringList("disconnected_terminals")) : Set.of());
             model.addSwitchGear(gear);
         }
     }
-    private static void validateSourcePaths(GridModel model, SwitchGear gear) {
+    private static void validateSourcePaths(GridModel model, SwitchGear gear, Set<String> disconnected) {
         Map<String, SwitchGearTerminal> byNode = new HashMap<>();
         Map<String, Set<String>> graph = new HashMap<>();
         for (var terminal : gear.terminals()) {
@@ -54,6 +55,11 @@ public final class SwitchGearFactory {
             graph.get(cable.fromTerminalId()).add(cable.toTerminalId());
             graph.get(cable.toTerminalId()).add(cable.fromTerminalId());
         }
+        if(!graph.keySet().containsAll(disconnected)) throw new IllegalArgumentException("Unknown disconnected terminal");
+        for(var link:model.getIdealConnections()) {
+            var a=byNode.get(link.fromNodeId()); var b=byNode.get(link.toNodeId());
+            if(a!=null && b!=null) { graph.get(a.id()).add(b.id());graph.get(b.id()).add(a.id()); }
+        }
         for (var type : ConnectionType.values()) {
             var connections = model.getInstallationConnections().stream()
                     .filter(c -> c.getInstallationId().equals(gear.installationId()) && c.getConnectionType() == type).toList();
@@ -64,7 +70,7 @@ public final class SwitchGearFactory {
             Set<String> seen = new HashSet<>();
             Deque<String> queue = new ArrayDeque<>(); queue.add(sourceTerminal.id());
             while (!queue.isEmpty()) { var id = queue.removeFirst(); if (seen.add(id)) queue.addAll(graph.get(id)); }
-            for (var terminal : gear.terminals()) if (terminal.connectionType() == type && !seen.contains(terminal.id()))
+            for (var terminal : gear.terminals()) if (terminal.connectionType() == type && !disconnected.contains(terminal.id()) && !seen.contains(terminal.id()))
                 throw new IllegalArgumentException("Switchgear terminal has no path to source pole: " + terminal.id());
         }
     }

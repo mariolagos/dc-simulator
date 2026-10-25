@@ -61,6 +61,8 @@ public final class ElectricalRouteCheck {
         }
         Map<String, List<CalculationBranch>> byLine = new LinkedHashMap<>();
         Map<String, Set<String>> internal = new LinkedHashMap<>();
+        for(var e:network.elements()) if(e instanceof org.supply.solver.model.IdealConnectionElement ideal)
+            link(internal,ideal.fromNodeId(),ideal.toNodeId());
         Set<String> branchIds = new HashSet<>();
         for (CalculationBranch branch : network.branches()) {
             if (!branchIds.add(branch.id())) {

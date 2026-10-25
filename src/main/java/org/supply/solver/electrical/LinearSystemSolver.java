@@ -53,6 +53,8 @@ public final class LinearSystemSolver {
             }
         }
 
+        for(var entry:system.nodeIndexById().entrySet())
+            voltageByNodeId.put(entry.getKey(),voltageByNodeId.get(system.nodeIds().get(entry.getValue())));
         return voltageByNodeId;
     }
 
