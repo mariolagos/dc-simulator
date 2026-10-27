@@ -93,6 +93,17 @@ final class GraphicalTimetableMarkerWriter {
             String id = installation.getString("installation_id");
             Map<String, String> positions = new LinkedHashMap<>();
             for (String node : connections.getOrDefault(id, Set.of())) positions.put(node, nodes.get(node));
+            // In explicit switchgear grids, railway line endpoints are station terminals;
+            // source POS/NEG nodes are internal and do not themselves belong to routes.
+            if (grid.hasPath("switchgears")) {
+                for (Config gear : grid.getConfigList("switchgears")) {
+                    if (!id.equals(gear.getString("installation_id"))) continue;
+                    for (Config terminal : gear.getConfigList("terminals")) {
+                        String node = terminal.getString("node_id");
+                        if (nodes.containsKey(node)) positions.put(node, nodes.get(node));
+                    }
+                }
+            }
             if (installation.hasPath("terminals")) {
                 Config terminals = installation.getConfig("terminals");
                 for (String terminal : terminals.root().keySet()) {

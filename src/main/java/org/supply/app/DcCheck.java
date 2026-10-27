@@ -72,6 +72,49 @@ public final class DcCheck {
         }
     }
 
+    static List<org.supply.track.TrackRouteDiagram.ObjectPoint> supplyPoints(GridModel grid, CalculationNetwork network) {
+        List<org.supply.track.TrackRouteDiagram.ObjectPoint> objects = new ArrayList<>();
+        for (var element : network.elements()) {
+            String id, nodeId;
+            if (element instanceof org.supply.solver.model.DiodeSubstationElement sub) {
+                id = sub.id(); nodeId = sub.feedingNodeId();
+            } else if (element instanceof org.supply.solver.model.ThyristorSubstationElement sub) {
+                id = sub.id(); nodeId = sub.feedingNodeId();
+            } else { continue; }
+            Set<String> terminals = new HashSet<>(List.of(nodeId));
+            boolean changed;
+            do {
+                changed = false;
+                for (var branch : network.branches()) {
+                    if (!branch.id().startsWith("internal_")) { continue; }
+                    if (terminals.contains(branch.fromNodeId())) changed |= terminals.add(branch.toNodeId());
+                    if (terminals.contains(branch.toNodeId())) changed |= terminals.add(branch.fromNodeId());
+                }
+            } while (changed);
+            // Include external switchgear terminals on both tracks. The source
+            // node itself may be anchored to just one of those tracks.
+            for (var gear : grid.getSwitchGears()) {
+                if (!gear.installationId().equals(id)) continue;
+                Set<String> lineNodes = new HashSet<>();
+                for (var line : grid.getLines()) {
+                    lineNodes.add(line.getFromNode().getNodeId());
+                    lineNodes.add(line.getToNode().getNodeId());
+                }
+                terminals.clear();
+                for (var terminal : gear.terminals())
+                    if (lineNodes.contains(terminal.nodeId())) terminals.add(terminal.nodeId());
+            }
+            // Diagram coordinates must be railway coordinates from input, not model metres.
+            for (var node : grid.getNodes()) {
+                if (terminals.contains(node.getNodeId())) {
+                    objects.add(new org.supply.track.TrackRouteDiagram.ObjectPoint("substation", id,
+                            org.supply.track.RwyCoordinateParser.parse(node.getPositionRwy())));
+                }
+            }
+        }
+        return objects;
+    }
+
     /** selectedRouteId filters only topology output; all routes and traffic are checked. */
     public static CheckResult run(DcStudyContext context, String selectedRouteId) throws Exception {
         List<String> errors = new ArrayList<>();
@@ -117,31 +160,7 @@ public final class DcCheck {
         if (track != null) {
             List<org.supply.track.TrackRouteDiagram.ObjectPoint> objects = new ArrayList<>();
             if (network != null) {
-                for (var element : network.elements()) {
-                    String id, nodeId;
-                    if (element instanceof org.supply.solver.model.DiodeSubstationElement sub) {
-                        id = sub.id(); nodeId = sub.feedingNodeId();
-                    } else if (element instanceof org.supply.solver.model.ThyristorSubstationElement sub) {
-                        id = sub.id(); nodeId = sub.feedingNodeId();
-                    } else { continue; }
-                    Set<String> terminals = new HashSet<>(List.of(nodeId));
-                    boolean changed;
-                    do {
-                        changed = false;
-                        for (var branch : network.branches()) {
-                            if (!branch.id().startsWith("internal_")) { continue; }
-                            if (terminals.contains(branch.fromNodeId())) changed |= terminals.add(branch.toNodeId());
-                            if (terminals.contains(branch.toNodeId())) changed |= terminals.add(branch.fromNodeId());
-                        }
-                    } while (changed);
-                    // Diagram coordinates must be railway coordinates from input, not model metres.
-                    for (var node : grid.getNodes()) {
-                        if (terminals.contains(node.getNodeId())) {
-                            objects.add(new org.supply.track.TrackRouteDiagram.ObjectPoint("substation", id,
-                                    org.supply.track.RwyCoordinateParser.parse(node.getPositionRwy())));
-                        }
-                    }
-                }
+                objects.addAll(supplyPoints(grid, network));
             } else {
                 warnings.add("Track band diagrams omit substations: calculation network unavailable");
             }

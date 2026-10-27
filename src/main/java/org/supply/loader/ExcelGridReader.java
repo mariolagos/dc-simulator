@@ -12,7 +12,7 @@ import java.util.*;
 
 /** Reads named Excel input tables and generates the established explicit grid vocabulary. */
 public final class ExcelGridReader {
-    public record Result(Config grid, Map<String,Object> routes, List<Map<String,Object>> bindings) { }
+    public record Result(Config grid, Map<String,Object> routes, List<Map<String,Object>> bindings, List<Map<String,String>> trackJunctions) { }
     private record InputRow(String location,Map<String,Object> cells) {
         Object value(String key) { return cells.get(key); }
         String text(String key) { Object v=value(key);if(!(v instanceof String s)||s.isBlank())throw bad(location+": text required in "+key);return s.trim(); }
@@ -233,7 +233,42 @@ public final class ExcelGridReader {
             }
             routes.put(e.getKey(),route);
         }
-        return new Result(config(output),Collections.unmodifiableMap(routes),List.copyOf(bindings));
+        return new Result(config(output),Collections.unmodifiableMap(routes),List.copyOf(bindings), trackJunctions(branches, branchSpecs, objects, metadata));
+    }
+    /** Track links are derived only for transitions used by declared routes. */
+    private List<Map<String,String>> trackJunctions(Map<String,List<String>> branches,
+            Map<String,Object> branchSpecs, Map<String,Object> objects, Map<String,Map<String,Object>> metadata) {
+        Map<String,Map<String,String>> links = new LinkedHashMap<>();
+        for (var route : group(table("Routes","Route","Track","Order","Branch","Direction"), "Route").entrySet()) {
+            InputRow previous = null;
+            for (InputRow row : ordered(route.getValue())) {
+                if (previous != null) {
+                    String left = previous.text("Branch"), right = row.text("Branch");
+                    List<String> a = branches.get(left), b = branches.get(right);
+                    String end = a.get(previous.text("Direction").equals("FORWARD") ? a.size()-1 : 0);
+                    String start = b.get(row.text("Direction").equals("FORWARD") ? 0 : b.size()-1);
+                    String endOwner = (String) metadata.get(end).getOrDefault("junction", end);
+                    String startOwner = (String) metadata.get(start).getOrDefault("junction", start);
+                    String sa = (String) map(branchSpecs.get(left)).get("section");
+                    String sb = (String) map(branchSpecs.get(right)).get("section");
+                    if (!sa.equals(sb)) {
+                        if (!endOwner.equals(startOwner) || !objects.containsKey(endOwner)
+                                || !"JUNCTION".equals(map(objects.get(endOwner)).get("kind")))
+                            throw bad(row.location + ": route section transition requires a common junction");
+                        Map<String,Object> ports = map(map(objects.get(endOwner)).get("positions"));
+                        String track = row.text("Track");
+                        if (!ports.containsKey(sa) || !ports.containsKey(sb))
+                            throw bad(row.location + ": junction lacks route section position");
+                        String from = (String) map(ports.get(sa)).get(track);
+                        String to = (String) map(ports.get(sb)).get(track);
+                        String key = from.compareTo(to) <= 0 ? from + "|" + to : to + "|" + from;
+                        links.putIfAbsent(key, Map.of("from_position_rwy", from, "to_position_rwy", to));
+                    }
+                }
+                previous = row;
+            }
+        }
+        return List.copyOf(links.values());
     }
     /** BEFORE/AFTER follow the ordered branch, independently of railway kilometre direction. */
     private void expandSwitchgearTypes(Map<String,List<String>> branches, Map<String,Map<String,Object>> metadata) {

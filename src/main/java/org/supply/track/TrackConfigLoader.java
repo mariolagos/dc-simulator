@@ -41,18 +41,23 @@ public final class TrackConfigLoader {
         List<Station> stations =
                 loadStations(track);
 
+        Map<String, RouteView> routeViews =
+                loadRouteViews(
+                        track,
+                        confFile
+                );
+
         LoadedTrackModel sectionModel =
                 new TrackLoader().load(
                         boards,
                         junctions,
                         stations
                 );
-
-        Map<String, RouteView> routeViews =
-                loadRouteViews(
-                        track,
-                        confFile
-                );
+        // Derive the distance scale only when no explicit section scale is supplied.
+        if (boards.isEmpty() && !routeViews.isEmpty()) {
+            sectionModel = new LoadedTrackModel(
+                    TrackSectionsFromRouteViews.build(routeViews, junctions), junctions, stations);
+        }
 
         List<Station> excelStations=new ArrayList<>();
         Map<String,List<Station>> stationsByRoute=new LinkedHashMap<>();
