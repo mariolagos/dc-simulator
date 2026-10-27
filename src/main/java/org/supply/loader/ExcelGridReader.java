@@ -41,7 +41,10 @@ public final class ExcelGridReader {
                 }
                 List<InputRow> rows=new ArrayList<>();
                 for(int ri=table.getStartRowIndex()+1;ri<=table.getEndRowIndex();ri++) {
-                    Row row=sheet.getRow(ri);if(row==null)continue;Map<String,Object> values=new LinkedHashMap<>();
+                    Row row=sheet.getRow(ri);if(row==null)continue;
+                    // A solid red fill on the first table cell disables the row.
+                    if (disabledByRedFill(row.getCell(table.getStartColIndex()))) continue;
+                    Map<String,Object> values=new LinkedHashMap<>();
                     for(int ci=0;ci<keys.size();ci++) {Object v=cell(row.getCell(table.getStartColIndex()+ci),evaluator);if(v!=null)values.put(keys.get(ci),v);}
                     if(!values.isEmpty())rows.add(new InputRow(sheet.getSheetName()+" row "+(ri+1),values));
                 }
@@ -50,6 +53,15 @@ public final class ExcelGridReader {
         }
     }
     public static Result read(Path file) throws IOException { return new ExcelGridReader(file).compile(); }
+    private static boolean disabledByRedFill(Cell cell) {
+        if (!(cell instanceof XSSFCell x)) return false;
+        XSSFCellStyle style=x.getCellStyle();
+        if (style.getFillPattern()!=FillPatternType.SOLID_FOREGROUND) return false;
+        XSSFColor color=style.getFillForegroundXSSFColor();
+        if (color==null) return false;
+        byte[] rgb=color.getRGB();
+        return rgb!=null && rgb.length==3 && (rgb[0]&255)==255 && (rgb[1]&255)==0 && (rgb[2]&255)==0;
+    }
     private static Object cell(Cell c,FormulaEvaluator evaluator) {
         if(c==null)return null;
         CellValue v=evaluator.evaluate(c);if(v==null)return null;
