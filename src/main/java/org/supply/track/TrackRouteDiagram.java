@@ -28,7 +28,7 @@ public final class TrackRouteDiagram {
         }
         int index = 0;
         for (RouteView route : routes) {
-            String name = route.getRouteId().replaceAll("[^A-Za-z0-9_.-]", "_");
+            String name = route.getRouteId().replaceAll("[^\\p{L}\\p{Nd}_.-]", "_");
             Path file = directory.resolve(String.format(Locale.ROOT,"track_route_%03d_%s.svg", ++index, name));
             Files.writeString(file, bandSvg(model, route, objects), StandardCharsets.UTF_8);
             detail.append("Track route diagram: ").append(file).append('\n');

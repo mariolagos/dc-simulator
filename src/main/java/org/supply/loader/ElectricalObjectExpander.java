@@ -209,7 +209,7 @@ public final class ElectricalObjectExpander {
     private static void union(Map<String,String> parent,String a,String b) {String x=root(parent,a),y=root(parent,b);if(!x.equals(y)) parent.put(x.compareTo(y)<0?y:x,x.compareTo(y)<0?x:y);}
     private static void edge(Map<String,Set<String>> graph,String a,String b) {graph.get(a).add(b);graph.get(b).add(a);}
     private static String coordinate(String text) {var c=RwyCoordinateParser.parse(text);return c.getSectionId()+":"+c.getPositionM()+":"+Objects.toString(c.getTrackId(),"");}
-    private static void identifier(String id,String field) {if(!id.matches("[A-Za-z0-9_-]+")) throw new IllegalArgumentException(field+" must use letters, digits, '_' or '-': "+id);}
+    private static void identifier(String id,String field) {if(!id.matches("[\\p{L}\\p{Nd}_-]+")) throw new IllegalArgumentException(field+" must use letters, digits, '_' or '-': "+id);}
     private static double positive(Map<String,Object> map,String field) {Object v=map.get(field);if(!(v instanceof Number n)||!Double.isFinite(n.doubleValue())||n.doubleValue()<=0) throw new IllegalArgumentException("Positive finite value required: "+field);return ((Number)v).doubleValue();}
     private static String string(Map<String,Object> map,String field) {Object v=map.get(field);if(!(v instanceof String s)||s.isBlank()) throw new IllegalArgumentException("Nonblank string required: "+field);return (String)v;}
     private static Map<String,Object> optionalMap(Map<String,Object> map,String key) {return map.containsKey(key)?map(map.get(key),key):Map.of();}

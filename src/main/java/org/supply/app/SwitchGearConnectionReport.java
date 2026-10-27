@@ -15,7 +15,7 @@ public final class SwitchGearConnectionReport {
         Map<String, String> reports = new TreeMap<>();
         for (var gear : model.getSwitchGears()) {
             String id = gear.installationId();
-            if (!id.matches("[A-Za-z0-9_-]+")) throw new IllegalArgumentException("Unsafe report installation id: " + id);
+            if (!id.matches("[\\p{L}\\p{Nd}_-]+")) throw new IllegalArgumentException("Unsafe report installation id: " + id);
             Config spec = stationSpec(objectGrid, id);
             var source = model.getInstallations().stream().filter(i -> i.getInstallationId().equals(id)).findFirst().orElseThrow();
             Map<String, SwitchGearTerminal> terminals = new HashMap<>();

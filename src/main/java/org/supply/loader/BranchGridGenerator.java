@@ -230,7 +230,7 @@ public final class BranchGridGenerator {
         return s;
     }
     private static void identifier(String name) {
-        if (!name.matches("[A-Za-z0-9_-]+")) throw bad("Invalid name: " + name);
+        if (!name.matches("[\\p{L}\\p{Nd}_-]+")) throw bad("Invalid name: " + name);
     }
     private static IllegalArgumentException bad(String message) { return new IllegalArgumentException(message); }
 }

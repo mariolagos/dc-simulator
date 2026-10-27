@@ -65,7 +65,7 @@ public final class SwitchGearTypeExpander {
     }
 
     private static Config named(Config types, String name, String label) {
-        if (!name.matches("[A-Za-z0-9_-]+") || !types.root().containsKey(name)) throw bad("Unknown " + label + ": " + name);
+        if (!name.matches("[\\p{L}\\p{Nd}_-]+") || !types.root().containsKey(name)) throw bad("Unknown " + label + ": " + name);
         return types.getConfig(name);
     }
     private static IllegalArgumentException bad(String message) { return new IllegalArgumentException(message); }

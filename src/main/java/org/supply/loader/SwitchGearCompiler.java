@@ -17,7 +17,7 @@ public final class SwitchGearCompiler {
         Map<String,ConnectionType> types = new HashMap<>();
         Map<String,Set<String>> ports = new TreeMap<>();
         for (String role : terminals.keySet()) {
-            if (!role.matches("[A-Za-z0-9_-]+\\.[NS]\\.[FR]")) throw bad("Terminal address must be port.track.F/R: " + role);
+            if (!role.matches("[\\p{L}\\p{Nd}_-]+\\.[NS]\\.[FR]")) throw bad("Terminal address must be port.track.F/R: " + role);
             String id = text(terminals,role); identifier(id);
             var previous = types.putIfAbsent(id,connectionType(role));
             if (previous != null && previous != connectionType(role)) throw bad("Feeding/return terminal alias: " + id);
@@ -149,7 +149,7 @@ public final class SwitchGearCompiler {
     private static void fields(Map<String, Object> map, Set<String> allowed, String label) {
         for (String key : map.keySet()) if (!allowed.contains(key)) throw bad("Unknown " + label + " field: " + key);
     }
-    private static void identifier(String s) { if (!s.matches("[A-Za-z0-9_-]+")) throw bad("Invalid terminal/cable identifier: " + s); }
+    private static void identifier(String s) { if (!s.matches("[\\p{L}\\p{Nd}_-]+")) throw bad("Invalid terminal/cable identifier: " + s); }
     private static String text(Map<String, Object> map, String key) {
         if (!(map.get(key) instanceof String value) || value.isBlank()) throw bad("Nonblank string required: " + key);
         return value;

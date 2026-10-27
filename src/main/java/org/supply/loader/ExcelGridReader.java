@@ -342,7 +342,7 @@ public final class ExcelGridReader {
     private static Map<String,List<InputRow>> group(List<InputRow> rows,String key) {Map<String,List<InputRow>> result=new LinkedHashMap<>();for(var r:rows)result.computeIfAbsent(r.text(key),k->new ArrayList<>()).add(r);return result;}
     private static double positive(InputRow r,String field){double v=r.number(field);if(v<=0)throw bad(r.location+": "+field+" must be positive");return v;}
     private static void put(Map<String,Object> out,String id,Object value,InputRow r){if(out.putIfAbsent(id,value)!=null)throw bad(r.location+": duplicate ID "+id);}
-    private static void identifier(String id){if(!id.matches("[A-Za-z0-9_-]+"))throw bad("Invalid identifier: "+id);}
+    private static void identifier(String id){if(!id.matches("[\\p{L}\\p{Nd}_-]+"))throw bad("Invalid identifier: "+id);}
     private static void addNode(Map<String,Map<String,Object>> nodes,String id,String pos){if(nodes.putIfAbsent(id,new LinkedHashMap<>(Map.of("node_id",id,"position_rwy",pos)))!=null)throw bad("Generated node collision: "+id);}
     private static Map<String,Object> ideal(String id,String from,String to,String type){return Map.of("id",id,"from",from,"to",to,"connection_type",type);}
     private static Config config(Map<String,Object> values){return ConfigValueFactory.fromMap(values).toConfig();}

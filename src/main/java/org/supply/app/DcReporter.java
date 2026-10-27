@@ -138,7 +138,7 @@ public final class DcReporter {
         Set<String> ids = new HashSet<>();
         for (Config route : context.scenario().getConfigList(path + ".base-routes")) {
             String id = route.getString("id");
-            if (!id.matches("[A-Za-z0-9_-]+") || !ids.add(id)) {
+            if (!id.matches("[\\p{L}\\p{Nd}_-]+") || !ids.add(id)) {
                 throw new IllegalArgumentException("Invalid or duplicate timetable base-route id: " + id);
             }
             Config scenario = context.scenario().withoutPath(path + ".base-routes")

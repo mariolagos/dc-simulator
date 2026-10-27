@@ -136,7 +136,7 @@ public final class ElectricalTopologyGraph {
         for (Route route : ordered) {
             index++;
             if (selected != null && !selected.equals(route.id())) { continue; }
-            String stem = String.format(Locale.ROOT,"route_%03d_",index)+route.id().replaceAll("[^A-Za-z0-9_-]","_");
+            String stem = String.format(Locale.ROOT,"route_%03d_",index)+route.id().replaceAll("[^\\p{L}\\p{Nd}_-]","_");
             Path dot=directory.resolve(stem+".dot"), svg=directory.resolve(stem+".svg");
             Files.writeString(dot, dot(network,route), StandardCharsets.UTF_8);
             // Remove only this derived output so a failed render cannot leave a stale SVG.
