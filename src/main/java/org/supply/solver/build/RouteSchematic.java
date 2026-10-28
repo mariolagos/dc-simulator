@@ -246,10 +246,17 @@ public final class RouteSchematic {
         return out.append("</g></svg>\n").toString();
     }
     private static void endpoint(StringBuilder out,String id,int x,int y,int direction,boolean station,String color,Set<String> labels,boolean junction,List<String> references) {
-        String key=(junction?"junction":id)+":"+x+":"+y;
-        if(labels.add(key)) {
+        // A physical junction can contain several distinct electrical terminals.
+        // Deduplicate symbols by location, but retain every terminal label.
+        String pointKey="point:"+(junction?"junction":id)+":"+x+":"+y;
+        if(labels.add(pointKey)) {
             point(out,x,y,color,junction?"Physical junction; separate solver nodes retained":id);
-            if(!junction)text(out,x+(station?-direction*4:0),y+15,id,12,color,station?(direction>0?"end":"start"):"middle");
+        }
+        String labelKey="label:"+id+":"+x+":"+y;
+        if(labels.add(labelKey)) {
+            // The station's left terminal faces left (direction < 0).
+            int labelY=y+(station && direction>0?-8:15);
+            text(out,x+(station?-direction*4:0),labelY,id,12,color,station?(direction>0?"end":"start"):"middle");
         }
     }
     private static String metreLabel(double m) {
