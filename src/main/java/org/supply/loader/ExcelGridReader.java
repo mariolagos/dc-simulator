@@ -12,7 +12,7 @@ import java.util.*;
 
 /** Reads named Excel input tables and generates the established explicit grid vocabulary. */
 public final class ExcelGridReader {
-    public record Result(Config grid, Map<String,Object> routes, List<Map<String,Object>> bindings, List<Map<String,String>> trackJunctions) { }
+    public record Result(Config grid, Map<String,Object> routes, List<Map<String,Object>> bindings, List<Map<String,String>> trackJunctions, List<Map<String,String>> trackViews) { }
     private record InputRow(String location,Map<String,Object> cells) {
         Object value(String key) { return cells.get(key); }
         String text(String key) { Object v=value(key);if(!(v instanceof String s)||s.isBlank())throw bad(location+": text required in "+key);return s.trim(); }
@@ -224,6 +224,7 @@ public final class ExcelGridReader {
         String reference=(String)parameters.get("reference_node_id");if(reference==null||!nodes.containsKey(reference))throw bad("reference_node_id must name a generated node, e.g. SS0.NEG (got "+reference+")");
         Map<String,Object> output=new LinkedHashMap<>(parameters);output.put("nodes",new ArrayList<>(nodes.values()));output.put("lines",new ArrayList<>(lines.values()));output.put("power_installations",sources);output.put("installation_connections",sourceConnections);output.put("switchgears",gears);output.put("ideal_connections",ideals);
         Map<String,Object> routes=new LinkedHashMap<>();
+        List<Map<String,String>> trackViews = new ArrayList<>();
         for(var e:group(table("Routes","Route","Track","Order","Branch","Direction"),"Route").entrySet()) {
             Map<String,Object> route=new LinkedHashMap<>();
             for(String conductor:List.of("F","R")) {
@@ -245,7 +246,12 @@ public final class ExcelGridReader {
             }
             routes.put(e.getKey(),route);
         }
-        return new Result(config(output),Collections.unmodifiableMap(routes),List.copyOf(bindings), trackJunctions(branches, branchSpecs, objects, metadata));
+        for (var route : group(table("Routes","Route","Track","Order","Branch","Direction"), "Route").entrySet()) {
+            trackViews.add(Map.of("route_id", route.getKey(), "sheet", route.getKey(),
+                    "track_id", route.getValue().get(0).text("Track")));
+        }
+        return new Result(config(output),Collections.unmodifiableMap(routes),List.copyOf(bindings),
+                trackJunctions(branches, branchSpecs, objects, metadata), List.copyOf(trackViews));
     }
     /** Track links are derived only for transitions used by declared routes. */
     private List<Map<String,String>> trackJunctions(Map<String,List<String>> branches,

@@ -41,6 +41,19 @@ public final class DefaultTrackTransformService implements TrackTransformService
             );
         }
 
+        if (railwayCoordinate.getTrackId() == null || railwayCoordinate.getTrackId().isBlank()) {
+            RouteView route = trackModel.getRouteViewsById().get(routeId);
+            if (route != null) {
+                java.util.Set<String> tracks = new java.util.HashSet<>();
+                for (PathSample sample : route.getSamples()) {
+                    RwyCoordinate coordinate = sample.getRailwayCoordinate();
+                    if (sectionId.equals(coordinate.getSectionId()) && coordinate.getTrackId() != null)
+                        tracks.add(coordinate.getTrackId());
+                }
+                if (tracks.size() == 1) railwayCoordinate = new RwyCoordinate(sectionId,
+                        railwayCoordinate.getPositionText(), railwayCoordinate.getPositionM(), tracks.iterator().next());
+            }
+        }
         return mapper.toModel(section, railwayCoordinate);
     }
 

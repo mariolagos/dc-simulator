@@ -34,26 +34,26 @@ public class TrackSectionsFromRouteViewsTest {
     }
     @Test public void partialOverlappingViewsExtendSectionWithoutExtrapolation() {
         var a=view("a",p(0,"1",500,"N"),p(500,"1",1000,"N"),p(1000,"1",1500,"N"));
-        var b=view("b",p(0,"1",1000,"S"),p(1000,"1",2000,"S"));
+        var b=view("b",p(0,"1",1000,"N"),p(1000,"1",2000,"N"));
         var section=TrackSectionsFromRouteViews.build(Map.of("b",b,"a",a)).get("1");
         var m=new TrackSectionMapper();assertEquals(1500,m.toModel(section,c("1",2000,"N")).getPositionM());
         assertThrows(IllegalArgumentException.class,()->m.toModel(section,c("1",499,"N")));
     }
     @Test public void rejectsDisjointIntervalsAndContradictingPhysicalDistances() {
         var a=view("a",p(0,"1",0,"N"),p(1000,"1",1000,"N"));
-        var gap=view("gap",p(0,"1",2000,"S"),p(1000,"1",3000,"S"));
+        var gap=view("gap",p(0,"1",2000,"N"),p(1000,"1",3000,"N"));
         assertTrue(assertThrows(IllegalArgumentException.class,()->TrackSectionsFromRouteViews.build(Map.of("a",a,"gap",gap))).getMessage().contains("no route data covers"));
-        var contradiction=view("b",p(0,"1",0,"S"),p(1020,"1",1000,"S"));
+        var contradiction=view("b",p(0,"1",0,"N"),p(1020,"1",1000,"N"));
         assertTrue(assertThrows(IllegalArgumentException.class,()->TrackSectionsFromRouteViews.build(Map.of("a",a,"b",contradiction))).getMessage().contains("incompatible distances"));
     }
     @Test public void detectsAccumulatedDifferenceAndHandlesRoundedDistances() {
         var a=view("a",p(0,"1",0,"N"),p(1000.4,"1",1000,"N"),p(2000.8,"1",2000,"N"));
-        var b=view("b",p(0,"1",0,"S"),p(1001.0,"1",1000,"S"),p(2002.2,"1",2000,"S"));
+        var b=view("b",p(0,"1",0,"N"),p(1001.0,"1",1000,"N"),p(2002.2,"1",2000,"N"));
         assertTrue(assertThrows(IllegalArgumentException.class,()->TrackSectionsFromRouteViews.build(Map.of("a",a,"b",b))).getMessage().contains("incompatible distances"));
     }
     @Test public void detectsDifferentIntermediateScaleDespiteEqualEndpoints() {
         var detailed=view("a",p(0,"1",0,"N"),p(600,"1",500,"N"),p(1000,"1",1000,"N"));
-        var sparse=view("b",p(0,"1",0,"S"),p(1000,"1",1000,"S"));
+        var sparse=view("b",p(0,"1",0,"N"),p(1000,"1",1000,"N"));
         assertTrue(assertThrows(IllegalArgumentException.class,()->TrackSectionsFromRouteViews.build(Map.of("a",detailed,"b",sparse))).getMessage().contains("incompatible distances"));
     }
     @Test public void rejectsInconsistentSamplesAndUncoveredSingleSection() {

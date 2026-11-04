@@ -223,11 +223,22 @@ public final class RouteSchematic {
                 if(combined) { y+=80*laneIndex;color=laneIndex%2==0?"#b42318":"#175cd3"; }
                 for(var b:byLine.getOrDefault(id,List.of())) {
                     int a=x.get(layout.place(nodes.get(b.fromNodeId()))),z=x.get(layout.place(nodes.get(b.toNodeId())));
-                    if(a==z) {
-                        if(layout.connectors.contains(b.id())) continue;
-                        throw new IllegalArgumentException("External line has coincident schematic locations: "+id);
-                    }
-                    int sign=a<z?1:-1;
+                    if (a == z) {
+                        if (layout.connectors.contains(b.id())) continue;
+
+                        CalculationNode fromNode = nodes.get(b.fromNodeId());
+                        CalculationNode toNode = nodes.get(b.toNodeId());
+
+                        throw new IllegalArgumentException(
+                                "External line has coincident schematic locations:\n"
+                                        + "  Line: " + id + "\n"
+                                        + "  From: " + b.fromNodeId() + "\n"
+                                        + "  To: " + b.toNodeId() + "\n"
+                                        + "  Section: " + fromNode.sectionId() + "\n"
+                                        + "  Position: " + fromNode.positionM() + " m\n"
+                                        + "  Resistance: " + b.resistanceOhm().asDouble() + " ohm\n"
+                                        + "  Check input Paths and object railway positions.");
+                    }                    int sign=a<z?1:-1;
                     int from=a+(owner.containsKey(b.fromNodeId())?sign*HALF:0);
                     int to=z-(owner.containsKey(b.toNodeId())?sign*HALF:0);
                     line(out,from,y,to,y,color,false,id+(combined?" | routes: "+routeLabels.get(lane):"")+" | total R="+b.resistanceOhm().asDouble()+" ohm");

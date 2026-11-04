@@ -180,27 +180,46 @@ public final class NetworkInputCsvWriter {
 
             for (Station station : trackModel.getStations()) {
 
-                RwyCoordinate rwy = station.getPosition();
+                for (RwyCoordinate rwy : stationCoordinates(trackModel, station)) {
+                    int modelPositionM;
+                    try {
+                        ModelCoordinate model = trackService.toModel(rwy.getSectionId(), rwy);
+                        modelPositionM = model.getPositionM();
+                    } catch (Exception e) {
+                        throw new IllegalStateException(
+                                "Failed to map station: " + station.getName() + " @ " + rwy,
+                                e
+                        );
+                    }
 
-                int modelPositionM;
-                try {
-                    ModelCoordinate model = trackService.toModel(rwy.getSectionId(), rwy);
-                    modelPositionM = model.getPositionM();
-                } catch (Exception e) {
-                    throw new IllegalStateException(
-                            "Failed to map station: " + station.getName() + " @ " + rwy,
-                            e
+                    writer.write(
+                            station.getName() + "," +
+                                    rwy.toDisplayString() + "," +
+                                    modelPositionM
                     );
+                    writer.newLine();
                 }
-
-                writer.write(
-                        station.getName() + "," +
-                                rwy.toDisplayString() + "," +
-                                modelPositionM
-                );
-                writer.newLine();
             }
         }
+    }
+
+    /** Unspecified configured stations apply to each track that covers their coordinate. */
+    private static java.util.List<RwyCoordinate> stationCoordinates(LoadedTrackModel model, Station station) {
+        RwyCoordinate position = station.getPosition();
+        if (position.getTrackId() != null && !position.getTrackId().isBlank()) return java.util.List.of(position);
+        TrackSection section = model.getSectionsById().get(position.getSectionId());
+        if (section == null) throw new IllegalArgumentException("Unknown station section: " + position);
+        java.util.Set<String> tracks = new java.util.TreeSet<>();
+        for (RouteSegment segment : section.getSegments()) {
+            String track = segment.getStartRwy().getTrackId();
+            int low = Math.min(segment.getStartRwy().getPositionM(), segment.getEndRwy().getPositionM());
+            int high = Math.max(segment.getStartRwy().getPositionM(), segment.getEndRwy().getPositionM());
+            if (track != null && !track.isBlank() && position.getPositionM() >= low && position.getPositionM() <= high)
+                tracks.add(track);
+        }
+        if (tracks.isEmpty()) return java.util.List.of(position); // Original mapping reports missing coverage.
+        return tracks.stream().map(track -> new RwyCoordinate(position.getSectionId(),
+                position.getPositionText(), position.getPositionM(), track)).toList();
     }
 
     public void writeTrackSegments(LoadedTrackModel trackModel, Path file) throws IOException {

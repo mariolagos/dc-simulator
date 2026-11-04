@@ -20,6 +20,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -69,6 +70,8 @@ public final class DcReporter {
 
         ResultMetadata metadata =
                 extractMetadata(rows);
+
+        writeStudyInfo(context);
 
         BaseRoutePositionMapper baseRoutePositionMapper =
                 loadBaseRoutePositionMapper(context);
@@ -125,6 +128,16 @@ public final class DcReporter {
 
         writeDeviationWorkbook(rows, metadata, deviations);
         TrainCurrentDiagram.write(rows, context.resultDirectory(), context.studyId());
+    }
+
+    static void writeStudyInfo(DcStudyContext context) throws IOException {
+        Files.createDirectories(context.resultDirectory());
+        Path path = context.resultDirectory()
+                .resolve(context.studyId() + "_study_info.txt");
+        String content = "Study ID: " + context.studyId() + "\n"
+                + "Name: " + context.studyName() + "\n"
+                + "Description: " + context.studyDescription() + "\n";
+        Files.writeString(path, content, StandardCharsets.UTF_8);
     }
 
     static List<DcStudyContext> graphicalTimetableContexts(DcStudyContext context) {

@@ -23,4 +23,20 @@ public final class TrackSection {
     public List<RouteSegment> getSegments() {
         return segments;
     }
+    /** Select one distance scale. Explicit board sections have unnamed segments. */
+    public List<RouteSegment> getSegments(String trackId) {
+        java.util.Set<String> tracks = new java.util.HashSet<>();
+        for (RouteSegment segment : segments) tracks.add(segment.getStartRwy().getTrackId());
+        if (tracks.size() == 1 && tracks.contains(null)) return segments;
+        if (trackId == null || trackId.isBlank()) {
+            if (tracks.size() == 1) return segments;
+            throw new IllegalArgumentException("Track required for section " + sectionId
+                    + "; available tracks: " + new java.util.TreeSet<>(tracks));
+        }
+        List<RouteSegment> selected = segments.stream()
+                .filter(segment -> trackId.equals(segment.getStartRwy().getTrackId())).toList();
+        if (selected.isEmpty()) throw new IllegalArgumentException("No geometry for section " + sectionId
+                + " track " + trackId);
+        return selected;
+    }
 }

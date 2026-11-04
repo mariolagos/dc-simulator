@@ -29,6 +29,9 @@ public class GeneratedTrackIntegrationTest {
         GridPreprocessor.main(new String[]{input.toString(),grid.toString()});
         var generated=ConfigFactory.parseFile(dir.resolve("case_routes_generated.conf").toFile()).resolve();
         assertEquals(2,generated.getConfigList("dcsim.track.route_views").size());
+        for (var view : generated.getConfigList("dcsim.track.route_views")) {
+            assertEquals(view.getString("route_id").equals("AD") ? "N" : "S", view.getString("track_id"));
+        }
         assertEquals(2,generated.getConfigList("dcsim.track.junctions").size());
         assertEquals("AD",generated.getConfigList("dcsim.track.route_views").stream().filter(v->v.getString("route_id").equals("AD")).findFirst().orElseThrow().getString("sheet"));
         Path workbook=dir.resolve("track.xlsx");try(Workbook book=new XSSFWorkbook()) {

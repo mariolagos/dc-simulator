@@ -53,7 +53,7 @@ public final class GridPreprocessor {
             routesOutput = output.resolveSibling(routeStem + ".conf");
             Config routeConfig = ConfigFactory.empty().withValue("dcsim.traffic.routes", com.typesafe.config.ConfigValueFactory.fromMap(routes));
             if (excel != null) {
-                var views = routes.keySet().stream().map(id -> Map.of("route_id", id, "sheet", id)).toList();
+                var views = excel.trackViews();
                 routeConfig = routeConfig.withValue("dcsim.track.route_views", com.typesafe.config.ConfigValueFactory.fromIterable(views))
                         .withValue("dcsim.track.junctions", com.typesafe.config.ConfigValueFactory.fromIterable(excel.trackJunctions()));
             }

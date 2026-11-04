@@ -99,8 +99,10 @@ public final class RunCsvInputFactory {
             Config templateConfig =
                     templates.getConfig(templateId);
 
-            List<? extends Config> legs =
-                    templateConfig.hasPath("legs")
+            List<? extends Config> legs = templateConfig.hasPath("folder")
+                    ? FolderTemplateLegs.read(templateConfig, resolveTemplateFolder(
+                            confFile, templateConfig.getString("folder")))
+                    : templateConfig.hasPath("legs")
                             ? templateConfig.getConfigList("legs")
                             : List.of(templateConfig);
 

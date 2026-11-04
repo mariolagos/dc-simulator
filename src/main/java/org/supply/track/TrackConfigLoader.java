@@ -66,6 +66,28 @@ public final class TrackConfigLoader {
             TrackStationExcelReader stationReader=new TrackStationExcelReader();
             for(Config view:track.getConfigList("route_views")) {
                 List<Station> routeStations=stationReader.read(workbook,view.getString("sheet"));
+                // Station rows are read separately from the route samples. Carry
+                // the resolved physical track through this path as well.
+                RouteView route = routeViews.get(view.getString("route_id"));
+                List<Station> locatedStations = new ArrayList<>();
+                for (Station station : routeStations) {
+                    RwyCoordinate position = station.getPosition();
+                    if (position.getTrackId() == null || position.getTrackId().isBlank()) {
+                        java.util.Set<String> tracks = new java.util.TreeSet<>();
+                        for (PathSample sample : route.getSamples()) {
+                            RwyCoordinate coordinate = sample.getRailwayCoordinate();
+                            if (position.getSectionId().equals(coordinate.getSectionId())
+                                    && coordinate.getTrackId() != null && !coordinate.getTrackId().isBlank())
+                                tracks.add(coordinate.getTrackId());
+                        }
+                        if (tracks.size() > 1) throw new IllegalArgumentException(
+                                "Station needs trackNumber on route " + route.getRouteId() + ": " + station.getName());
+                        if (tracks.size() == 1) position = new RwyCoordinate(position.getSectionId(),
+                                position.getPositionText(), position.getPositionM(), tracks.iterator().next());
+                    }
+                    locatedStations.add(new Station(station.getName(), position));
+                }
+                routeStations = locatedStations;
                 excelStations.addAll(routeStations);
                 stationsByRoute.put(view.getString("route_id"),
                         TrackStationExcelReader.merge(sectionModel.getStations(),routeStations));
@@ -131,6 +153,25 @@ public final class TrackConfigLoader {
                                     routeId
                             )
                     );
+
+            // Trackdata may leave trackNumber blank. Use the declared physical
+            // route track, not the route's direction or its name, to fill it.
+            String defaultTrack = routeConfig.hasPath("track_id") ? routeConfig.getString("track_id").trim() : null;
+            if (defaultTrack != null && defaultTrack.isEmpty())
+                throw new IllegalArgumentException("Blank track_id for route " + routeId);
+            if (defaultTrack != null) {
+                RouteView raw = result.get(routeId);
+                List<PathSample> samples = new ArrayList<>();
+                for (PathSample sample : raw.getSamples()) {
+                    RwyCoordinate coordinate = sample.getRailwayCoordinate();
+                    String actual = coordinate.getTrackId();
+                    if (actual != null && !actual.isBlank() && !actual.equals(defaultTrack))
+                        throw new IllegalArgumentException("trackNumber conflicts with track_id for route " + routeId);
+                    samples.add(new PathSample(sample.getPathPositionM(), new RwyCoordinate(
+                            coordinate.getSectionId(), coordinate.getPositionText(), coordinate.getPositionM(), defaultTrack)));
+                }
+                result.put(routeId, new RouteView(routeId, raw.getDescription(), samples));
+            }
 
             if (previous != null) {
                 throw new IllegalArgumentException(

@@ -18,7 +18,8 @@ public final class TrackSectionMapper {
             );
         }
 
-        for (RouteSegment segment : section.getSegments()) {
+        java.util.List<RouteSegment> segments = section.getSegments(railwayCoordinate.getTrackId());
+        for (RouteSegment segment : segments) {
             if (isWithinSegment(segment, railwayCoordinate)) {
                 return new ModelCoordinate(
                         section.getSectionId(),
@@ -29,8 +30,8 @@ public final class TrackSectionMapper {
         }
 
         RouteSegment last =
-                section.getSegments().get(
-                        section.getSegments().size() - 1
+                segments.get(
+                        segments.size() - 1
                 );
 
         throw new IllegalArgumentException(

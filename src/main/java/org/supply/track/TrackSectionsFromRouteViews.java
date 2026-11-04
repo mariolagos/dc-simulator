@@ -20,6 +20,71 @@ public final class TrackSectionsFromRouteViews {
     }
 
     public static Map<String, TrackSection> build(Map<String, RouteView> views, List<TrackJunction> junctions) {
+        // Derive and validate each physical track independently. Blank track IDs
+        // form an explicit unspecified group, never a fallback for a named track.
+        Map<String, Map<String, RouteView>> viewsByTrack = new TreeMap<>();
+        for (String routeId : new TreeSet<>(views.keySet())) {
+            RouteView view = views.get(routeId);
+            Map<String, List<PathSample>> groups = new TreeMap<>();
+            for (PathSample sample : view.getSamples()) {
+                String track = sample.getRailwayCoordinate().getTrackId();
+                groups.computeIfAbsent(track == null || track.isBlank() ? "" : track,
+                        k -> new ArrayList<>()).add(sample);
+            }
+            for (var group : groups.entrySet()) {
+                if (group.getValue().size() < 2)
+                    throw new IllegalArgumentException("Cannot derive track " + group.getKey()
+                            + " from route " + routeId + ": at least two samples are needed");
+                viewsByTrack.computeIfAbsent(group.getKey(), k -> new TreeMap<>()).put(routeId,
+                        new RouteView(routeId, view.getDescription(), group.getValue()));
+            }
+        }
+        Map<String, List<RouteSegment>> merged = new TreeMap<>();
+        for (var trackEntry : viewsByTrack.entrySet()) {
+            String track = trackEntry.getKey();
+            List<TrackJunction> trackLinks = new ArrayList<>();
+            for (TrackJunction link : junctions) {
+                if (compatibleTrack(track, link.getFrom().getTrackId())
+                        && compatibleTrack(track, link.getTo().getTrackId())) {
+                    trackLinks.add(new TrackJunction(withTrack(link.getFrom(), track), withTrack(link.getTo(), track)));
+                }
+            }
+            Map<String, TrackSection> sections;
+            try {
+                sections = buildSingleTrack(trackEntry.getValue(), trackLinks);
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("Track " + (track.isEmpty() ? "<unspecified>" : track)
+                        + ": " + ex.getMessage(), ex);
+            }
+            for (var section : sections.entrySet()) {
+                List<RouteSegment> segments = merged.computeIfAbsent(section.getKey(), k -> new ArrayList<>());
+                for (RouteSegment segment : section.getValue().getSegments()) {
+                    segments.add(new RouteSegment(segments.size(), withTrack(segment.getStartRwy(), track),
+                            withTrack(segment.getEndRwy(), track), segment.getStartModelM(), segment.getLengthM()));
+                }
+            }
+        }
+        Map<String, TrackSection> result = new LinkedHashMap<>();
+        merged.forEach((id, segments) -> {
+            Set<String> tracks = new HashSet<>();
+            for (RouteSegment segment : segments) tracks.add(segment.getStartRwy().getTrackId());
+            if (tracks.contains(null) && tracks.size() > 1)
+                throw new IllegalArgumentException("Cannot derive section " + id
+                        + ": named and unspecified tracks are mixed; supply track_id for unlabelled route views");
+            result.put(id, new TrackSection(id, segments));
+        });
+        return Collections.unmodifiableMap(result);
+    }
+
+    private static boolean compatibleTrack(String track, String other) {
+        return other == null || other.isBlank() || track.equals(other);
+    }
+    private static RwyCoordinate withTrack(RwyCoordinate coordinate, String track) {
+        return new RwyCoordinate(coordinate.getSectionId(), coordinate.getPositionText(),
+                coordinate.getPositionM(), track.isEmpty() ? null : track);
+    }
+    private static Map<String, TrackSection> buildSingleTrack(Map<String, RouteView> views,
+                                                             List<TrackJunction> junctions) {
         Map<String, List<Span>> spansBySection = new TreeMap<>();
         Map<String, List<Run>> runsBySection = new TreeMap<>();
         // Stable order makes the derived geometry deterministic.
@@ -93,7 +158,7 @@ public final class TrackSectionsFromRouteViews {
                     int model = mapper.toModel(section, sample.getRailwayCoordinate()).getPositionM();
                     double expected = sample.getPathPositionM() - first.getPathPositionM();
                     if (Math.abs(Math.abs(model - firstModel) - expected) > TOLERANCE_M + 1e-9)
-                        throw bad(run.route, id, "incompatible distances between route views or tracks (more than 1 m)");
+                        throw bad(run.route, id, "incompatible distances between route views of the same track (more than 1 m)");
                 }
                 // Check all shared breakpoints, including points interpolated inside a sparse route view.
                 // Equal end-to-end lengths can otherwise hide different intermediate distances.
@@ -108,7 +173,7 @@ public final class TrackSectionsFromRouteViews {
                                 + fraction * (b.getPathPositionM() - a.getPathPositionM());
                         int model = mapper.toModel(section, coordinate(id, position)).getPositionM();
                         if (Math.abs(Math.abs(model - firstModel) - expected) > TOLERANCE_M + 1e-9)
-                            throw bad(run.route, id, "incompatible distances between route views or tracks (more than 1 m)");
+                            throw bad(run.route, id, "incompatible distances between route views of the same track (more than 1 m)");
                     }
                 }
             }
