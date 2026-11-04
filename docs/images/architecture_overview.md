@@ -2,7 +2,6 @@
 flowchart TD
    BA["BA (Benefit Analysis)"] --> RE["RunExcel"]
    BA --> TD["Trackdata"]
-   mermaid
    subgraph Simulation["Full simulation"]
       EX["DcExporter"] --> CSV["Exported CSV files (including run.csv)"]
       CSV --> SOL["DcSolver"]

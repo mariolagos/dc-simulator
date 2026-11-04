@@ -192,27 +192,53 @@ tasks.register("dcStudyGt") {
             .resolve(studyId)
             .resolve("results")
         val outputDirectory = resultsDirectory
+        val studyInfo = outputDirectory.resolve("${studyId}_study_info.txt")
+        val studyProperties = if (studyInfo.isFile)
+            studyInfo.readLines(Charsets.UTF_8)
+                .mapNotNull { line ->
+                    val separator = line.indexOf(':')
+                    if (separator < 0) null
+                    else line.substring(0, separator).trim() to
+                            line.substring(separator + 1).trim()
+                }.toMap()
+        else emptyMap()
+
+        val studyName = studyProperties["Name"] ?: studyId
+        val studyDescription = studyProperties["Description"] ?: ""
         val manifest = outputDirectory.resolve("${studyId}_graphical_timetables.txt")
-        val stems = if (manifest.isFile) manifest.readLines().filter { it.isNotBlank() }
-        else listOf("${studyId}_graphical_timetable")
+        val stems = if (manifest.isFile)
+            manifest.readLines(Charsets.UTF_8).filter { it.isNotBlank() }
+        else
+            listOf("${studyId}_graphical_timetable")
         if (stems.isEmpty()) throw GradleException("No graphical timetables listed in $manifest")
         val splotDirectory = file(splotProjectDir.get())
         val windows = System.getProperty("os.name").lowercase().contains("windows")
         val wrapper = splotDirectory.resolve(if (windows) "gradlew.bat" else "gradlew")
         if (!wrapper.isFile) throw GradleException("SPlot Gradle wrapper not found: $wrapper")
         for (stem in stems) {
-            if (!stem.matches(Regex("[A-Za-z0-9_-]+"))) {
+            if (!stem.matches(Regex("[\\p{L}\\p{N}_-]+"))) {
                 throw GradleException("Invalid graphical timetable filename: $stem")
             }
+
             val timetableInput = outputDirectory.resolve("$stem.csv")
             val markerInput = outputDirectory.resolve("${stem}_markers.csv")
             val svgOutput = outputDirectory.resolve("$stem.svg")
             if (!timetableInput.isFile || !markerInput.isFile) {
                 throw GradleException("Graphical timetable input or markers missing for $stem")
             }
-            val splotArguments = listOf(wrapper.absolutePath, ":tools:splot:splotCsv",
-                "-Pinput=${timetableInput.absolutePath}", "-Pmarkers=${markerInput.absolutePath}",
-                "-Poutput=${svgOutput.absolutePath}", "-Ptitle=" + stem.removeSuffix("_graphical_timetable"))
+            val routeId = stem.removeSuffix("_graphical_timetable")
+                .removePrefix("${studyId}_")
+
+            val title = if (routeId == studyId) studyName
+            else "$studyName — $routeId"
+            val splotArguments = listOf(
+                wrapper.absolutePath, ":tools:splot:splotCsv",
+                "-Pinput=${timetableInput.absolutePath}",
+                "-Pmarkers=${markerInput.absolutePath}",
+                "-Poutput=${svgOutput.absolutePath}",
+                "-Ptitle=$title",
+                "-Psubtitle=$studyDescription"
+            )
             project.exec {
                 workingDir(splotDirectory)
                 if (windows) commandLine(listOf("cmd", "/c") + splotArguments)
@@ -259,15 +285,17 @@ tasks.register("dcCheckGt") {
             .resolve("checks")
         val outputDirectory = checkDirectory
         val manifest = outputDirectory.resolve("${studyId}_graphical_timetables.txt")
-        val stems = if (manifest.isFile) manifest.readLines().filter { it.isNotBlank() }
-        else listOf("${studyId}_graphical_timetable")
+        val stems = if (manifest.isFile)
+            manifest.readLines(Charsets.UTF_8).filter { it.isNotBlank() }
+        else
+            listOf("${studyId}_graphical_timetable")
         if (stems.isEmpty()) throw GradleException("No graphical timetables listed in $manifest")
         val splotDirectory = file(splotProjectDir.get())
         val windows = System.getProperty("os.name").lowercase().contains("windows")
         val wrapper = splotDirectory.resolve(if (windows) "gradlew.bat" else "gradlew")
         if (!wrapper.isFile) throw GradleException("SPlot Gradle wrapper not found: $wrapper")
         for (stem in stems) {
-            if (!stem.matches(Regex("[A-Za-z0-9_-]+"))) {
+            if (!stem.matches(Regex("[\\p{L}\\p{N}_-]+"))) {
                 throw GradleException("Invalid graphical timetable filename: $stem")
             }
             val timetableInput = outputDirectory.resolve("$stem.csv")
@@ -276,9 +304,14 @@ tasks.register("dcCheckGt") {
             if (!timetableInput.isFile || !markerInput.isFile) {
                 throw GradleException("Graphical timetable input or markers missing for $stem")
             }
-            val splotArguments = listOf(wrapper.absolutePath, ":tools:splot:splotCsv",
-                "-Pinput=${timetableInput.absolutePath}", "-Pmarkers=${markerInput.absolutePath}",
-                "-Poutput=${svgOutput.absolutePath}", "-Ptitle=" + stem.removeSuffix("_graphical_timetable") + " - input check")
+            val splotArguments = listOf(
+                wrapper.absolutePath, ":tools:splot:splotCsv",
+                "-Pinput=${timetableInput.absolutePath}",
+                "-Pmarkers=${markerInput.absolutePath}",
+                "-Poutput=${svgOutput.absolutePath}",
+                "-Ptitle=" + stem.removeSuffix("_graphical_timetable") + " - input check",
+                "-Psubtitle="
+            )
             project.exec {
                 workingDir(splotDirectory)
                 if (windows) commandLine(listOf("cmd", "/c") + splotArguments)
@@ -382,6 +415,24 @@ tasks.register<JavaExec>("gridPreprocess") {
             ?: throw GradleException("gridPreprocess requires -Poutput=<grid_objects.conf>")
         args(input, output)
         if (providers.gradleProperty("overwrite").orNull == "true") args("--overwrite")
+    }
+    jvmArgs("-Dfile.encoding=UTF-8")
+}
+
+// Standalone trackdata validation; no study configuration or grid is loaded.
+tasks.register<JavaExec>("trackdataCheck") {
+    group = "verification"
+    description = "Check an Excel trackdata workbook without an electrical grid"
+    mainClass.set("org.supply.app.TrackdataCheck")
+    classpath = sourceSets.main.get().runtimeClasspath
+    doFirst {
+        val input = providers.gradleProperty("input").orNull
+            ?: throw GradleException("trackdataCheck requires -Pinput=<trackdata.xlsx>")
+        args(input)
+        providers.gradleProperty("output").orNull?.let { args("--output", it) }
+        providers.gradleProperty("review").orNull?.let { args("--review", it) }
+        providers.gradleProperty("sheets").orNull?.split(',')?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }?.forEach { args("--sheet", it) }
     }
     jvmArgs("-Dfile.encoding=UTF-8")
 }
