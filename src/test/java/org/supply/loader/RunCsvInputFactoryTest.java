@@ -264,19 +264,19 @@ public final class RunCsvInputFactoryTest {
                   templates.ABC {
                     motoring_and_auxiliaries_in_same_model = false
                     auxiliary_power_W = 100000
-                    legs = [
-                      {
-                        run_excel = "A-B.xlsx"
-                        run_excel_sheet = "+0sek"
-                      },
-                      {
-                        run_excel = "B-C.xlsx"
-                        departure = "00:15:00"
-                        motoring_and_auxiliaries_in_same_model = true
-                        auxiliary_power_W = 200000
-                      }
-                    ]
-                  }
+                  legs = [
+                     {
+                       run_excel = "A-B.xlsx"
+                       run_excel_sheet = "+0sek"
+                     },
+                     {
+                       run_excel = "B-C.xlsx"
+                       departure = "00:15:00"
+                       motoring_and_auxiliaries_in_same_model = true
+                       auxiliary_power_W = 200000
+                     }
+                   ]
+                 }
                 }
                 """);
 
@@ -296,12 +296,11 @@ public final class RunCsvInputFactoryTest {
         );
         assertEquals(
                 java.util.List.of(21600, 21600, 21900, 21900),
-                input.departureTimes()
-        );
+                input.departureTimes());
+
         assertEquals(
                 java.util.Arrays.asList(null, 900, null, 900),
-                input.relativeLegDepartureTimes()
-        );
+                input.relativeLegDepartureTimes());
         assertEquals(
                 java.util.List.of("", "", "", ""),
                 input.sectionIds()
@@ -319,4 +318,201 @@ public final class RunCsvInputFactoryTest {
                 input.auxiliaryPowersW()
         );
     }
+
+
+    @Test
+    public void synchronizesExplicitLegsAtStation() throws Exception {
+        Path tempDir = Files.createTempDirectory("explicit-leg-sync-test");
+        writeSynchronizationWorkbook(tempDir.resolve("A-B.xlsx"), 0);
+        writeSynchronizationWorkbook(tempDir.resolve("B-C.xlsx"), 600);
+        Path confFile = tempDir.resolve("application.conf");
+
+        Config dcsim = ConfigFactory.parseString("""
+            simulationControl {
+              simulationStart = "05:00:00"
+              simulationEnd = "07:00:00"
+            }
+
+            traffic {
+              timetable {
+                trains = [{
+                  id = "Train"
+                  template_id = "ABC"
+                  count = 2
+                  headway = "00:05:00"
+                  routeId = "A-C"
+                }]
+
+                synchronization {
+                  station = "B"
+                  trains = [{
+                    id = "Train"
+                    first_departure = "06:00:00"
+                  }]
+                }
+              }
+
+              templates.ABC {
+                legs = [
+                  {
+                    run_excel = "A-B.xlsx"
+                    run_excel_sheet = "+0sek"
+                  },
+                  {
+                    run_excel = "B-C.xlsx"
+                    run_excel_sheet = "+0sek"
+                    departure = "00:10:00"
+                  }
+                ]
+              }
+            }
+            """);
+
+        RunCsvInput input = new RunCsvInputFactory()
+                .build(dcsim, confFile);
+
+        assertEquals(
+                java.util.List.of(
+                        "Train-001", "Train-001",
+                        "Train-002", "Train-002"),
+                input.trainIds());
+
+        assertEquals(
+                java.util.List.of(
+                        21000, 21000, 21300, 21300),
+                input.departureTimes());
+
+        assertEquals(
+                java.util.Arrays.asList(null, 600, null, 600),
+                input.relativeLegDepartureTimes());
+    }
+
+    @Test
+    public void synchronizesExplicitLegsUsingRunExcelTimetable() throws Exception {
+        Path tempDir = Files.createTempDirectory("explicit-leg-ba-sync-test");
+
+        // BA: A avgår vid 0 s, B avgår vid 600 s.
+        writeSynchronizationWorkbook(tempDir.resolve("A-B.xlsx"), 0);
+        writeSynchronizationWorkbook(tempDir.resolve("B-C.xlsx"), 600);
+
+        Path confFile = tempDir.resolve("application.conf");
+
+        Config dcsim = ConfigFactory.parseString("""
+        simulationControl {
+          simulationStart = "05:00:00"
+          simulationEnd = "07:00:00"
+        }
+
+        traffic {
+          timetable {
+            trains = [{
+              id = "Train"
+              template_id = "ABC"
+              count = 2
+              headway = "00:05:00"
+              routeId = "A-C"
+            }]
+
+            synchronization {
+              station = "B"
+              trains = [{
+                id = "Train"
+                first_departure = "06:00:00"
+              }]
+            }
+          }
+
+          templates.ABC {
+            legs = [
+              {
+                run_excel = "A-B.xlsx"
+                run_excel_sheet = "+0sek"
+              },
+              {
+                run_excel = "B-C.xlsx"
+                run_excel_sheet = "+0sek"
+              }
+            ]
+          }
+        }
+        """);
+
+        RunCsvInput input = new RunCsvInputFactory()
+                .build(dcsim, confFile);
+
+        assertEquals(
+                java.util.List.of(
+                        "Train-001", "Train-001",
+                        "Train-002", "Train-002"),
+                input.trainIds());
+
+        assertEquals(
+                java.util.List.of(21000, 21000, 21300, 21300),
+                input.departureTimes());
+
+        assertEquals(
+                java.util.Arrays.asList(null, null, null, null),
+                input.relativeLegDepartureTimes());
+    }
+
+    private static void writeSynchronizationWorkbook(
+            Path path, int departureS) throws Exception {
+
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook =
+                     new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
+
+            var run = workbook.createSheet("+0sek");
+            var header = run.createRow(0);
+
+            header.createCell(0).setCellValue("time [s]");
+            header.createCell(1).setCellValue("position [m]");
+            header.createCell(2).setCellValue("bisPosition [km,m]");
+            header.createCell(3).setCellValue("primaryMotoringPower [kW]");
+            header.createCell(4).setCellValue("primaryMotorBrakingPower [kW]");
+
+            for (int i = 0; i < 2; i++) {
+                var row = run.createRow(i + 1);
+                row.createCell(0).setCellValue(i * 10.0);
+                row.createCell(1).setCellValue(i * 1000.0);
+                row.createCell(2).setCellValue(i);
+                row.createCell(3).setCellValue(20.0);
+                row.createCell(4).setCellValue(0.0);
+            }
+
+            var track = workbook.createSheet("track");
+            var trackHeader = track.createRow(0);
+            trackHeader.createCell(0).setCellValue("position [m]");
+            trackHeader.createCell(1).setCellValue("bisKm");
+            trackHeader.createCell(2).setCellValue("bisMeter");
+
+            for (int i = 0; i < 2; i++) {
+                var row = track.createRow(i + 1);
+                row.createCell(0).setCellValue(i * 1000.0);
+                row.createCell(1).setCellValue(i);
+                row.createCell(2).setCellValue(0.0);
+            }
+
+            var timetable = workbook.createSheet("timetable");
+            var ttHeader = timetable.createRow(0);
+            ttHeader.createCell(0).setCellValue("Station");
+            ttHeader.createCell(1).setCellValue("Time");
+            ttHeader.createCell(2).setCellValue("Time s");
+            ttHeader.createCell(3).setCellValue("Type");
+
+            var departure = timetable.createRow(1);
+            departure.createCell(0).setCellValue("A");
+            departure.createCell(1).setCellValue(
+                    String.format("%02d:%02d:%02d",
+                            departureS / 3600,
+                            (departureS % 3600) / 60,
+                            departureS % 60));
+            departure.createCell(2).setCellValue(0.0);
+            departure.createCell(3).setCellValue("departure");
+
+            try (var out = Files.newOutputStream(path)) {
+                workbook.write(out);
+            }
+        }
+    }
+
 }

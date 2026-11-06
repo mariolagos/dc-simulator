@@ -5,6 +5,7 @@ import org.supply.domain.RunCsvInput;
 import org.supply.domain.RunColumn;
 import org.supply.domain.RunLogFormat;
 import org.supply.domain.RunSource;
+import org.supply.io.export.RunCsvFromExcel;
 import org.supply.utils.TimeUtils;
 
 import java.nio.file.Files;
@@ -12,6 +13,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 public final class RunCsvInputFactory {
 
@@ -44,6 +49,24 @@ public final class RunCsvInputFactory {
         Config templates =
                 traffic.getConfig("templates");
 
+        Map<String, Integer> synchronizedDepartures = new HashMap<>();
+        String synchronizationStation = null;
+        if (timetable.hasPath("synchronization")) {
+            Config synchronization = timetable.getConfig("synchronization");
+            synchronizationStation = synchronization.getString("station");
+            if (synchronizationStation.isBlank()) {
+                throw new IllegalArgumentException("Synchronization station must not be blank");
+            }
+            for (Config entry : synchronization.getConfigList("trains")) {
+                String id = entry.getString("id");
+                int atStation = TimeUtils.parseHmsToSeconds(entry.getString("first_departure"));
+                if (synchronizedDepartures.putIfAbsent(id, atStation) != null) {
+                    throw new IllegalArgumentException("Duplicate synchronization train id: " + id);
+                }
+            }
+        }
+        Set<String> matchedSynchronizationIds = new HashSet<>();
+
         for (Config train : timetable.getConfigList("trains")) {
 
             String trainId =
@@ -57,11 +80,6 @@ public final class RunCsvInputFactory {
                             train,
                             "template_id",
                             "templateId"
-                    );
-
-            int departureSec =
-                    TimeUtils.parseHmsToSeconds(
-                            train.getString("departure")
                     );
 
             int count = train.getInt("count");
@@ -101,15 +119,32 @@ public final class RunCsvInputFactory {
 
             List<? extends Config> legs = templateConfig.hasPath("folder")
                     ? FolderTemplateLegs.read(templateConfig, resolveTemplateFolder(
-                            confFile, templateConfig.getString("folder")))
+                    confFile, templateConfig.getString("folder")))
                     : templateConfig.hasPath("legs")
-                            ? templateConfig.getConfigList("legs")
-                            : List.of(templateConfig);
+                    ? templateConfig.getConfigList("legs")
+                    : List.of(templateConfig);
 
             if (legs.isEmpty()) {
                 throw new IllegalArgumentException(
                         "Template " + templateId + " must contain at least one leg"
                 );
+            }
+
+            int departureSec;
+            if (synchronizedDepartures.containsKey(trainId)) {
+                matchedSynchronizationIds.add(trainId);
+                double offsetS = synchronizationOffsetS(
+                        legs, templateConfig, confFile, synchronizationStation, templateId);
+                double originS = synchronizedDepartures.get(trainId) - offsetS;
+                if (!Double.isFinite(originS) || Math.abs(originS - Math.rint(originS)) > 1e-9
+                        || originS < Integer.MIN_VALUE || originS > Integer.MAX_VALUE) {
+                    throw new IllegalArgumentException(
+                            "Synchronization produces non-integral or out-of-range origin for " + trainId
+                                    + ": " + originS);
+                }
+                departureSec = (int) Math.rint(originS);
+            } else {
+                departureSec = TimeUtils.parseHmsToSeconds(train.getString("departure"));
             }
 
             for (int i = 0; i < count; i++) {
@@ -214,6 +249,12 @@ public final class RunCsvInputFactory {
             }
         }
 
+        for (String id : synchronizedDepartures.keySet()) {
+            if (!matchedSynchronizationIds.contains(id)) {
+                throw new IllegalArgumentException("Unknown synchronization train id: " + id);
+            }
+        }
+
         double exportResolutionS =
                 dcsim.hasPath("export.exportResolution_s")
                         ? dcsim.getDouble("export.exportResolution_s")
@@ -254,6 +295,47 @@ public final class RunCsvInputFactory {
                 exportResolutionS,
                 runSources
         );
+    }
+
+    /** Offset of departure from station relative to the first BA leg's time origin. */
+    private static double synchronizationOffsetS(
+            List<? extends Config> legs, Config template, Path confFile,
+            String station, String templateId) throws Exception {
+        String prefix = template.hasPath("folder")
+                ? template.getString("prefix")
+                : "";
+        int targetIndex = -1;
+        for (int i = 0; i < legs.size(); i++) {
+            String filename = Path.of(legs.get(i).getString("run_excel"))
+                    .getFileName().toString();
+            String pair = filename.substring(prefix.length(), filename.length() - ".xlsx".length());
+            String from = pair.substring(0, pair.indexOf('-'));
+            if (from.equals(station)) {
+                targetIndex = i;
+                break;
+            }
+        }
+        if (targetIndex < 0) {
+            throw new IllegalArgumentException("Station " + station
+                    + " has no outgoing leg in template " + templateId);
+        }
+        double firstSourceDeparture = sourceDepartureS(legs.get(0), confFile);
+        Config target = legs.get(targetIndex);
+        if (target.hasPath("departure")) {
+            return TimeUtils.parseHmsToSeconds(target.getString("departure"));
+        }
+        return sourceDepartureS(target, confFile) - firstSourceDeparture;
+    }
+
+    private static double sourceDepartureS(Config leg, Path confFile) throws Exception {
+        if (!leg.hasPath("run_excel")) {
+            throw new IllegalArgumentException("Synchronization requires RunExcel legs");
+        }
+        Path file = resolveRunFile(confFile, leg.getString("run_excel"));
+        String sheet = leg.hasPath("run_excel_sheet") ? leg.getString("run_excel_sheet") : "run";
+        var read = new RunCsvFromExcel().read(RunSource.excel(file, sheet));
+        return read.relativeDepartureS() != null
+                ? read.relativeDepartureS() : read.samples().get(0).timeS();
     }
 
     private static Path resolveTemplateFolder(
