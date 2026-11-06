@@ -309,6 +309,9 @@ public final class RunCsvInputFactory {
             String filename = Path.of(legs.get(i).getString("run_excel"))
                     .getFileName().toString();
             String pair = filename.substring(prefix.length(), filename.length() - ".xlsx".length());
+            if (!template.hasPath("folder") && pair.contains("_")) {
+                pair = pair.substring(pair.lastIndexOf('_') + 1);
+            }
             String from = pair.substring(0, pair.indexOf('-'));
             if (from.equals(station)) {
                 targetIndex = i;

@@ -455,6 +455,76 @@ public final class RunCsvInputFactoryTest {
                 input.relativeLegDepartureTimes());
     }
 
+    @Test
+    public void synchronizesExplicitLegsWithDatedFilenamePrefix() throws Exception {
+        Path tempDir = Files.createTempDirectory("cs-leg-sync-test");
+
+        writeSynchronizationWorkbook(
+                tempDir.resolve("2161058_2026-09-09_GAS-TCE.xlsx"), 0);
+        writeSynchronizationWorkbook(
+                tempDir.resolve("2161058_2026-09-09_TCE-ÖMT.xlsx"), 600);
+
+        Path confFile = tempDir.resolve("application.conf");
+
+        Config dcsim = ConfigFactory.parseString("""
+        simulationControl {
+          simulationStart = "05:00:00"
+          simulationEnd = "07:00:00"
+        }
+
+        traffic {
+          timetable {
+            trains = [{
+              id = "LÖ"
+              template_id = "L_Ö"
+              count = 2
+              headway = "00:05:00"
+              routeId = "GAS-ÖMT"
+            }]
+
+            synchronization {
+              station = "TCE"
+              trains = [{
+                id = "LÖ"
+                first_departure = "06:00:00"
+              }]
+            }
+          }
+
+          templates."L_Ö" {
+            legs = [
+              {
+                run_excel = "2161058_2026-09-09_GAS-TCE.xlsx"
+                run_excel_sheet = "+0sek"
+              },
+              {
+                run_excel = "2161058_2026-09-09_TCE-ÖMT.xlsx"
+                run_excel_sheet = "+0sek"
+              }
+            ]
+          }
+        }
+        """);
+
+        RunCsvInput input = new RunCsvInputFactory()
+                .build(dcsim, confFile);
+
+        assertEquals(
+                java.util.List.of(
+                        "LÖ-001", "LÖ-001",
+                        "LÖ-002", "LÖ-002"),
+                input.trainIds());
+
+        assertEquals(
+                java.util.List.of(
+                        21000, 21000, 21300, 21300),
+                input.departureTimes());
+
+        assertEquals(
+                java.util.Arrays.asList(null, null, null, null),
+                input.relativeLegDepartureTimes());
+    }
+
     private static void writeSynchronizationWorkbook(
             Path path, int departureS) throws Exception {
 
