@@ -315,6 +315,33 @@ final class BaseRoutePositionMapper {
         return null;
     }
 
+    // Railway coordinate at the start/end of a section in base-route traversal order.
+    String sectionEndpointRwy(String sectionId, boolean atEnd) {
+        List<RailwaySegment> segments = segmentsBySection.get(sectionId);
+        Double length = sectionLengthsM.get(sectionId);
+        if (segments == null || segments.isEmpty() || length == null) return "";
+        boolean reversed = reversedSections.getOrDefault(sectionId, false);
+        double modelTarget = (atEnd != reversed) ? length : 0.0;
+        for (RailwaySegment segment : segments) {
+            if (Math.abs(segment.startModelM - modelTarget) < 1e-6) {
+                return sectionId + " " + formatRailwayMetres(segment.fromRailwayM);
+            }
+            if (Math.abs(segment.startModelM + segment.lengthM - modelTarget) < 1e-6) {
+                return sectionId + " " + formatRailwayMetres(segment.toRailwayM);
+            }
+        }
+        throw new IllegalArgumentException("No railway endpoint for section " + sectionId
+                + " at model position " + modelTarget);
+    }
+
+    private static String formatRailwayMetres(double metres) {
+        long rounded = Math.round(metres);
+        if (Math.abs(metres - rounded) > 1e-6) {
+            return String.format(java.util.Locale.ROOT, "%.3f", metres / 1000.0);
+        }
+        return (rounded / 1000) + "+" + String.format(java.util.Locale.ROOT, "%03d", rounded % 1000);
+    }
+
     static double railwayMetres(String value) {
         int plus = value.indexOf('+');
         if (plus <= 0 || plus == value.length() - 1) {

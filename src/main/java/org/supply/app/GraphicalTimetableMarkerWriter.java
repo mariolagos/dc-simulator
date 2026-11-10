@@ -33,7 +33,7 @@ final class GraphicalTimetableMarkerWriter {
         Set<String> emitted = new java.util.LinkedHashSet<>();
         Files.createDirectories(outputPath.toAbsolutePath().getParent());
         try (BufferedWriter writer = Files.newBufferedWriter(outputPath)) {
-            writer.write("name,base_route_position_m,kind" + (directional ? ",axis" : ""));
+            writer.write("name,base_route_position_m,kind" + (directional ? ",axis,position_rwy,details" : ""));
             writer.newLine();
             Path stations = exportDirectory.resolve("track_stations.csv");
             try (BufferedReader reader = Files.newBufferedReader(stations)) {
@@ -54,7 +54,7 @@ final class GraphicalTimetableMarkerWriter {
                         legacyStations.computeIfAbsent(fields.get(0), ignored -> new StationRange()).include(mapped);
                     }
                     for (RouteScope route : routes.values()) {
-                        if (contains(route, position)) emit(writer, emitted, fields.get(0), mapped, "STATION", route.axis());
+                        if (contains(route, position)) emit(writer, emitted, fields.get(0), mapped, "STATION", route.axis(), position, "", true);
                     }
                 }
             }
@@ -64,7 +64,8 @@ final class GraphicalTimetableMarkerWriter {
             writeSupplyPoints(writer, emitted, context, mapper, routes);
             String previous = null;
             for (Map.Entry<String, Double> section : mapper.sectionOffsetsM.entrySet()) {
-                if (previous != null) emit(writer, emitted, previous + "/" + section.getKey(), section.getValue(), "SECTION_BOUNDARY", directional ? "BOTH" : "");
+                if (previous != null) emit(writer, emitted, previous + "/" + section.getKey(), section.getValue(), "SECTION_BOUNDARY", directional ? "BOTH" : "",
+                        mapper.sectionEndpointRwy(previous, true) + " / " + mapper.sectionEndpointRwy(section.getKey(), false), "", directional);
                 previous = section.getKey();
             }
         }
@@ -128,14 +129,35 @@ final class GraphicalTimetableMarkerWriter {
             }
             for (RouteScope route : routes.values()) {
                 StationRange range = new StationRange();
+                List<String> terminals = new ArrayList<>();
                 for (Map.Entry<String, String> entry : positions.entrySet()) {
-                    if (!route.nodes().contains(entry.getKey())) continue;
+                    if (!route.nodes().contains(entry.getKey()) || entry.getValue() == null) continue;
                     Double mapped = mapper.mapRailwayPosition(entry.getValue());
-                    if (mapped != null) range.include(mapped);
+                    if (mapped != null) {
+                        range.include(mapped);
+                        terminals.add(entry.getKey() + ": " + entry.getValue());
+                    }
                 }
-                if (!range.isEmpty()) emit(writer, emitted, id, range.centre(), "SUPPLY_POINT", route.axis());
+                if (!range.isEmpty()) {
+                    String positionRwy = terminals.size() == 1
+                            ? terminals.get(0).substring(terminals.get(0).indexOf(": ") + 2) : "";
+                    String details = installationDetails(installation);
+                    if (!terminals.isEmpty()) details += (details.isEmpty() ? "" : " | ")
+                            + "Terminals: " + String.join("; ", terminals);
+                    emit(writer, emitted, id, range.centre(), "SUPPLY_POINT", route.axis(), positionRwy, details, true);
+                }
             }
         }
+    }
+
+    private static String installationDetails(Config installation) {
+        List<String> details = new ArrayList<>();
+        for (String key : List.of("emf_V", "internal_resistance_ohm", "rectifier_type")) {
+            if (installation.hasPath(key)) {
+                details.add(key + "=" + installation.getValue(key).unwrapped());
+            }
+        }
+        return String.join(" | ", details);
     }
 
     private static Map<String, RouteScope> scopes(DcStudyContext context, BaseRoutePositionMapper mapper) throws IOException {
@@ -207,6 +229,18 @@ final class GraphicalTimetableMarkerWriter {
 
     private static void emit(BufferedWriter writer, Set<String> emitted, String name, double position, String kind, String axis) throws IOException {
         String row = csv(name) + "," + position + "," + kind + (axis.isEmpty() ? "" : "," + axis);
+        if (emitted.add(row)) { writer.write(row); writer.newLine(); }
+    }
+
+    private static void emit(BufferedWriter writer, Set<String> emitted, String name, double position,
+                             String kind, String axis, String railwayPosition, String details,
+                             boolean extended) throws IOException {
+        if (!extended) {
+            emit(writer, emitted, name, position, kind, axis);
+            return;
+        }
+        String row = csv(name) + "," + position + "," + kind + "," + axis + ","
+                + csv(railwayPosition) + "," + csv(details);
         if (emitted.add(row)) { writer.write(row); writer.newLine(); }
     }
 
