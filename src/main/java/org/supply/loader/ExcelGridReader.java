@@ -106,13 +106,27 @@ public final class ExcelGridReader {
                 if(objects.putIfAbsent(id,new LinkedHashMap<>(Map.of("kind","POINT","positions",pair)))!=null)throw bad(r.location+": duplicate object "+id);
             }
         }
-        Map<String,List<String>> branches=new LinkedHashMap<>();Map<String,List<InputRow>> branchRows=group(table("Branches","Branch","Section","Order","Object"),"Branch");
+        Map<String,List<String>> branches=new LinkedHashMap<>();
+        List<String> branchHeaders=headers.get("Branches");
+        boolean segmentTypes=branchHeaders.equals(List.of("Branch","Section","Order","Object","Line type"));
+        if(!segmentTypes&&!branchHeaders.equals(List.of("Branch","Section","Order","Object")))
+            throw bad("Unexpected columns in Branches: "+branchHeaders);
+        Map<String,List<InputRow>> branchRows=group(table("Branches"),"Branch");
         Map<String,Object> branchSpecs=new LinkedHashMap<>();
         for(var e:branchRows.entrySet()) {
             var sorted=ordered(e.getValue());String section=sorted.get(0).label("Section");
             if(sorted.stream().anyMatch(r->!r.label("Section").equals(section)))throw bad("Conflicting branch sections: "+e.getKey());
             List<String> chain=sorted.stream().map(r->r.text("Object")).toList();branches.put(e.getKey(),chain);
-            branchSpecs.put(e.getKey(),Map.of("section",section,"objects",chain));
+            List<Object> endpoints=new ArrayList<>();
+            for(int i=0;i<sorted.size();i++) {
+                InputRow r=sorted.get(i);
+                String lineType=segmentTypes?r.optional("Line type"):"";
+                if(i==sorted.size()-1&&!lineType.isEmpty())throw bad(r.location+": last branch object must have blank Line type");
+                if(i<sorted.size()-1&&segmentTypes)
+                    endpoints.add(Map.of("object",r.text("Object"),"lineType",lineType.isEmpty()?"standard":lineType));
+                else endpoints.add(r.text("Object"));
+            }
+            branchSpecs.put(e.getKey(),Map.of("section",section,"objects",endpoints));
         }
         Map<String,Object> lineTypes=new LinkedHashMap<>();
         for(var r:table("LineTypes","Line type","Feeding [ohm/m]","Return [ohm/m]")) {
@@ -255,7 +269,7 @@ public final class ExcelGridReader {
     }
     /** Track links are derived only for transitions used by declared routes. */
     private List<Map<String,String>> trackJunctions(Map<String,List<String>> branches,
-            Map<String,Object> branchSpecs, Map<String,Object> objects, Map<String,Map<String,Object>> metadata) {
+                                                    Map<String,Object> branchSpecs, Map<String,Object> objects, Map<String,Map<String,Object>> metadata) {
         Map<String,Map<String,String>> links = new LinkedHashMap<>();
         for (var route : group(table("Routes","Route","Track","Order","Branch","Direction"), "Route").entrySet()) {
             InputRow previous = null;

@@ -90,19 +90,23 @@ public final class BranchGridGenerator {
                 throw bad("Branch needs at least two objects: " + branch);
             if (!input.hasPath("lineTypes." + type)) throw bad("Unknown line type: " + type);
             List<Endpoint> ends = new ArrayList<>();
+            List<String> segmentTypes = new ArrayList<>();
             for (int entryIndex=0;entryIndex<list.size();entryIndex++) {
                 Object entry=list.get(entryIndex);
                 String name;
                 String in = "L", out = "R";
+                String segmentType = type;
                 if (entry instanceof String string) { name = string; identifier(name); }
                 else {
                     Map<String, Object> endpoint = map(entry, branch + " endpoint");
-                    checkFields(endpoint, Set.of("object", "in", "out"), branch);
+                    checkFields(endpoint, Set.of("object", "in", "out", "lineType"), branch);
                     name = text(endpoint.get("object"), "endpoint.object");
+                    if(endpoint.containsKey("lineType")) segmentType = text(endpoint.get("lineType"), branch + " endpoint.lineType");
                     if (endpoint.containsKey("in")) in = text(endpoint.get("in"),"in");
                     if (endpoint.containsKey("out")) out = text(endpoint.get("out"),"out");
                     if (in.equals(out)) throw bad("Incoming and outgoing station sides must differ: " + name);
-                    if (!source.containsKey(name) || !"SUBSTATION".equals(map(source.get(name), name).get("kind")))
+                    if ((endpoint.containsKey("in") || endpoint.containsKey("out"))
+                            && (!source.containsKey(name) || !"SUBSTATION".equals(map(source.get(name), name).get("kind"))))
                         throw bad("Explicit sides require a SUBSTATION: " + name);
                 }
                 if (!source.containsKey(name)) throw bad("Unknown object " + name + " in branch " + branch);
@@ -125,6 +129,11 @@ public final class BranchGridGenerator {
                         validatePositions(map(ports.get(port),port),section,name);
                     }
                 } else validatePositions(map(original.get("positions"), name), section, name);
+                if(entryIndex==list.size()-1 && entry instanceof Map<?, ?> last && last.containsKey("lineType"))
+                    throw bad("Last branch endpoint must not specify lineType: " + branch);
+                if(entryIndex<list.size()-1 && !input.hasPath("lineTypes." + segmentType))
+                    throw bad("Unknown line type: " + segmentType + " in branch " + branch + " segment " + (entryIndex+1));
+                segmentTypes.add(segmentType);
                 ends.add(new Endpoint(name, resolved, station, in, out));
             }
             for (int i = 1; i + 1 < ends.size(); i++) if (stationAtJunction.containsKey(ends.get(i).name))
@@ -135,7 +144,7 @@ public final class BranchGridGenerator {
                 Endpoint a = ends.get(i), b = ends.get(i + 1);
                 if (a.name.equals(b.name)) throw bad("Adjacent repeated object in branch " + branch + ": " + a.name);
                 String line = "B__" + branch + "__" + (i + 1);
-                addLine(objects, source, lineIds, line, Map.of("kind", "LINE", "type", type));
+                addLine(objects, source, lineIds, line, Map.of("kind", "LINE", "type", segmentTypes.get(i)));
                 associations.add(link(a.port(false), line + ".L"));
                 associations.add(link(line + ".R", b.port(true)));
             }
