@@ -58,8 +58,21 @@ public final class DefaultTrackTransformService implements TrackTransformService
     }
 
     @Override
-    public RwyCoordinate toRailway(String routeId, ModelCoordinate modelCoordinate) {
-        throw new UnsupportedOperationException("toRailway not implemented yet");
+    public RwyCoordinate toRailway(
+            String routeId,
+            ModelCoordinate modelCoordinate
+    ) {
+        Objects.requireNonNull(modelCoordinate, "modelCoordinate");
+
+        TrackSection section = trackModel.getSectionsById()
+                .get(modelCoordinate.getSectionId());
+
+        if (section == null) {
+            throw new IllegalArgumentException(
+                    "Unknown section: " + modelCoordinate.getSectionId());
+        }
+
+        return mapper.toRailway(section, modelCoordinate);
     }
 
     @Override

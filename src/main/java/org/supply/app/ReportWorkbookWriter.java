@@ -15,6 +15,7 @@ import org.supply.track.PathSample;
 import org.supply.track.RouteView;
 import org.supply.track.RwyCoordinate;
 import org.supply.track.TrackConfigLoader;
+import org.supply.track.ModelCoordinate;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -37,6 +38,7 @@ final class ReportWorkbookWriter {
             List<LongTableRow> rows,
             ResultMetadata metadata,
             BaseRoutePositionMapper baseRoutePositionMapper,
+            TrackTransformService transform,
             Path outputPath
     ) throws IOException {
 
@@ -45,6 +47,26 @@ final class ReportWorkbookWriter {
 
         populateBaseRoutePositions(results, baseRoutePositionMapper);
 
+        for (Map<Double, TrainResult> byTime : results.values()) {
+            for (TrainResult train : byTime.values()) {
+                if (train.sectionId == null
+                        || train.trackId == null
+                        || train.positionM == null) {
+                    continue;
+                }
+
+                ModelCoordinate model = new ModelCoordinate(
+                        train.sectionId,
+                        train.trackId,
+                        (int) Math.round(train.positionM)
+                );
+
+                RwyCoordinate railway = transform.toRailway(
+                        train.electricRouteId, model);
+
+                train.positionRwy = railway.getPositionM() / 1000.0;
+            }
+        }
         try (Workbook workbook = new XSSFWorkbook()) {
 
             writeMetadataSheet(workbook, metadata);
@@ -175,41 +197,24 @@ final class ReportWorkbookWriter {
             Map<Double, TrainResult> results
     ) {
         Row header = sheet.createRow(0);
-
-        header.createCell(0)
-                .setCellValue(trainId + ".time_s");
-        header.createCell(1)
-                .setCellValue(trainId + ".electric_route_id");
-        header.createCell(2)
-                .setCellValue(trainId + ".electric_route_position_m");
-        header.createCell(3)
-                .setCellValue(trainId + ".section_id");
-        header.createCell(4)
-                .setCellValue(trainId + ".track_id");
-        header.createCell(5)
-                .setCellValue(trainId + ".position_m");
-        header.createCell(6)
-                .setCellValue(trainId + ".base_route_position_m");
-        header.createCell(7)
-                .setCellValue(trainId + ".speed_mps");
-        header.createCell(8)
-                .setCellValue(trainId + ".speed_kph");
-        header.createCell(9)
-                .setCellValue(trainId + ".u_V");
-        header.createCell(10)
-                .setCellValue(trainId + ".i_A");
-        header.createCell(11)
-                .setCellValue(trainId + ".p_req_W");
-        header.createCell(12)
-                .setCellValue(trainId + ".p_W");
-        header.createCell(13)
-                .setCellValue(trainId + ".p_delta_W");
-        header.createCell(14)
-                .setCellValue(trainId + ".e_consumed_J");
-        header.createCell(15)
-                .setCellValue(trainId + ".e_regenerated_J");
-        header.createCell(16)
-                .setCellValue(trainId + ".e_net_J");
+        header.createCell(0).setCellValue(trainId + ".time_s");
+        header.createCell(1).setCellValue(trainId + ".electric_route_id");
+        header.createCell(2).setCellValue(trainId + ".electric_route_position_m");
+        header.createCell(3).setCellValue(trainId + ".section_id");
+        header.createCell(4).setCellValue(trainId + ".track_id");
+        header.createCell(5).setCellValue(trainId + ".position_m");
+        header.createCell(6).setCellValue(trainId + ".position_rwy");
+        header.createCell(7).setCellValue(trainId + ".base_route_position_m");
+        header.createCell(8).setCellValue(trainId + ".speed_mps");
+        header.createCell(9).setCellValue(trainId + ".speed_kph");
+        header.createCell(10).setCellValue(trainId + ".u_V");
+        header.createCell(11).setCellValue(trainId + ".i_A");
+        header.createCell(12).setCellValue(trainId + ".p_req_W");
+        header.createCell(13).setCellValue(trainId + ".p_W");
+        header.createCell(14).setCellValue(trainId + ".p_delta_W");
+        header.createCell(15).setCellValue(trainId + ".e_consumed_J");
+        header.createCell(16).setCellValue(trainId + ".e_regenerated_J");
+        header.createCell(17).setCellValue(trainId + ".e_net_J");
 
         int rowIndex = 1;
 
@@ -228,23 +233,24 @@ final class ReportWorkbookWriter {
             setTextCell(row, 3, result.sectionId);
             setTextCell(row, 4, result.trackId);
             setNumericCell(row, 5, result.positionM);
-            setNumericCell(row, 6, result.baseRoutePositionM);
-            setNumericCell(row, 7, result.speedMps);
-            setNumericCell(row, 8,
+            setNumericCell(row, 6, result.positionRwy);
+            setNumericCell(row, 7, result.baseRoutePositionM);
+            setNumericCell(row, 8, result.speedMps);
+            setNumericCell(row, 9,
                     result.speedMps == null ? null : result.speedMps * 3.6);
-            setNumericCell(row, 9, result.uV);
-            setNumericCell(row, 10, result.iA);
-            setNumericCell(row, 11, result.pReqW);
-            setNumericCell(row, 12, result.pW);
-            setNumericCell(row, 13, result.pDeltaW);
-            setNumericCell(row, 14, result.eConsumedJ);
-            setNumericCell(row, 15, result.eRegeneratedJ);
-            setNumericCell(row, 16, result.eNetJ);
+            setNumericCell(row, 10, result.uV);
+            setNumericCell(row, 11, result.iA);
+            setNumericCell(row, 12, result.pReqW);
+            setNumericCell(row, 13, result.pW);
+            setNumericCell(row, 14, result.pDeltaW);
+            setNumericCell(row, 15, result.eConsumedJ);
+            setNumericCell(row, 16, result.eRegeneratedJ);
+            setNumericCell(row, 17, result.eNetJ);
         }
 
         sheet.createFreezePane(0, 1);
 
-        for (int column = 0; column < 17; column++) {
+        for (int column = 0; column < 18; column++) {
             sheet.autoSizeColumn(column);
         }
     }

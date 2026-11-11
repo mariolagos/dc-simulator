@@ -81,4 +81,51 @@ public final class TrackSectionMapper {
 
         return pos >= min && pos <= max;
     }
+
+
+    public RwyCoordinate toRailway(
+            TrackSection section,
+            ModelCoordinate modelCoordinate
+    ) {
+        Objects.requireNonNull(section, "section");
+        Objects.requireNonNull(modelCoordinate, "modelCoordinate");
+
+        if (!section.getSectionId().equals(modelCoordinate.getSectionId())) {
+            throw new IllegalArgumentException(
+                    "Coordinate section does not match section "
+                            + section.getSectionId());
+        }
+
+        for (RouteSegment segment :
+                section.getSegments(modelCoordinate.getTrackId())) {
+
+            int startModelM = segment.getStartModelM();
+            int lengthM = segment.getLengthM();
+            int positionM = modelCoordinate.getPositionM();
+
+            if (positionM < startModelM
+                    || positionM > startModelM + lengthM) {
+                continue;
+            }
+
+            int startRwyM = segment.getStartRwy().getPositionM();
+            int endRwyM = segment.getEndRwy().getPositionM();
+
+            double fraction =
+                    (double) (positionM - startModelM) / lengthM;
+
+            int railwayM = (int) Math.round(
+                    startRwyM + fraction * (endRwyM - startRwyM));
+
+            return new RwyCoordinate(
+                    section.getSectionId(),
+                    RwyCoordinate.formatKmShort(railwayM),
+                    railwayM,
+                    modelCoordinate.getTrackId()
+            );
+        }
+
+        throw new IllegalArgumentException(
+                "Model position outside section: " + modelCoordinate);
+    }
 }

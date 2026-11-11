@@ -33,6 +33,8 @@ import java.util.Set;
 import static org.supply.app.BaseRoutePositionMapper.*;
 import static org.supply.app.GraphicalTimetableMarkerWriter.*;
 import static org.supply.app.ReportWorkbookWriter.*;
+import org.supply.track.DefaultTrackTransformService;
+import org.supply.track.ModelCoordinate;
 
 public final class DcReporter {
 
@@ -76,11 +78,12 @@ public final class DcReporter {
         BaseRoutePositionMapper baseRoutePositionMapper =
                 loadBaseRoutePositionMapper(context);
 
-        writeInstallationWorkbook(
-                rows,
-                metadata,
-                outputPath
-        );
+        LoadedTrackModel trackModel =
+                new TrackConfigLoader().load(
+                        context.dcsim(), context.confFile());
+
+        TrackTransformService transform =
+                new DefaultTrackTransformService(trackModel);
 
         Path resultsTrain =
                 context.resultDirectory()
@@ -90,6 +93,7 @@ public final class DcReporter {
                 rows,
                 metadata,
                 baseRoutePositionMapper,
+                transform,
                 resultsTrain
         );
 
@@ -534,6 +538,7 @@ public final class DcReporter {
         String sectionId;
         String trackId;
         Double positionM;
+        Double positionRwy;
         Double baseRoutePositionM;
         Double speedMps;
         Double uV;
