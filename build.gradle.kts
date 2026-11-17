@@ -436,3 +436,25 @@ tasks.register<JavaExec>("trackdataCheck") {
     }
     jvmArgs("-Dfile.encoding=UTF-8")
 }
+
+tasks.register<JavaExec>("dcGlobalInstallation") {
+    group = "dc"
+    description = "Generate global installation statistics"
+
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("org.supply.report.SubstationGlobal")
+
+    val studyId = providers.gradleProperty("studyId")
+    val calcType = providers.gradleProperty("calcType")
+    val input = providers.gradleProperty("input")
+    val output = providers.gradleProperty("output")
+
+    doFirst {
+        args(
+            input.get(),
+            output.get(),
+            studyId.get(),
+            calcType.get()
+        )
+    }
+}
