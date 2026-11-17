@@ -49,6 +49,8 @@ public final class RunCsvInputFactory {
         Config templates =
                 traffic.getConfig("templates");
 
+        validateRegime(timetable);
+
         Map<String, Integer> synchronizedDepartures = new HashMap<>();
         String synchronizationStation = null;
         if (timetable.hasPath("synchronization")) {
@@ -295,6 +297,35 @@ public final class RunCsvInputFactory {
                 exportResolutionS,
                 runSources
         );
+    }
+
+    /** Optional traffic-regime metadata; does not change train expansion or simulation time. */
+    static void validateRegime(Config timetable) {
+        if (!timetable.hasPath("regime")) {
+            return;
+        }
+        Config regime = timetable.getConfig("regime");
+        if (!regime.hasPath("id") || regime.getString("id").isBlank()) {
+            throw new IllegalArgumentException("traffic.timetable.regime.id must not be blank");
+        }
+        if (!regime.hasPath("duration")) {
+            throw new IllegalArgumentException("Missing required config: traffic.timetable.regime.duration");
+        }
+        String duration = regime.getString("duration");
+        if (!duration.matches("\\d{2,}:\\d{2}:\\d{2}")) {
+            throw new IllegalArgumentException("traffic.timetable.regime.duration must be HH:MM:SS");
+        }
+        String[] parts = duration.split(":");
+        try {
+            long hours = Long.parseLong(parts[0]);
+            long minutes = Long.parseLong(parts[1]);
+            long seconds = Long.parseLong(parts[2]);
+            if (minutes >= 60 || seconds >= 60 || (hours == 0 && minutes == 0 && seconds == 0)) {
+                throw new IllegalArgumentException("traffic.timetable.regime.duration must be positive HH:MM:SS");
+            }
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Invalid traffic.timetable.regime.duration: " + duration, ex);
+        }
     }
 
     /** Offset of departure from station relative to the first BA leg's time origin. */
