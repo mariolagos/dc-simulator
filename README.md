@@ -41,6 +41,9 @@ dcStudy --check D:\studies\dc-simulator-verifiering\conf\two_sections\two_sectio
 
 ## Part 1 — Using TrainsSupply
 
+See [Global Reporting Workflow](docs/global-reporting-workflow.md)
+for incremental reporting across multiple studies.
+
 ### The study model
 
 A study combines three descriptions: **track infrastructure** defines railway

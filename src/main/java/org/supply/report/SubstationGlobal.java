@@ -6,6 +6,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,7 +58,9 @@ public final class SubstationGlobal {
             CellStyle numberStyle = output.createCellStyle();
             numberStyle.setDataFormat(output.createDataFormat().getFormat("0.000"));
 
-            int rowNumber = 1;
+            // Preserve all other study/case rows before appending the replacement case.
+            int rowNumber = copyExistingRows(destination, result, studyId, calcType);
+
             for (int s = 0; s < input.getNumberOfSheets(); s++) {
                 Sheet sheet = input.getSheetAt(s);
                 Row first = sheet.getRow(0);
@@ -105,12 +108,14 @@ public final class SubstationGlobal {
             for (int c = 0; c < HEADERS.length; c++) result.setColumnWidth(c, c < 3 ? 18 * 256 : 19 * 256);
 
             copyMetadata(input, output);
+            updateSources(destination, input, output, studyId, calcType);
 
             Sheet method = output.createSheet("Method");
             String[] notes = {
                     "Source: results_installation.xlsx",
                     "StudyId and Calc Type are supplied by the user from the controlling Study cases document.",
-                    "Metadata values are copied unchanged from the source results workbook.",
+                    "Metadata describes the most recently processed source; Sources tracks individual cases.",
+                    "Existing rows for the same StudyId and Calc Type are replaced on each update.",
                     "One row per installation; all available samples are used.",
                     "Timestamps must be strictly increasing; sampling intervals may vary.",
                     "For interval (t[i-1],t[i]], the value at t[i] is used (right-endpoint convention).",
@@ -127,8 +132,117 @@ public final class SubstationGlobal {
             method.setColumnWidth(0, 110 * 256);
             Path parent = destination.toAbsolutePath().getParent();
             if (parent != null) Files.createDirectories(parent);
-            try (var stream = Files.newOutputStream(destination)) { output.write(stream); }
+            // Do not truncate a valid destination if writing fails.
+            Path temp = Files.createTempFile(parent, "substation-global-", ".xlsx");
+            try {
+                try (var stream = Files.newOutputStream(temp)) { output.write(stream); }
+                try {
+                    Files.move(temp, destination, StandardCopyOption.REPLACE_EXISTING,
+                            StandardCopyOption.ATOMIC_MOVE);
+                } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                    Files.move(temp, destination, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } finally {
+                Files.deleteIfExists(temp);
+            }
         }
+    }
+
+    private static int copyExistingRows(Path destination, Sheet target,
+                                        String studyId, String calcType) throws IOException {
+        if (!Files.exists(destination)) return 1;
+        try (var stream = Files.newInputStream(destination);
+             Workbook previous = WorkbookFactory.create(stream)) {
+            Sheet old = previous.getSheet("Substation Global");
+            if (old == null) throw new IllegalArgumentException("Missing Substation Global sheet: " + destination);
+            Row header = old.getRow(0);
+            if (header == null) throw new IllegalArgumentException("Missing Global header");
+            for (int c = 0; c < HEADERS.length; c++) {
+                Cell cell = header.getCell(c);
+                if (cell == null || cell.getCellType() != CellType.STRING
+                        || !HEADERS[c].equals(cell.getStringCellValue())) {
+                    throw new IllegalArgumentException("Incompatible Global header at column " + c);
+                }
+            }
+            int next = 1;
+            for (int r = 1; r <= old.getLastRowNum(); r++) {
+                Row sourceRow = old.getRow(r);
+                if (sourceRow == null) continue;
+                String oldStudy = stringCell(sourceRow, 0);
+                String oldType = stringCell(sourceRow, 1);
+                if (studyId.equals(oldStudy) && calcType.equals(oldType)) continue;
+                Row destRow = target.createRow(next++);
+                for (int c = 0; c < HEADERS.length; c++) {
+                    Cell sourceCell = sourceRow.getCell(c);
+                    if (sourceCell == null) continue;
+                    Cell destCell = destRow.createCell(c);
+                    switch (sourceCell.getCellType()) {
+                        case STRING -> destCell.setCellValue(sourceCell.getStringCellValue());
+                        case NUMERIC -> destCell.setCellValue(sourceCell.getNumericCellValue());
+                        case BOOLEAN -> destCell.setCellValue(sourceCell.getBooleanCellValue());
+                        case BLANK -> { }
+                        default -> throw new IllegalArgumentException("Unsupported Global cell type at row " + r);
+                    }
+                    if (c == 3 || c == 4) {
+                        CellStyle style = target.getWorkbook().createCellStyle();
+                        style.setDataFormat(target.getWorkbook().createDataFormat().getFormat("[h]:mm:ss"));
+                        destCell.setCellStyle(style);
+                    }
+                }
+            }
+            return next;
+        }
+    }
+
+    private static String stringCell(Row row, int index) {
+        Cell cell = row.getCell(index);
+        if (cell == null || cell.getCellType() != CellType.STRING) {
+            throw new IllegalArgumentException("Expected text in Global column " + index);
+        }
+        return cell.getStringCellValue();
+    }
+
+    private static void updateSources(Path destination, Workbook input, Workbook output,
+                                      String studyId, String calcType) throws IOException {
+        Sheet sources = output.createSheet("Sources");
+        String[] columns = {"StudyId", "Calc Type", "project", "scenario", "base_hash", "generated_at"};
+        Row header = sources.createRow(0);
+        for (int c = 0; c < columns.length; c++) header.createCell(c).setCellValue(columns[c]);
+        int next = 1;
+        if (Files.exists(destination)) {
+            try (var stream = Files.newInputStream(destination);
+                 Workbook previous = WorkbookFactory.create(stream)) {
+                Sheet old = previous.getSheet("Sources");
+                if (old != null) {
+                    for (int r = 1; r <= old.getLastRowNum(); r++) {
+                        Row row = old.getRow(r);
+                        if (row == null) continue;
+                        if (studyId.equals(stringCell(row, 0)) && calcType.equals(stringCell(row, 1))) continue;
+                        Row target = sources.createRow(next++);
+                        for (int c = 0; c < columns.length; c++) {
+                            Cell cell = row.getCell(c);
+                            target.createCell(c).setCellValue(cell == null ? "" : cell.getStringCellValue());
+                        }
+                    }
+                }
+            }
+        }
+        Sheet metadata = input.getSheet("Metadata");
+        Map<String, String> values = new HashMap<>();
+        for (Row row : metadata) {
+            Cell key = row.getCell(0), value = row.getCell(1);
+            if (key != null && value != null && key.getCellType() == CellType.STRING
+                    && value.getCellType() == CellType.STRING) {
+                values.put(key.getStringCellValue(), value.getStringCellValue());
+            }
+        }
+        Row target = sources.createRow(next);
+        target.createCell(0).setCellValue(studyId);
+        target.createCell(1).setCellValue(calcType);
+        for (int c = 2; c < columns.length; c++) {
+            target.createCell(c).setCellValue(values.getOrDefault(columns[c], ""));
+        }
+        for (int c = 0; c < columns.length; c++) sources.setColumnWidth(c, 24 * 256);
     }
 
     private static void copyMetadata(Workbook source, Workbook destination) {

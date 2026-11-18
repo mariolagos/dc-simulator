@@ -458,3 +458,21 @@ tasks.register<JavaExec>("dcGlobalInstallation") {
         )
     }
 }
+
+tasks.register<JavaExec>("dcGlobalTrain") {
+    group = "dc"
+    description = "Generate Global Train report"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("org.supply.report.TrainGlobal")
+
+    doFirst {
+        args(
+            providers.gradleProperty("conf").get(),
+            providers.gradleProperty("results").get(),
+            providers.gradleProperty("output").get(),
+            providers.gradleProperty("studyId").get(),
+            providers.gradleProperty("calcType").get(),
+            providers.gradleProperty("trains").get()
+        )
+    }
+}
