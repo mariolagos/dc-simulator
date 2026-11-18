@@ -2,6 +2,7 @@ package org.supply.report;
 
 import org.junit.Test;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
 import java.nio.file.Files;
 
 import java.lang.reflect.Constructor;
@@ -167,6 +168,120 @@ public class TrainGlobalTest {
         } catch (IllegalArgumentException ex) {
             assertTrue(ex.getMessage(), ex.getMessage().contains("station X"));
         }
+    }
+
+
+    @Test
+    public void acceptsSmallMissingArrivalTimeButRejectsLargerGap() {
+        Map<String, List<TrainGlobal.Leg>> legs = Map.of(
+                "ad-001", List.of(new TrainGlobal.Leg("AD", "C", "D", 200.0, 288.0)));
+        var accepted = TrainGlobal.selectJourney("ad-001", legs,
+                Map.of("ad-001", samples(200.0, 287.9)));
+        assertEquals(1, accepted.size());
+        try {
+            TrainGlobal.selectJourney("ad-001", legs,
+                    Map.of("ad-001", samples(200.0, 287.0)));
+            fail("Expected missing arrival to be rejected");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("No complete journey departure"));
+        }
+    }
+
+    @Test
+    public void incrementalUpdatePreservesOtherCasesAndReplacesMatchingCase() throws Exception {
+        Path destination = Files.createTempFile("train-global-incremental", ".xlsx");
+        try {
+            try (XSSFWorkbook previous = new XSSFWorkbook()) {
+                Sheet old = previous.createSheet("Train Global");
+                String[] headers = {"StudyId", "Calc Type", "train_id", "route_id", "leg",
+                        "from_station", "to_station", "start_time", "end_time", "duration_s",
+                        "e_consumed_kWh", "e_regenerated_kWh", "e_net_kWh",
+                        "p_mean_kW", "p_min_kW", "p_max_kW", "i_mean_A", "i_rms_A",
+                        "i_min_A", "i_max_A", "u_mean_V", "u_min_V", "u_max_V"};
+                Row header = old.createRow(0);
+                for (int c = 0; c < headers.length; c++) header.createCell(c).setCellValue(headers[c]);
+                addGlobalRow(old, 1, "WE", "+0sek", "old-we");
+                addGlobalRow(old, 2, "two_sections", "+0sek", "keep-other-study");
+                addGlobalRow(old, 3, "WE", "+30sek", "keep-other-case");
+                Sheet sources = previous.createSheet("Sources");
+                String[] sourceHeaders = {"StudyId", "Calc Type", "project", "scenario", "base_hash", "generated_at"};
+                Row sourceHeader = sources.createRow(0);
+                for (int c = 0; c < sourceHeaders.length; c++) sourceHeader.createCell(c).setCellValue(sourceHeaders[c]);
+                addSourceRow(sources, 1, "WE", "+0sek", "old");
+                addSourceRow(sources, 2, "two_sections", "+0sek", "preserved");
+                addSourceRow(sources, 3, "WE", "+30sek", "preserved-case");
+                try (var stream = Files.newOutputStream(destination)) { previous.write(stream); }
+            }
+            try (XSSFWorkbook target = new XSSFWorkbook(); XSSFWorkbook input = new XSSFWorkbook()) {
+                Sheet result = target.createSheet("Train Global");
+                Row header = result.createRow(0);
+                try (Workbook old = WorkbookFactory.create(destination.toFile())) {
+                    Row oldHeader = old.getSheet("Train Global").getRow(0);
+                    for (int c = 0; c < oldHeader.getLastCellNum(); c++)
+                        header.createCell(c).setCellValue(oldHeader.getCell(c).getStringCellValue());
+                }
+                CellStyle time = target.createCellStyle();
+                time.setDataFormat(target.createDataFormat().getFormat("[h]:mm:ss"));
+                CellStyle number = target.createCellStyle();
+                int next = TrainGlobal.copyExistingRows(destination, result, "WE", "+0sek", time, number);
+                assertEquals(3, next);
+                assertEquals("keep-other-study", result.getRow(1).getCell(2).getStringCellValue());
+                assertEquals("keep-other-case", result.getRow(2).getCell(2).getStringCellValue());
+                addGlobalRow(result, next, "WE", "+0sek", "new-we");
+                Sheet metadata = input.createSheet("Metadata");
+                Row project = metadata.createRow(0);
+                project.createCell(0).setCellValue("project");
+                project.createCell(1).setCellValue("new-project");
+                TrainGlobal.updateSources(destination, input, target, "WE", "+0sek");
+                Sheet sources = target.getSheet("Sources");
+                assertEquals(3, sources.getLastRowNum());
+                assertEquals("preserved", sources.getRow(1).getCell(2).getStringCellValue());
+                assertEquals("preserved-case", sources.getRow(2).getCell(2).getStringCellValue());
+                assertEquals("new-project", sources.getRow(3).getCell(2).getStringCellValue());
+                assertEquals("new-we", result.getRow(3).getCell(2).getStringCellValue());
+            }
+        } finally {
+            Files.deleteIfExists(destination);
+        }
+    }
+
+    @Test
+    public void rejectsIncompatibleExistingTrainGlobalHeader() throws Exception {
+        Path destination = Files.createTempFile("train-global-bad-header", ".xlsx");
+        try {
+            try (XSSFWorkbook previous = new XSSFWorkbook()) {
+                previous.createSheet("Train Global").createRow(0).createCell(0).setCellValue("Wrong");
+                try (var stream = Files.newOutputStream(destination)) { previous.write(stream); }
+            }
+            try (XSSFWorkbook target = new XSSFWorkbook()) {
+                try {
+                    TrainGlobal.copyExistingRows(destination, target.createSheet("Train Global"),
+                            "WE", "+0sek", target.createCellStyle(), target.createCellStyle());
+                    fail("Expected incompatible header rejection");
+                } catch (IllegalArgumentException expected) {
+                    assertTrue(expected.getMessage().contains("Incompatible"));
+                }
+            }
+        } finally {
+            Files.deleteIfExists(destination);
+        }
+    }
+
+    private static void addGlobalRow(Sheet sheet, int index, String study, String calc, String train) {
+        Row row = sheet.createRow(index);
+        row.createCell(0).setCellValue(study);
+        row.createCell(1).setCellValue(calc);
+        row.createCell(2).setCellValue(train);
+        row.createCell(7).setCellValue(10.0 / 24.0);
+        row.createCell(8).setCellValue(11.0 / 24.0);
+        row.createCell(10).setCellValue(25.5);
+    }
+
+    private static void addSourceRow(Sheet sheet, int index, String study, String calc, String project) {
+        Row row = sheet.createRow(index);
+        row.createCell(0).setCellValue(study);
+        row.createCell(1).setCellValue(calc);
+        for (int c = 2; c < 6; c++) row.createCell(c).setCellValue(c == 2 ? project : "");
     }
 
     private static Map<String, List<TrainGlobal.Leg>> journeys() {

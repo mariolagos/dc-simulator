@@ -12,6 +12,7 @@ import org.supply.loader.RunCsvInputFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 /**
@@ -22,6 +23,8 @@ import java.util.*;
  */
 public final class TrainGlobal {
     private static final double J_PER_KWH = 3_600_000.0;
+    // Allows a final integration sample just before the scheduled arrival.
+    private static final double ARRIVAL_TIME_TOLERANCE_S = 0.25;
     private static final String[] HEADERS = {
             "StudyId", "Calc Type", "train_id", "route_id", "leg",
             "from_station", "to_station", "start_time", "end_time", "duration_s",
@@ -86,7 +89,7 @@ public final class TrainGlobal {
                 if (source.getSheet(trainId) != null)
                     samplesByTrain.put(trainId, readSamples(source, trainId));
             }
-            int rowIndex = 1;
+            int rowIndex = copyExistingRows(output, summary, studyId, calcType, timeStyle, numberStyle);
             for (String requestedId : selectedTrainIds) {
                 List<ChosenLeg> journey = selectJourney(requestedId, legsByTrain, samplesByTrain);
                 for (ChosenLeg chosen : journey)
@@ -98,6 +101,7 @@ public final class TrainGlobal {
             for (int c = 0; c < HEADERS.length; c++)
                 summary.setColumnWidth(c, (c < 7 ? 18 : 19) * 256);
             copyMetadata(source, target);
+            updateSources(output, source, target, studyId, calcType);
             Sheet method = target.createSheet("Method");
             String[] notes = {
                     "Source: results_train.xlsx and RunExcel timetable sheets.",
@@ -112,15 +116,123 @@ public final class TrainGlobal {
                     "Only complete legs are used; subsequent legs may come from other trains of the same station sequence.",
                     "A train is retained as long as it has complete consecutive legs; replacement uses earliest complete departure.",
                     "Energy regenerated retains the source counter's sign convention.",
-                    "StudyId and Calc Type are user-supplied; metadata is copied from the source."
+                    "StudyId and Calc Type are user-supplied; metadata is copied from the latest source.",
+                    "Existing rows for the same StudyId and Calc Type are replaced; other cases are preserved.",
+                    "Sources records provenance for each retained case."
             };
             for (int i = 0; i < notes.length; i++)
                 method.createRow(i).createCell(0).setCellValue(notes[i]);
             method.setColumnWidth(0, 115 * 256);
             Path parent = output.toAbsolutePath().getParent();
             if (parent != null) Files.createDirectories(parent);
-            try (var stream = Files.newOutputStream(output)) { target.write(stream); }
+            Path temp = Files.createTempFile(parent, "train-global-", ".xlsx");
+            try {
+                try (var stream = Files.newOutputStream(temp)) { target.write(stream); }
+                try {
+                    Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING,
+                            StandardCopyOption.ATOMIC_MOVE);
+                } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                    Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } finally {
+                Files.deleteIfExists(temp);
+            }
         }
+    }
+
+    // Rebuild rather than editing the old workbook in place: no stale rows remain.
+    static int copyExistingRows(Path destination, Sheet target, String studyId, String calcType,
+                                CellStyle timeStyle, CellStyle numberStyle) throws IOException {
+        if (!Files.exists(destination)) return 1;
+        try (var stream = Files.newInputStream(destination);
+             Workbook previous = WorkbookFactory.create(stream)) {
+            Sheet old = previous.getSheet("Train Global");
+            if (old == null) throw new IllegalArgumentException("Missing Train Global sheet: " + destination);
+            Row header = old.getRow(0);
+            if (header == null) throw new IllegalArgumentException("Missing Train Global header");
+            for (int c = 0; c < HEADERS.length; c++) {
+                Cell cell = header.getCell(c);
+                if (cell == null || cell.getCellType() != CellType.STRING
+                        || !HEADERS[c].equals(cell.getStringCellValue()))
+                    throw new IllegalArgumentException("Incompatible Train Global header at column " + c);
+            }
+            int next = 1;
+            for (int r = 1; r <= old.getLastRowNum(); r++) {
+                Row src = old.getRow(r);
+                if (src == null) continue;
+                if (studyId.equals(textCell(src, 0)) && calcType.equals(textCell(src, 1))) continue;
+                Row dst = target.createRow(next++);
+                for (int c = 0; c < HEADERS.length; c++) {
+                    Cell from = src.getCell(c);
+                    if (from == null) continue;
+                    Cell to = dst.createCell(c);
+                    switch (from.getCellType()) {
+                        case STRING -> to.setCellValue(from.getStringCellValue());
+                        case NUMERIC -> to.setCellValue(from.getNumericCellValue());
+                        case BOOLEAN -> to.setCellValue(from.getBooleanCellValue());
+                        case BLANK -> { }
+                        default -> throw new IllegalArgumentException("Unsupported Train Global cell type at row " + r);
+                    }
+                    if (c == 7 || c == 8) to.setCellStyle(timeStyle);
+                    else if (from.getCellType() == CellType.NUMERIC) to.setCellStyle(numberStyle);
+                }
+            }
+            return next;
+        }
+    }
+
+    private static String textCell(Row row, int column) {
+        Cell cell = row.getCell(column);
+        if (cell == null || cell.getCellType() != CellType.STRING)
+            throw new IllegalArgumentException("Expected text in Train Global column " + column);
+        return cell.getStringCellValue();
+    }
+
+    static void updateSources(Path destination, Workbook input, Workbook output,
+                              String studyId, String calcType) throws IOException {
+        String[] columns = {"StudyId", "Calc Type", "project", "scenario", "base_hash", "generated_at"};
+        Sheet sources = output.createSheet("Sources");
+        Row header = sources.createRow(0);
+        for (int c = 0; c < columns.length; c++) header.createCell(c).setCellValue(columns[c]);
+        int next = 1;
+        if (Files.exists(destination)) {
+            try (var stream = Files.newInputStream(destination);
+                 Workbook previous = WorkbookFactory.create(stream)) {
+                Sheet old = previous.getSheet("Sources");
+                if (old != null) {
+                    Row oldHeader = old.getRow(0);
+                    for (int c = 0; c < columns.length; c++) {
+                        Cell cell = oldHeader == null ? null : oldHeader.getCell(c);
+                        if (cell == null || cell.getCellType() != CellType.STRING
+                                || !columns[c].equals(cell.getStringCellValue()))
+                            throw new IllegalArgumentException("Incompatible Sources header at column " + c);
+                    }
+                    for (int r = 1; r <= old.getLastRowNum(); r++) {
+                        Row src = old.getRow(r);
+                        if (src == null) continue;
+                        if (studyId.equals(textCell(src, 0)) && calcType.equals(textCell(src, 1))) continue;
+                        Row dst = sources.createRow(next++);
+                        for (int c = 0; c < columns.length; c++)
+                            dst.createCell(c).setCellValue(textCell(src, c));
+                    }
+                }
+            }
+        }
+        Sheet metadata = input.getSheet("Metadata");
+        if (metadata == null) throw new IllegalArgumentException("Missing Metadata sheet");
+        Map<String, String> values = new HashMap<>();
+        for (Row row : metadata) {
+            Cell key = row.getCell(0), value = row.getCell(1);
+            if (key != null && value != null && key.getCellType() == CellType.STRING
+                    && value.getCellType() == CellType.STRING)
+                values.put(key.getStringCellValue(), value.getStringCellValue());
+        }
+        Row dst = sources.createRow(next);
+        dst.createCell(0).setCellValue(studyId);
+        dst.createCell(1).setCellValue(calcType);
+        for (int c = 2; c < columns.length; c++)
+            dst.createCell(c).setCellValue(values.getOrDefault(columns[c], ""));
+        for (int c = 0; c < columns.length; c++) sources.setColumnWidth(c, 24 * 256);
     }
 
     /** One original leg; index is zero-based within its source train. */
@@ -190,7 +302,9 @@ public final class TrainGlobal {
     private static boolean covered(Leg leg, List<Sample> samples) {
         return samples != null && samples.size() >= 2
                 && leg.startS >= samples.get(0).t
-                && leg.endS <= samples.get(samples.size() - 1).t;
+                && (leg.endS <= samples.get(samples.size() - 1).t
+                || (leg.endS > samples.get(samples.size() - 1).t
+                && leg.endS - samples.get(samples.size() - 1).t <= ARRIVAL_TIME_TOLERANCE_S));
     }
 
     private static Map<String, List<Leg>> collectLegs(RunCsvInput input, Set<String> selected)
@@ -208,8 +322,15 @@ public final class TrainGlobal {
             Integer override = input.relativeLegDepartureTimes().get(i);
             double[] bounds = legBounds(input.departureTimes().get(i), first,
                     legTimes.sourceDepartureS, legTimes.departureS, legTimes.arrivalS, override);
+
             double start = bounds[0];
-            double end = bounds[1];
+
+            double[] profileBounds = readProfileTimeBounds(
+                    runSource.file(),
+                    runSource.sheet()
+            );
+
+            double end = start + profileBounds[1] - profileBounds[0];
             if (!(end > start)) throw new IllegalArgumentException("Invalid leg duration: " + runSource.file());
             result.computeIfAbsent(id, k -> new ArrayList<>())
                     .add(new Leg(input.routeIds().get(i), legTimes.from, legTimes.to, start, end));
@@ -266,6 +387,74 @@ public final class TrainGlobal {
             if (departure == null || arrival == null || arrival <= departure)
                 throw new IllegalArgumentException("Invalid departure/arrival timetable: " + file);
             return new Timetable(from, to, departure, arrival, sourceDeparture);
+        }
+    }
+
+
+    private static double[] readProfileTimeBounds(Path file, String sheetName)
+            throws IOException {
+        try (var stream = Files.newInputStream(file);
+             Workbook book = WorkbookFactory.create(stream)) {
+
+            Sheet sheet = book.getSheet(sheetName);
+            if (sheet == null) {
+                throw new IllegalArgumentException(
+                        "Missing RunExcel sheet '" + sheetName + "': " + file);
+            }
+
+            Row header = sheet.getRow(0);
+            if (header == null) {
+                throw new IllegalArgumentException(
+                        "Empty RunExcel sheet: " + file);
+            }
+
+            Integer timeColumn = null;
+            for (Cell cell : header) {
+                if ("time [s]".equals(cell.toString().trim())) {
+                    timeColumn = cell.getColumnIndex();
+                    break;
+                }
+            }
+
+            if (timeColumn == null) {
+                throw new IllegalArgumentException(
+                        "Missing column 'time [s]': " + file);
+            }
+
+            Double first = null;
+            Double last = null;
+
+            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+
+                Cell cell = row.getCell(timeColumn);
+                if (cell == null || cell.getCellType() != CellType.NUMERIC) {
+                    continue;
+                }
+
+                double time = cell.getNumericCellValue();
+                if (!Double.isFinite(time)) {
+                    throw new IllegalArgumentException(
+                            "Invalid profile time: " + file + " row " + (r + 1));
+                }
+
+                if (last != null && time <= last) {
+                    throw new IllegalArgumentException(
+                            "Non-increasing profile time: " + file
+                                    + " row " + (r + 1));
+                }
+
+                if (first == null) first = time;
+                last = time;
+            }
+
+            if (first == null || last == null || last <= first) {
+                throw new IllegalArgumentException(
+                        "Invalid RunExcel profile duration: " + file);
+            }
+
+            return new double[]{first, last};
         }
     }
 
@@ -360,8 +549,9 @@ public final class TrainGlobal {
         points.add(at(all, leg.startS));
         for (Sample sample : all)
             if (sample.t > leg.startS && sample.t < leg.endS) points.add(sample);
-        points.add(at(all, leg.endS));
-        double duration = leg.endS - leg.startS;
+        double actualEndS = Math.min(leg.endS, all.get(all.size() - 1).t);
+        points.add(at(all, actualEndS));
+        double duration = actualEndS - leg.startS;
         double sumI = 0, sumI2 = 0, sumU = 0;
         double minI = Double.POSITIVE_INFINITY, maxI = Double.NEGATIVE_INFINITY;
         double minU = Double.POSITIVE_INFINITY, maxU = Double.NEGATIVE_INFINITY;
@@ -381,7 +571,7 @@ public final class TrainGlobal {
         string(row,0,study); string(row,1,calc); string(row,2,train);
         string(row,3,leg.route); numeric(row,4,index,numberStyle);
         string(row,5,leg.from); string(row,6,leg.to);
-        numeric(row,7,leg.startS/86400.0,timeStyle); numeric(row,8,leg.endS/86400.0,timeStyle);
+        numeric(row,7,leg.startS/86400.0,timeStyle); numeric(row,8,actualEndS/86400.0,timeStyle);
         numeric(row,9,duration,numberStyle);
         double[] values = {consumed,regenerated,net,net*3600.0/duration,minP/1000.0,maxP/1000.0,
                 sumI/duration,Math.sqrt(sumI2/duration),minI,maxI,sumU/duration,minU,maxU};
