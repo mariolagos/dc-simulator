@@ -8,6 +8,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
 
 import static org.junit.Assert.*;
 
@@ -128,6 +130,65 @@ public class TrainGlobalTest {
         } catch (java.lang.reflect.InvocationTargetException e) {
             assertTrue(e.getCause() instanceof IllegalArgumentException);
         }
+    }
+
+    @Test
+    public void stitchesThreeTrainsAtCompleteLegBoundaries() {
+        Map<String, List<TrainGlobal.Leg>> legs = journeys();
+        Map<String, List<TrainGlobal.Sample>> samples = Map.of(
+                "fm-029", samples(100, 350),
+                "fm-025", samples(0, 260),
+                "fm-021", samples(0, 230));
+        List<TrainGlobal.ChosenLeg> result = TrainGlobal.selectJourney("fm-029", legs, samples);
+        assertEquals(List.of("fm-029", "fm-025", "fm-021"),
+                result.stream().map(TrainGlobal.ChosenLeg::trainId).toList());
+        assertEquals(List.of(0, 1, 2),
+                result.stream().map(TrainGlobal.ChosenLeg::index).toList());
+    }
+
+    @Test
+    public void keepsCompleteTrainWithoutSwitching() {
+        Map<String, List<TrainGlobal.Leg>> legs = journeys();
+        Map<String, List<TrainGlobal.Sample>> samples = Map.of(
+                "fm-029", samples(0, 600),
+                "fm-025", samples(0, 260),
+                "fm-021", samples(0, 230));
+        List<TrainGlobal.ChosenLeg> result = TrainGlobal.selectJourney("fm-029", legs, samples);
+        assertEquals(List.of("fm-029", "fm-029", "fm-029"),
+                result.stream().map(TrainGlobal.ChosenLeg::trainId).toList());
+    }
+
+    @Test
+    public void rejectsMissingContinuationWithStation() {
+        Map<String, List<TrainGlobal.Leg>> legs = journeys();
+        try {
+            TrainGlobal.selectJourney("fm-029", legs, Map.of("fm-029", samples(100, 350)));
+            fail("Expected missing continuation");
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("station X"));
+        }
+    }
+
+    private static Map<String, List<TrainGlobal.Leg>> journeys() {
+        Map<String, List<TrainGlobal.Leg>> result = new LinkedHashMap<>();
+        result.put("fm-029", List.of(
+                new TrainGlobal.Leg("FM", "A", "X", 100, 200),
+                new TrainGlobal.Leg("FM", "X", "Y", 300, 400),
+                new TrainGlobal.Leg("FM", "Y", "D", 500, 600)));
+        result.put("fm-025", List.of(
+                new TrainGlobal.Leg("FM", "A", "X", -200, -100),
+                new TrainGlobal.Leg("FM", "X", "Y", 100, 200),
+                new TrainGlobal.Leg("FM", "Y", "D", 300, 400)));
+        result.put("fm-021", List.of(
+                new TrainGlobal.Leg("FM", "A", "X", -300, -200),
+                new TrainGlobal.Leg("FM", "X", "Y", -100, 0),
+                new TrainGlobal.Leg("FM", "Y", "D", 100, 200)));
+        return result;
+    }
+
+    private static List<TrainGlobal.Sample> samples(double from, double to) {
+        return List.of(new TrainGlobal.Sample(from, 3000, 10, 30000, 0, 0, 0),
+                new TrainGlobal.Sample(to, 3000, 10, 30000, 100, 0, 100));
     }
 
     private static Object field(Object record, String name) throws Exception {

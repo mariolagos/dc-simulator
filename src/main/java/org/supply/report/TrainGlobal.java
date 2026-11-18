@@ -15,7 +15,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 /**
- * Global train report for explicitly selected trains, one row per RunExcel leg.
+ * Global train report with deterministic stitching of complete RunExcel legs.
  *
  * All times are seconds from midnight. RunCsvInputFactory is the single source
  * of truth for expanded train IDs, template ordering and synchronized departures.
@@ -67,7 +67,7 @@ public final class TrainGlobal {
             throw new IllegalArgumentException("Specify distinct, nonblank train IDs");
 
         RunCsvInput input = new RunCsvInputFactory().build(dcsim, confFile);
-        Map<String, List<Leg>> legsByTrain = collectLegs(input, new HashSet<>(selectedTrainIds));
+        Map<String, List<Leg>> legsByTrain = collectLegs(input, new HashSet<>(input.trainIds()));
 
         try (Workbook source = WorkbookFactory.create(resultsTrain.toFile());
              Workbook target = new XSSFWorkbook()) {
@@ -81,22 +81,18 @@ public final class TrainGlobal {
             CellStyle numberStyle = target.createCellStyle();
             numberStyle.setDataFormat(target.createDataFormat().getFormat("0.000"));
 
+            Map<String, List<Sample>> samplesByTrain = new HashMap<>();
+            for (String trainId : legsByTrain.keySet()) {
+                if (source.getSheet(trainId) != null)
+                    samplesByTrain.put(trainId, readSamples(source, trainId));
+            }
             int rowIndex = 1;
-            for (String trainId : selectedTrainIds) {
-                List<Leg> legs = legsByTrain.get(trainId);
-                if (legs == null || legs.isEmpty())
-                    throw new IllegalArgumentException("Train not found in traffic plan: " + trainId);
-                List<Sample> samples = readSamples(source, trainId);
-                for (int i = 0; i < legs.size(); i++) {
-                    Leg leg = legs.get(i);
-                    if (leg.startS < samples.get(0).t || leg.endS > samples.get(samples.size() - 1).t)
-                        throw new IllegalArgumentException("Incomplete results for " + trainId
-                                + " leg " + (i + 1) + " [" + leg.startS + ", " + leg.endS + "]"
-                                + "; available [" + samples.get(0).t + ", "
-                                + samples.get(samples.size() - 1).t + "]");
-                    writeLeg(summary.createRow(rowIndex++), studyId, calcType, trainId,
-                            leg, i + 1, samples, timeStyle, numberStyle);
-                }
+            for (String requestedId : selectedTrainIds) {
+                List<ChosenLeg> journey = selectJourney(requestedId, legsByTrain, samplesByTrain);
+                for (ChosenLeg chosen : journey)
+                    writeLeg(summary.createRow(rowIndex++), studyId, calcType, chosen.trainId,
+                            chosen.leg, chosen.index + 1, samplesByTrain.get(chosen.trainId),
+                            timeStyle, numberStyle);
             }
             summary.createFreezePane(3, 1);
             for (int c = 0; c < HEADERS.length; c++)
@@ -105,7 +101,7 @@ public final class TrainGlobal {
             Sheet method = target.createSheet("Method");
             String[] notes = {
                     "Source: results_train.xlsx and RunExcel timetable sheets.",
-                    "Train selection: explicit train IDs supplied by the user; no automatic selection.",
+                    "Journey selection: requested train IDs identify traffic patterns; the earliest complete departure is selected.",
                     "Leg ordering and synchronized departure times: RunCsvInputFactory.",
                     "Leg departure and arrival are read from timetable (Time s, Type).",
                     "Energy: interpolated cumulative counter at arrival minus departure.",
@@ -113,7 +109,8 @@ public final class TrainGlobal {
                     "For time-weighted statistics, each right-endpoint sample represents the preceding interval.",
                     "Boundary values are linearly interpolated; min/max include boundaries and interior samples.",
                     "p_mean_kW is derived from net energy divided by leg duration.",
-                    "All requested legs must be covered by the result samples; partial trains are rejected.",
+                    "Only complete legs are used; subsequent legs may come from other trains of the same station sequence.",
+                    "A train is retained as long as it has complete consecutive legs; replacement uses earliest complete departure.",
                     "Energy regenerated retains the source counter's sign convention.",
                     "StudyId and Calc Type are user-supplied; metadata is copied from the source."
             };
@@ -124,6 +121,76 @@ public final class TrainGlobal {
             if (parent != null) Files.createDirectories(parent);
             try (var stream = Files.newOutputStream(output)) { target.write(stream); }
         }
+    }
+
+    /** One original leg; index is zero-based within its source train. */
+    record ChosenLeg(String trainId, int index, Leg leg) {}
+
+    /**
+     * The requested ID identifies the journey pattern, not necessarily the first
+     * physical train. Candidate trains must have the same ordered station sequence.
+     * Prefer the earliest journey departure covered by the result window, then
+     * retain each train until its next leg is incomplete.
+     */
+    static List<ChosenLeg> selectJourney(String requestedId,
+                                         Map<String, List<Leg>> legsByTrain,
+                                         Map<String, List<Sample>> samplesByTrain) {
+        List<Leg> pattern = legsByTrain.get(requestedId);
+        if (pattern == null || pattern.isEmpty())
+            throw new IllegalArgumentException("Train not found in traffic plan: " + requestedId);
+        List<String> candidates = legsByTrain.keySet().stream()
+                .filter(id -> sameJourney(pattern, legsByTrain.get(id)))
+                .filter(samplesByTrain::containsKey)
+                .toList();
+        if (candidates.isEmpty())
+            throw new IllegalArgumentException("No result trains for journey: " + requestedId);
+
+        // First leg must be a real journey departure within the available window.
+        String current = candidates.stream()
+                .filter(id -> covered(legsByTrain.get(id).get(0), samplesByTrain.get(id)))
+                .min(Comparator.comparingDouble((String id) -> legsByTrain.get(id).get(0).startS)
+                        .thenComparing(id -> id))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No complete journey departure in results for: " + requestedId));
+
+        List<ChosenLeg> result = new ArrayList<>();
+        int index = 0;
+        while (index < pattern.size()) {
+            List<Leg> legs = legsByTrain.get(current);
+            List<Sample> samples = samplesByTrain.get(current);
+            while (index < pattern.size() && covered(legs.get(index), samples)) {
+                result.add(new ChosenLeg(current, index, legs.get(index)));
+                index++;
+            }
+            if (index == pattern.size()) break;
+            final int next = index;
+            final String previous = current;
+            current = candidates.stream()
+                    .filter(id -> !id.equals(previous))
+                    .filter(id -> covered(legsByTrain.get(id).get(next), samplesByTrain.get(id)))
+                    .min(Comparator.comparingDouble((String id) -> legsByTrain.get(id).get(next).startS)
+                            .thenComparing(id -> id))
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "No complete continuation from station " + pattern.get(next).from
+                                    + " (leg " + (next + 1) + ") for " + requestedId));
+        }
+        return result;
+    }
+
+    private static boolean sameJourney(List<Leg> a, List<Leg> b) {
+        if (a.size() != b.size()) return false;
+        for (int i = 0; i < a.size(); i++) {
+            if (!a.get(i).from.equals(b.get(i).from)
+                    || !a.get(i).to.equals(b.get(i).to)
+                    || !a.get(i).route.equals(b.get(i).route)) return false;
+        }
+        return true;
+    }
+
+    private static boolean covered(Leg leg, List<Sample> samples) {
+        return samples != null && samples.size() >= 2
+                && leg.startS >= samples.get(0).t
+                && leg.endS <= samples.get(samples.size() - 1).t;
     }
 
     private static Map<String, List<Leg>> collectLegs(RunCsvInput input, Set<String> selected)
@@ -344,7 +411,7 @@ public final class TrainGlobal {
     }
 
     private record Timetable(String from,String to,double departureS,double arrivalS,double sourceDepartureS) {}
-    private record Leg(String route,String from,String to,double startS,double endS) {}
-    private record Sample(double t,double u,double i,double p,
-                          double consumed,double regenerated,double net) {}
+    record Leg(String route,String from,String to,double startS,double endS) {}
+    record Sample(double t,double u,double i,double p,
+                  double consumed,double regenerated,double net) {}
 }
