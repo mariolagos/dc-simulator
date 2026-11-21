@@ -44,7 +44,16 @@ public class SwitchgearStationMarkersTest {
         var context=new DcStudyContext(root.resolve("run.conf"),root,scenario,dcsim,"two_sections","two_sections","",exports,root.resolve("results"));
         DcReporter.writePlannedGraphicalTimetable(context,exports,List.of(new DcReporter.PlannedTimetablePoint(0,"T1","101",1000.0)),checks);
         var lines=Files.readAllLines(checks.resolve("two_sections_graphical_timetable_markers.csv"));
-        for(String station:List.of("SS1","SS2"))for(String axis:List.of("TOP","BOTTOM"))
-            assertTrue(station+" missing "+axis+" in "+lines,lines.stream().anyMatch(x->x.startsWith(station+",")&&x.endsWith(",SUPPLY_POINT,"+axis)));
+        for (String station : List.of("SS1", "SS2")) {
+            for (String axis : List.of("TOP", "BOTTOM")) {
+                assertTrue(station + " missing " + axis + " in " + lines,
+                        lines.stream().skip(1)
+                                .map(line -> line.split(",", 6))
+                                .anyMatch(fields -> fields.length == 6
+                                        && station.equals(fields[0])
+                                        && "SUPPLY_POINT".equals(fields[2])
+                                        && axis.equals(fields[3])));
+            }
+        }
     }
 }

@@ -603,7 +603,8 @@ final class ReportWorkbookWriter {
     static void writeLineWorkbook(
             List<LongTableRow> rows,
             ResultMetadata metadata,
-            Path outputPath
+            Path outputPath,
+            List<? extends Config> lineDefinitions
     ) throws IOException {
         Map<String, Map<Double, LineResult>> results =
                 collectLineResults(rows);
@@ -618,11 +619,43 @@ final class ReportWorkbookWriter {
                 writeLineSheet(sheet, lineId, lineEntry.getValue());
             }
 
+            writeLineEndpoints(workbook, results.keySet(), lineDefinitions);
+
             Files.createDirectories(outputPath.getParent());
             try (OutputStream out = Files.newOutputStream(outputPath)) {
                 workbook.write(out);
             }
         }
+    }
+
+    private static void writeLineEndpoints(
+            Workbook workbook, Set<String> lineIds, List<? extends Config> definitions
+    ) {
+        Map<String, Config> byId = new LinkedHashMap<>();
+        for (Config definition : definitions) {
+            String id = definition.getString("line_id");
+            if (byId.putIfAbsent(id, definition) != null) {
+                throw new IllegalArgumentException("Duplicate grid line ID: " + id);
+            }
+        }
+
+        Sheet sheet = workbook.createSheet("Lines");
+        Row header = sheet.createRow(0);
+        header.createCell(0).setCellValue("line_id");
+        header.createCell(1).setCellValue("node_from_id");
+        header.createCell(2).setCellValue("node_to_id");
+        int rowIndex = 1;
+        for (String id : lineIds) {
+            Row row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(id);
+            Config definition = byId.get(id);
+            if (definition != null) {
+                row.createCell(1).setCellValue(definition.getString("node_from_id"));
+                row.createCell(2).setCellValue(definition.getString("node_to_id"));
+            }
+        }
+        sheet.createFreezePane(0, 1);
+        for (int i = 0; i < 3; i++) sheet.autoSizeColumn(i);
     }
 
     static Map<String, Map<Double, LineResult>> collectLineResults(

@@ -105,7 +105,9 @@ tasks.register<JavaExec>("dcCheck") {
         ?.takeIf { it.isNotBlank() }
         ?.let { args("--route", it) }
 
-    jvmArgs("-Dfile.encoding=UTF-8")
+    jvmArgs(
+        "-Dfile.encoding=UTF-8"
+    )
 }
 
 tasks.register<JavaExec>("dcSolver") {
@@ -437,6 +439,14 @@ tasks.register<JavaExec>("trackdataCheck") {
     jvmArgs("-Dfile.encoding=UTF-8")
 }
 
+tasks.register<JavaExec>("dcPeriodicity") {
+    group = "dc"
+    description = "Analyze periodicity in DC substation power"
+
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("org.supply.report.PeriodicityAnalysis")
+}
+
 tasks.register<JavaExec>("dcGlobalInstallation") {
     group = "dc"
     description = "Generate global installation statistics"
@@ -475,4 +485,22 @@ tasks.register<JavaExec>("dcGlobalTrain") {
             providers.gradleProperty("trains").get()
         )
     }
+}
+
+tasks.register<JavaExec>("systemGlobal") {
+    group = "application"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("org.supply.report.SystemGlobal")
+}
+
+tasks.register<JavaExec>("lineGlobal") {
+    group = "application"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("org.supply.report.LineGlobal")
+}
+
+tasks.register<JavaExec>("dcTrainLegGlobal") {
+    group = "application"
+    mainClass.set("org.supply.report.TrainLegGlobal")
+    classpath = sourceSets.main.get().runtimeClasspath
 }

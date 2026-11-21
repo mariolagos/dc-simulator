@@ -74,6 +74,8 @@ public final class DcReporter {
                 extractMetadata(rows);
 
         writeStudyInfo(context);
+        writeStudyInfo(context);
+        writeInstallationWorkbook(rows, metadata, outputPath);
 
         BaseRoutePositionMapper baseRoutePositionMapper =
                 loadBaseRoutePositionMapper(context);
@@ -117,7 +119,9 @@ public final class DcReporter {
         writeLineWorkbook(
                 rows,
                 metadata,
-                resultsLine
+                resultsLine,
+                context.dcsim().hasPath("grid.lines")
+                        ? context.dcsim().getConfigList("grid.lines") : List.of()
         );
 
         Path resultsSystem =

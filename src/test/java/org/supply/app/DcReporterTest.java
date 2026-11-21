@@ -78,40 +78,25 @@ public class DcReporterTest {
         assertTrue(Files.exists(trainWorkbook));
         try (Workbook workbook = new XSSFWorkbook(Files.newInputStream(trainWorkbook))) {
             Sheet sheet = workbook.getSheet("T1");
-            assertEquals(
-                    "T1.base_route_position_m",
-                    sheet.getRow(0).getCell(6).getStringCellValue()
-            );
-            assertEquals(
-                    "T1.speed_mps",
-                    sheet.getRow(0).getCell(7).getStringCellValue()
-            );
-            assertEquals(12.5,
-                    sheet.getRow(1).getCell(7).getNumericCellValue(), 1e-9);
-            assertEquals(45.0,
-                    sheet.getRow(1).getCell(8).getNumericCellValue(), 1e-9);
-            assertEquals("T1.p_delta_W",
-                    sheet.getRow(0).getCell(13).getStringCellValue());
-            assertEquals(
-                    125.0,
-                    sheet.getRow(1).getCell(13).getNumericCellValue(),
-                    1e-9
-            );
-            assertEquals(
-                    300.0,
-                    sheet.getRow(1).getCell(14).getNumericCellValue(),
-                    1e-9
-            );
-            assertEquals(
-                    50.0,
-                    sheet.getRow(1).getCell(15).getNumericCellValue(),
-                    1e-9
-            );
-            assertEquals(
-                    250.0,
-                    sheet.getRow(1).getCell(16).getNumericCellValue(),
-                    1e-9
-            );
+            assertEquals("T1.base_route_position_m", sheet.getRow(0).getCell(7).getStringCellValue());
+
+            assertEquals("T1.speed_mps", sheet.getRow(0).getCell(8).getStringCellValue());
+            assertEquals(12.5, sheet.getRow(1).getCell(8).getNumericCellValue(), 1e-9);
+
+            assertEquals("T1.speed_kph", sheet.getRow(0).getCell(9).getStringCellValue());
+            assertEquals(45.0, sheet.getRow(1).getCell(9).getNumericCellValue(), 1e-9);
+
+            assertEquals("T1.p_delta_W", sheet.getRow(0).getCell(14).getStringCellValue());
+            assertEquals(125.0, sheet.getRow(1).getCell(14).getNumericCellValue(), 1e-9);
+
+            assertEquals("T1.e_consumed_J", sheet.getRow(0).getCell(15).getStringCellValue());
+            assertEquals(300.0, sheet.getRow(1).getCell(15).getNumericCellValue(), 1e-9);
+
+            assertEquals("T1.e_regenerated_J", sheet.getRow(0).getCell(16).getStringCellValue());
+            assertEquals(50.0, sheet.getRow(1).getCell(16).getNumericCellValue(), 1e-9);
+
+            assertEquals("T1.e_net_J", sheet.getRow(0).getCell(17).getStringCellValue());
+            assertEquals(250.0, sheet.getRow(1).getCell(17).getNumericCellValue(), 1e-9);
         }
 
 

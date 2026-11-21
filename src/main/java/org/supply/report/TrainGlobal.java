@@ -23,8 +23,8 @@ import java.util.*;
  */
 public final class TrainGlobal {
     private static final double J_PER_KWH = 3_600_000.0;
-    // Allows a final integration sample just before the scheduled arrival.
-    private static final double ARRIVAL_TIME_TOLERANCE_S = 0.25;
+    // Allows a final integration sample just before the profile end.
+    static final double ARRIVAL_TIME_TOLERANCE_S = 1.00;
     private static final String[] HEADERS = {
             "StudyId", "Calc Type", "train_id", "route_id", "leg",
             "from_station", "to_station", "start_time", "end_time", "duration_s",
@@ -307,33 +307,42 @@ public final class TrainGlobal {
                 && leg.endS - samples.get(samples.size() - 1).t <= ARRIVAL_TIME_TOLERANCE_S));
     }
 
-    private static Map<String, List<Leg>> collectLegs(RunCsvInput input, Set<String> selected)
+    static Map<String, List<Leg>> collectLegs(RunCsvInput input, Set<String> selected)
             throws Exception {
         Map<String, List<Leg>> result = new LinkedHashMap<>();
         Map<String, Double> firstSourceDeparture = new HashMap<>();
+        Map<Path, Timetable> timetables = new HashMap<>();
+        Map<Profile, Double> profileDurations = new HashMap<>();
         for (int i = 0; i < input.trainIds().size(); i++) {
             String id = input.trainIds().get(i);
             if (!selected.contains(id)) continue;
             RunSource runSource = input.runSources().get(i);
             if (runSource.type() != RunSourceType.EXCEL)
                 throw new IllegalArgumentException("Global Train v1 requires RunExcel: " + id);
-            Timetable legTimes = readTimetable(runSource.file());
-            double first = firstSourceDeparture.computeIfAbsent(id, k -> legTimes.sourceDepartureS);
+            Timetable legTimes = timetables.get(runSource.file());
+            if (legTimes == null) {
+                legTimes = readTimetable(runSource.file());
+                timetables.put(runSource.file(), legTimes);
+            }
+            double sourceDeparture = legTimes.sourceDepartureS;
+            double first = firstSourceDeparture.computeIfAbsent(id, k -> sourceDeparture);
             Integer override = input.relativeLegDepartureTimes().get(i);
             double[] bounds = legBounds(input.departureTimes().get(i), first,
                     legTimes.sourceDepartureS, legTimes.departureS, legTimes.arrivalS, override);
 
             double start = bounds[0];
 
-            double[] profileBounds = readProfileTimeBounds(
-                    runSource.file(),
-                    runSource.sheet()
-            );
-
-            double end = start + profileBounds[1] - profileBounds[0];
+            Profile profile = new Profile(runSource.file(), runSource.sheet());
+            Double duration = profileDurations.get(profile);
+            if (duration == null) {
+                double[] profileBounds = readProfileTimeBounds(profile.file(), profile.sheet());
+                duration = profileBounds[1] - profileBounds[0];
+                profileDurations.put(profile, duration);
+            }
+            double end = start + duration;
             if (!(end > start)) throw new IllegalArgumentException("Invalid leg duration: " + runSource.file());
             result.computeIfAbsent(id, k -> new ArrayList<>())
-                    .add(new Leg(input.routeIds().get(i), legTimes.from, legTimes.to, start, end));
+                    .add(new Leg(input.routeIds().get(i), legTimes.from, legTimes.to, start, end, profile));
         }
         return result;
     }
@@ -601,7 +610,12 @@ public final class TrainGlobal {
     }
 
     private record Timetable(String from,String to,double departureS,double arrivalS,double sourceDepartureS) {}
-    record Leg(String route,String from,String to,double startS,double endS) {}
+    record Profile(Path file, String sheet) {}
+    record Leg(String route, String from, String to, double startS, double endS, Profile profile) {
+        Leg(String route, String from, String to, double startS, double endS) {
+            this(route, from, to, startS, endS, null);
+        }
+    }
     record Sample(double t,double u,double i,double p,
                   double consumed,double regenerated,double net) {}
 }

@@ -172,18 +172,21 @@ public class TrainGlobalTest {
 
 
     @Test
-    public void acceptsSmallMissingArrivalTimeButRejectsLargerGap() {
+    public void acceptsArrivalGapAtToleranceButRejectsLargerGap() {
         Map<String, List<TrainGlobal.Leg>> legs = Map.of(
                 "ad-001", List.of(new TrainGlobal.Leg("AD", "C", "D", 200.0, 288.0)));
+
         var accepted = TrainGlobal.selectJourney("ad-001", legs,
-                Map.of("ad-001", samples(200.0, 287.9)));
+                Map.of("ad-001", samples(200.0, 287.0)));
         assertEquals(1, accepted.size());
+
         try {
             TrainGlobal.selectJourney("ad-001", legs,
-                    Map.of("ad-001", samples(200.0, 287.0)));
-            fail("Expected missing arrival to be rejected");
+                    Map.of("ad-001", samples(200.0, 286.9)));
+            fail("Expected a 1.1 s arrival gap to be rejected");
         } catch (IllegalArgumentException expected) {
-            assertTrue(expected.getMessage().contains("No complete journey departure"));
+            assertTrue(expected.getMessage(),
+                    expected.getMessage().contains("No complete journey departure"));
         }
     }
 

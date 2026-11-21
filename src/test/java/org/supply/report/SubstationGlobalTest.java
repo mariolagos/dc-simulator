@@ -12,8 +12,9 @@ import static org.junit.Assert.*;
 public class SubstationGlobalTest {
     @Test
     public void copiesMetadataAndAddsStudyAndCalcTypeWithoutChangingStatistics() throws Exception {
-        Path source = Files.createTempFile("installations", ".xlsx");
-        Path target = Files.createTempFile("global-installations", ".xlsx");
+        Path directory = Files.createTempDirectory("substation-global-test");
+        Path source = directory.resolve("installations.xlsx");
+        Path target = directory.resolve("global-installations.xlsx");
         try {
             try (Workbook workbook = new XSSFWorkbook()) {
                 Sheet metadata = workbook.createSheet("Metadata");
@@ -63,6 +64,7 @@ public class SubstationGlobalTest {
         } finally {
             Files.deleteIfExists(source);
             Files.deleteIfExists(target);
+            Files.deleteIfExists(directory);
         }
     }
 }
