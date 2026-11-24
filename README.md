@@ -115,7 +115,7 @@ Gradle wrapper in the configured external project.
 The main scenario question is **where, when and by how much requested traction
 power needs to be reduced**. Start with the system workbook to locate demanding
 periods, use the graphical timetable to identify trains and locations, then
-read each train's `p_req_W`, `p_W`, `p_delta_W`, `u_V` and `i_A`. For positive
+read each train's `p_req_W`, `p_W`, `p_dev_W`, `u_V` and `i_A`. For positive
 requests, the observed shortfall is `p_req_W - p_W`; divide by `p_req_W` to
 express it as a fraction. Distinguish train characteristic limits and numerical
 fallback from a physical network supply constraint before proposing a limit.
@@ -232,7 +232,7 @@ adds the same rendering step after a full study.
 9. **`DcReporter` -> timetable and marker CSVs:** map each point with
    `BaseRoutePositionMapper.map(sectionId, positionM)` and write
    `<studyId>_graphical_timetable.csv` in `checks`, with columns
-   `time_s,train_id,base_route_position_m,p_delta_W`. Planned points use `0.0`
+   `time_s,train_id,base_route_position_m,p_dev_W`. Planned points use `0.0`
    for power deficit. Unmapped positions leave an empty position field.
    `writeGraphicalTimetableMarkers` writes station, supply-point and
    section-boundary markers to `<studyId>_graphical_timetable_markers.csv`.
@@ -452,7 +452,7 @@ The fallback applies one common multiplier to all negative train powers and leav
 
 7. **Reduce regeneration if necessary.** If the full-request attempt is unacceptable, `solveWithFallback(...)` first sets every negative request to zero while preserving motoring requests. If this also fails, it throws `DC network is not solvable even with zero regenerative train power`. Otherwise it performs 30 bisection steps between a feasible multiplier of zero and an infeasible multiplier of one. Successful candidates update the retained solution and allocation. The returned voltages and allocated-power map always belong to the same accepted candidate.
 
-8. **Report delivered power.** `DcSolver.powerSnapshot(...)` uses the accepted allocation and terminal voltage. `trainCurrentA(...)` returns negative current for regeneration using `RegenerativeTrainElement.regenerativeCurrentA(...)`; for motoring it evaluates `TrainLoadElement.currentA(...)`. The reported `p_W` is U × I, and `trainPowerDeltaW(...)` calculates `p_delta_W` as original requested power minus actual power. A traction shortfall therefore gives a positive deviation; curtailed regeneration gives a negative deviation. Train energy accumulation and system power accounting use the actual-power snapshot.
+8. **Report delivered power.** `DcSolver.powerSnapshot(...)` uses the accepted allocation and terminal voltage. `trainCurrentA(...)` returns negative current for regeneration using `RegenerativeTrainElement.regenerativeCurrentA(...)`; for motoring it evaluates `TrainLoadElement.currentA(...)`. The reported `p_W` is U × I, and `trainPowerDeltaW(...)` calculates `p_dev_W` as original requested power minus actual power. A traction shortfall therefore gives a positive deviation; curtailed regeneration gives a negative deviation. Train energy accumulation and system power accounting use the actual-power snapshot.
 
 #### Example: allocated power versus delivered power
 

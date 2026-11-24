@@ -148,7 +148,7 @@ The manually implemented bisection in `SingleTimestepSolverTest.findsFeasibleReg
 | RP-03 | Calculate train power deviation as requested minus delivered power, including a negative deviation for curtailed negative demand. | `DcSolverLineLossTest.trainPowerDeltaIsRequestedMinusDeliveredPower` |
 | RP-04 | Calculate the system balance by subtracting loads and the supplied loss terms from substation power. Aggregate positive consumption and the magnitude of negative regeneration separately. | `DcSolverLineLossTest.systemBalanceSubtractsLoadsAndLossesFromSubstationPower`, `consumptionAndRegenerationAreAggregatedSeparately` |
 | RP-05 | Export supplied longtable values into study-prefixed train, installation, line and system workbooks. Preserve train speed in m/s and convert 12.5 m/s to 45 km/h; preserve checked power-deviation and energy values. | `DcReporterTest.exportsTrainPowerDeltaAndLineLosses` |
-| RP-06 | Export graphical-timetable CSV with `time_s,train_id,base_route_position_m,p_delta_W`. Map the tested train positions to the configured base route; retain a blank position when it cannot be mapped. Planned output uses zero power deviations. | `DcReporterTest.exportsGraphicalTimetableInputOnConfiguredBaseRoute` |
+| RP-06 | Export graphical-timetable CSV with `time_s,train_id,base_route_position_m,p_dev_W`. Map the tested train positions to the configured base route; retain a blank position when it cannot be mapped. Planned output uses zero power deviations. | `DcReporterTest.exportsGraphicalTimetableInputOnConfiguredBaseRoute` |
 | RP-07 | Export station, supply-point and section-boundary markers on the base route, including CSV quoting for a station name containing a comma. Planned and result marker output shall agree in the fixture. | `DcReporterTest.exportsGraphicalTimetableInputOnConfiguredBaseRoute` |
 | RP-08 | Orient graphical-timetable sections using trackdata. For the two-section fixture, export distances 0, 500, 2000, 2000, 2500 and 4000 m, stations at 500/1500/2500/3500 m and a boundary at 2000 m. | `DcReporterTest.orientsGraphicalTimetableSectionsFromTrackdata` |
 
@@ -646,7 +646,7 @@ an operational power reduction.
 
 Use the system workbook to locate demanding periods, the timetable to identify
 trains and positions, and the train workbook or longtable to quantify requested
-and actual powers, voltage and current. `p_delta_W` is requested minus actual
+and actual powers, voltage and current. `p_dev_W` is requested minus actual
 power: positive values indicate traction shortfall; negative values indicate
 curtailed regeneration. A blue timetable segment can still deliver regenerative
 power. An empty deviations workbook does not establish unrestricted regeneration;

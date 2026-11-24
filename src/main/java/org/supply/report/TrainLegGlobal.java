@@ -235,7 +235,7 @@ public final class TrainLegGlobal {
                 String signal = fields[6];
                 String stage = fields[9];
                 boolean selected = switch (signal) {
-                    case "p_delta_W" -> "RESULT".equals(stage);
+                    case "p_dev_W", "p_delta_W" -> "RESULT".equals(stage);
                     case "electric_route_id", "electric_route_position_m", "speed_mps" -> "INPUT".equals(stage);
                     default -> false;
                 };
@@ -409,7 +409,7 @@ public final class TrainLegGlobal {
                 case "electric_route_id" -> route = once(route, value);
                 case "electric_route_position_m" -> position = once(position, finite(value));
                 case "speed_mps" -> speed = once(speed, finite(value));
-                case "p_delta_W" -> deltaW = once(deltaW, finite(value));
+                case "p_dev_W", "p_delta_W" -> deltaW = once(deltaW, finite(value));
                 default -> throw new IllegalArgumentException("Unexpected signal: " + signal);
             }
         }

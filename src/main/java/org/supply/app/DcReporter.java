@@ -241,7 +241,7 @@ public final class DcReporter {
                 context.studyId() + "_graphical_timetable.csv"
         );
         try (BufferedWriter writer = Files.newBufferedWriter(timetable)) {
-            writer.write("time_s,train_id,base_route_position_m,p_delta_W");
+            writer.write("time_s,train_id,base_route_position_m,p_dev_W");
             writer.newLine();
             for (PlannedTimetablePoint point : points) {
                 writer.write(Double.toString(point.timeS()));
@@ -304,7 +304,7 @@ public final class DcReporter {
 
         try (BufferedWriter writer = Files.newBufferedWriter(outputPath)) {
             writer.write(
-                    "time_s,train_id,base_route_position_m,p_delta_W"
+                    "time_s,train_id,base_route_position_m,p_dev_W"
             );
             writer.newLine();
 

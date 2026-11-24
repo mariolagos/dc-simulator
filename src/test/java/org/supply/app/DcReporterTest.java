@@ -38,7 +38,7 @@ public class DcReporterTest {
         )) {
             writer.signalRow(1.0, "TRAIN", "T1", "speed_mps",
                     12.5, "m/s", "INPUT", null, "");
-            writer.signalRow(1.0, "TRAIN", "T1", "p_delta_W",
+            writer.signalRow(1.0, "TRAIN", "T1", "p_dev_W",
                     125.0, "W", "RESULT", null, "");
             writer.signalRow(1.0, "TRAIN", "T1", "e_consumed_J",
                     300.0, "J", "RESULT", null, "");
@@ -86,7 +86,7 @@ public class DcReporterTest {
             assertEquals("T1.speed_kph", sheet.getRow(0).getCell(9).getStringCellValue());
             assertEquals(45.0, sheet.getRow(1).getCell(9).getNumericCellValue(), 1e-9);
 
-            assertEquals("T1.p_delta_W", sheet.getRow(0).getCell(14).getStringCellValue());
+            assertEquals("T1.p_dev_W", sheet.getRow(0).getCell(14).getStringCellValue());
             assertEquals(125.0, sheet.getRow(1).getCell(14).getNumericCellValue(), 1e-9);
 
             assertEquals("T1.e_consumed_J", sheet.getRow(0).getCell(15).getStringCellValue());
@@ -219,7 +219,7 @@ public class DcReporterTest {
         );
         assertEquals(
                 List.of(
-                        "time_s,train_id,base_route_position_m,p_delta_W",
+                        "time_s,train_id,base_route_position_m,p_dev_W",
                         "1.0,T1,625.0,125.0",
                         "2.0,T1,635.0,-250.0",
                         "3.0,T1,,0.0"
@@ -258,7 +258,7 @@ public class DcReporterTest {
 
         assertEquals(
                 List.of(
-                        "time_s,train_id,base_route_position_m,p_delta_W",
+                        "time_s,train_id,base_route_position_m,p_dev_W",
                         "1.0,T1,625.0,0.0",
                         "2.0,T1,635.0,0.0",
                         "3.0,T1,,0.0"
@@ -365,7 +365,7 @@ public class DcReporterTest {
 
         assertEquals(
                 List.of(
-                        "time_s,train_id,base_route_position_m,p_delta_W",
+                        "time_s,train_id,base_route_position_m,p_dev_W",
                         "0.0,T1,0.0,0.0",
                         "1.0,T1,500.0,0.0",
                         "2.0,T1,2000.0,0.0",
@@ -439,7 +439,7 @@ public class DcReporterTest {
                 sectionId, "", "INPUT", null, "");
         writer.signalRow(timeS, "TRAIN", trainId, "position_m",
                 positionM, "m", "INPUT", null, "");
-        writer.signalRow(timeS, "TRAIN", trainId, "p_delta_W",
+        writer.signalRow(timeS, "TRAIN", trainId, "p_dev_W",
                 powerDeltaW, "W", "RESULT", null, "");
     }
 }

@@ -616,7 +616,7 @@ public final class DcSolver {
                 timeSec,
                 "TRAIN",
                 trainLoad.trainId(),
-                "p_delta_W",
+                "p_dev_W",
                 trainPowerDeltaW(trainLoad.requestedPowerW(), powerW),
                 "W",
                 "RESULT",

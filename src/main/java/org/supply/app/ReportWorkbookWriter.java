@@ -169,7 +169,7 @@ final class ReportWorkbookWriter {
                         trainResult.pW =
                                 parseDouble(row.value());
 
-                case "p_delta_W" ->
+                case "p_dev_W", "p_delta_W" ->
                         trainResult.pDeltaW =
                                 parseDouble(row.value());
 
@@ -211,7 +211,7 @@ final class ReportWorkbookWriter {
         header.createCell(11).setCellValue(trainId + ".i_A");
         header.createCell(12).setCellValue(trainId + ".p_req_W");
         header.createCell(13).setCellValue(trainId + ".p_W");
-        header.createCell(14).setCellValue(trainId + ".p_delta_W");
+        header.createCell(14).setCellValue(trainId + ".p_dev_W");
         header.createCell(15).setCellValue(trainId + ".e_consumed_J");
         header.createCell(16).setCellValue(trainId + ".e_regenerated_J");
         header.createCell(17).setCellValue(trainId + ".e_net_J");
@@ -366,7 +366,7 @@ final class ReportWorkbookWriter {
                 "UNDER_VOLTAGE when u_V is below this value");
         writeThresholdRow(sheet, 1, "min_power_deficit_W",
                 MIN_POWER_DEFICIT_W,
-                "POWER_DEFICIT when p_delta_W is above this value");
+                "POWER_DEFICIT when p_dev_W is above this value");
         writeThresholdRow(sheet, 2, "max_event_gap_s",
                 MAX_EVENT_GAP_S,
                 "Largest time gap merged into one deviation period");
