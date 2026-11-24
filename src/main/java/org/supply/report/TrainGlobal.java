@@ -86,8 +86,12 @@ public final class TrainGlobal {
 
             Map<String, List<Sample>> samplesByTrain = new HashMap<>();
             for (String trainId : legsByTrain.keySet()) {
-                if (source.getSheet(trainId) != null)
-                    samplesByTrain.put(trainId, readSamples(source, trainId));
+                if (source.getSheet(trainId) == null) continue;
+
+                List<Sample> samples = readSamples(source, trainId);
+                if (samples.size() >= 2) {
+                    samplesByTrain.put(trainId, samples);
+                }
             }
             int rowIndex = copyExistingRows(output, summary, studyId, calcType, timeStyle, numberStyle);
             for (String requestedId : selectedTrainIds) {
@@ -519,8 +523,7 @@ public final class TrainGlobal {
                 throw new IllegalArgumentException("Non-increasing time for " + id + " at row " + (r+1));
             samples.add(s);
         }
-        if (samples.size() < 2) throw new IllegalArgumentException("Insufficient samples: " + id);
-        return samples;
+                return samples;
     }
 
     private static double num(Row row, Map<String, Integer> cols, String field) {
